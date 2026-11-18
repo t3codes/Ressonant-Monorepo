@@ -1,0 +1,12 @@
+### Teams - Create
+
+POST {{baseUrl}}/teams
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "{{name}}",
+  "slug": "{{slug}}",
+  "workspace_id": "{{workspaceId}}",
+  "description": "{{description}}"
+}

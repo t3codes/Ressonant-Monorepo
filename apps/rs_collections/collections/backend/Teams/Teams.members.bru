@@ -1,0 +1,10 @@
+### Teams - Add Member
+
+POST {{baseUrl}}/teams/{{teamId}}/members
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "user_id": "{{userId}}",
+  "role": "{{role}}"
+}

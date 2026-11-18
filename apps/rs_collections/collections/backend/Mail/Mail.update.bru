@@ -1,0 +1,11 @@
+### Mail - Update For User
+
+PATCH {{baseUrl}}/mail/{{emailId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "trashed": {{trashed}},
+  "starred": {{starred}},
+  "remindAt": "{{remindAt}}"
+}

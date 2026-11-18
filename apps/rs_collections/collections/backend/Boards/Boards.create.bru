@@ -1,0 +1,13 @@
+### Boards - Create
+
+POST {{baseUrl}}/boards
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "{{name}}",
+  "slug": "{{slug}}",
+  "workspace_id": "{{workspaceId}}",
+  "team_id": "{{teamId}}",
+  "description": "{{description}}"
+}

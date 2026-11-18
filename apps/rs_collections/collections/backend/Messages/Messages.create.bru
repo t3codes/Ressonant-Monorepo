@@ -1,0 +1,16 @@
+### Messages - Create
+
+POST {{baseUrl}}/messages
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "workspace_id": "{{workspaceId}}",
+  "room_id": "{{roomId}}",
+  "room_kind": "{{roomKind}}",
+  "author_id": "{{authorId}}",
+  "body": "{{body}}",
+  "parent_id": "{{parentId}}",
+  "attachments": {{attachments}},
+  "mention_ids": {{mentionIds}}
+}

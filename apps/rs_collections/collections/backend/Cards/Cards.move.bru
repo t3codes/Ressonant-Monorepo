@@ -1,0 +1,10 @@
+### Cards - Move
+
+POST {{baseUrl}}/cards/{{cardId}}/move
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "column_id": "{{columnId}}",
+  "expected_version": {{expected_version}}
+}

@@ -1,7 +1,7 @@
 [project]
 name = "ressonant_collections"
 version = "0.1.0"
-description = "Artefatos de collection/teste da Ressonant API (Postman/Insomnia). Não executável: sem código, sem serviço, sem compose."
+description = "Artefatos de collection/teste da Ressonant API (Bruno). Não executável: sem código, sem serviço, sem compose."
 requires-python = "==3.13.*"
 
 # Membro virtual do workspace: não é empacotado nem instalado,
