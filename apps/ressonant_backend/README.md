@@ -1,6 +1,6 @@
 # Ressonant Backend
 
-API FastAPI com **autenticação** (JWT) e **CRUD de usuários**. Rotas: `/docs` com o servidor no ar, ou a spec versionada em [`openapi.json`](openapi.json). Collection Postman em `../ressonant-api-collections` (fora do monorepo).
+API FastAPI com **autenticação** (JWT) e **CRUD de usuários**. Rotas: `/docs` com o servidor no ar, ou a spec versionada em [`openapi.json`](openapi.json). Collection Postman/Insomnia em `apps/ressonant_collections/` (dentro do monorepo, não executável).
 
 ## Arquitetura
 
