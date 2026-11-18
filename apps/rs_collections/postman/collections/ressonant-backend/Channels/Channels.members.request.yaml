@@ -1,0 +1,5 @@
+$kind: http-request
+name: 'Channels - Add Member'
+method: POST
+url: '{{baseUrl}}/channels/{{channelId}}/members'
+order: 4000

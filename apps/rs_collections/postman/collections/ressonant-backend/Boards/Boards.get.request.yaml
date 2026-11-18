@@ -1,0 +1,5 @@
+$kind: http-request
+name: 'Boards - Get'
+method: GET
+url: '{{baseUrl}}/boards/{{boardId}}'
+order: 4000

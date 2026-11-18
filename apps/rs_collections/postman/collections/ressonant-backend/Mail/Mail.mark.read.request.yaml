@@ -1,0 +1,5 @@
+$kind: http-request
+name: 'Mail - Mark Read'
+method: PATCH
+url: '{{baseUrl}}/mail/{{emailId}}/read'
+order: 4000

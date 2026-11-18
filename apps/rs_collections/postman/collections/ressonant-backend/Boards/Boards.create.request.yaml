@@ -1,0 +1,18 @@
+$kind: http-request
+name: 'Boards - Create'
+method: POST
+url: '{{baseUrl}}/boards'
+order: 3000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "{{name}}",
+      "slug": "{{slug}}",
+      "workspace_id": "{{workspaceId}}",
+      "team_id": "{{teamId}}",
+      "description": "{{description}}"
+    }

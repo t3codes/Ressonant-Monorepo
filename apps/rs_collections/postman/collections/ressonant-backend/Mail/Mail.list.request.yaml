@@ -1,0 +1,10 @@
+$kind: http-request
+name: 'Mail - List'
+method: GET
+url: '{{baseUrl}}/mail?skip={{skip}}&limit={{limit}}'
+order: 3000
+queryParams:
+  - key: skip
+    value: '{{skip}}'
+  - key: limit
+    value: '{{limit}}'

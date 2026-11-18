@@ -1,0 +1,8 @@
+$kind: collection
+name: Ressonant API Backend
+description: Requisições da API backend Ressonant. Selecione um ambiente, rode Auth - Login e o accessToken é salvo automaticamente.
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{accessToken}}'

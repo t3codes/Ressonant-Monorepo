@@ -1,0 +1,5 @@
+$kind: http-request
+name: 'Messages - Get'
+method: GET
+url: '{{baseUrl}}/messages/{{messageId}}'
+order: 3000

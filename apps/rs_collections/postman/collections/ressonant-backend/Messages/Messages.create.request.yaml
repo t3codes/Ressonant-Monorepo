@@ -1,0 +1,21 @@
+$kind: http-request
+name: 'Messages - Create'
+method: POST
+url: '{{baseUrl}}/messages'
+order: 1000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "workspace_id": "{{workspaceId}}",
+      "room_id": "{{roomId}}",
+      "room_kind": "{{roomKind}}",
+      "author_id": "{{authorId}}",
+      "body": "{{body}}",
+      "parent_id": "{{parentId}}",
+      "attachments": {{attachments}},
+      "mention_ids": {{mentionIds}}
+    }

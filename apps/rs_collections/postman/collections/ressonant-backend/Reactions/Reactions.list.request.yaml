@@ -1,0 +1,5 @@
+$kind: http-request
+name: 'Reactions - List'
+method: GET
+url: '{{baseUrl}}/messages/{{messageId}}/reactions'
+order: 1000

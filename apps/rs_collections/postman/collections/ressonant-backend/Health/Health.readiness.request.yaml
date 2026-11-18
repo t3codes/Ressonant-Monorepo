@@ -1,0 +1,7 @@
+$kind: http-request
+name: 'Health - Readiness'
+method: GET
+url: '{{baseUrl}}/health/ready'
+order: 2000
+auth:
+  type: noauth

@@ -1,0 +1,10 @@
+$kind: http-request
+name: 'Notifications - List'
+method: GET
+url: '{{baseUrl}}/notifications?skip={{skip}}&limit={{limit}}'
+order: 2000
+queryParams:
+  - key: skip
+    value: '{{skip}}'
+  - key: limit
+    value: '{{limit}}'

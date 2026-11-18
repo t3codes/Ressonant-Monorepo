@@ -1,0 +1,5 @@
+$kind: http-request
+name: 'Read-states - List'
+method: GET
+url: '{{baseUrl}}/read-states'
+order: 1000

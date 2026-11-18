@@ -1,0 +1,14 @@
+$kind: http-request
+name: 'Users - Set Status'
+method: PATCH
+url: '{{baseUrl}}/users/{{userId}}/status'
+order: 5000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "status_ativo": {{status_ativo}}
+    }

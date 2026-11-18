@@ -1,0 +1,15 @@
+$kind: http-request
+name: 'Cards - Move'
+method: POST
+url: '{{baseUrl}}/cards/{{cardId}}/move'
+order: 5000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "column_id": "{{columnId}}",
+      "expected_version": {{expected_version}}
+    }

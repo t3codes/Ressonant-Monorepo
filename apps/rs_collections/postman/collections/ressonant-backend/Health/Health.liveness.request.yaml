@@ -1,0 +1,7 @@
+$kind: http-request
+name: 'Health - Liveness'
+method: GET
+url: '{{baseUrl}}/health'
+order: 1000
+auth:
+  type: noauth

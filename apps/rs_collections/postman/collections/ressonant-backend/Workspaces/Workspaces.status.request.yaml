@@ -1,0 +1,14 @@
+$kind: http-request
+name: 'Workspaces - Set Status'
+method: PATCH
+url: '{{baseUrl}}/workspaces/{{workspaceId}}/status'
+order: 5000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "status_ativo": {{status_ativo}}
+    }

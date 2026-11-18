@@ -1,0 +1,17 @@
+$kind: http-request
+name: 'Notifications - Create'
+method: POST
+url: '{{baseUrl}}/notifications'
+order: 1000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "user_id": "{{userId}}",
+      "kind": "{{kind}}",
+      "title": "{{title}}",
+      "body": "{{body}}"
+    }

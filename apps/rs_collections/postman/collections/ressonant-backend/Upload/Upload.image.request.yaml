@@ -1,0 +1,11 @@
+$kind: http-request
+name: 'Upload - Image'
+method: POST
+url: '{{baseUrl}}/upload/image'
+order: 1000
+body:
+  type: formdata
+  content:
+    - key: file
+      type: file
+      src: '{{filePath}}'
