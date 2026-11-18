@@ -4193,12 +4193,13 @@
             "default": "public"
           },
           "member_ids": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Member Ids",
-            "default": []
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Member Ids"
           },
           "created_by": {
             "type": "string",
@@ -4258,6 +4259,10 @@
             "type": "string",
             "title": "Name"
           },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
           "topic": {
             "anyOf": [
               {
@@ -4274,10 +4279,6 @@
             "title": "Visibility"
           },
           "member_ids": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
             "title": "Member Ids"
           },
           "created_by": {
@@ -4299,6 +4300,7 @@
           "id",
           "workspace_id",
           "name",
+          "slug",
           "topic",
           "visibility",
           "member_ids",
@@ -4315,17 +4317,18 @@
             "title": "Workspace Id"
           },
           "member_ids": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
             "title": "Member Ids"
           }
         },
         "type": "object",
         "required": [
-          "workspace_id",
-          "member_ids"
+          "workspace_id"
         ],
         "title": "ConversationCreate"
       },
@@ -4371,10 +4374,6 @@
             "title": "Workspace Id"
           },
           "member_ids": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
             "title": "Member Ids"
           },
           "status_ativo": {
