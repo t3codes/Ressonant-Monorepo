@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Ressonant API",
-    "description": "Autenticação e CRUD de usuários do Ressonant.",
+    "description": "Autentica\u00e7\u00e3o e CRUD de usu\u00e1rios do Ressonant.",
     "version": "0.1.0"
   },
   "paths": {
@@ -12,7 +12,7 @@
           "auth"
         ],
         "summary": "Register",
-        "description": "Cadastro público de usuário comum.",
+        "description": "Cadastro p\u00fablico de usu\u00e1rio comum.",
         "operationId": "register_auth_register_post",
         "requestBody": {
           "content": {
@@ -96,7 +96,7 @@
           "auth"
         ],
         "summary": "Me",
-        "description": "Dados do usuário autenticado.",
+        "description": "Dados do usu\u00e1rio autenticado.",
         "operationId": "me_auth_me_get",
         "responses": {
           "200": {
@@ -123,7 +123,7 @@
           "users"
         ],
         "summary": "Create User",
-        "description": "Cria usuário (admin), podendo definir flags administrativas.",
+        "description": "Cria usu\u00e1rio (admin), podendo definir flags administrativas.",
         "operationId": "create_user_users_post",
         "security": [
           {
@@ -168,7 +168,7 @@
           "users"
         ],
         "summary": "List Users",
-        "description": "Lista usuários com paginação; `status_ativo` filtra, omitido traz todos.",
+        "description": "Lista usu\u00e1rios com pagina\u00e7\u00e3o; `status_ativo` filtra, omitido traz todos.",
         "operationId": "list_users_users_get",
         "security": [
           {
@@ -246,7 +246,7 @@
           "users"
         ],
         "summary": "Get User",
-        "description": "Busca por id (admin ou o próprio usuário).",
+        "description": "Busca por id (admin ou o pr\u00f3prio usu\u00e1rio).",
         "operationId": "get_user_users__user_id__get",
         "security": [
           {
@@ -292,7 +292,7 @@
           "users"
         ],
         "summary": "Update User",
-        "description": "Atualiza e-mail, telefone, idade e termos (admin ou o próprio usuário).",
+        "description": "Atualiza e-mail, telefone, idade e termos (admin ou o pr\u00f3prio usu\u00e1rio).",
         "operationId": "update_user_users__user_id__put",
         "security": [
           {
@@ -348,7 +348,7 @@
           "users"
         ],
         "summary": "Delete User",
-        "description": "Soft delete: desativa o usuário (admin).",
+        "description": "Soft delete: desativa o usu\u00e1rio (admin).",
         "operationId": "delete_user_users__user_id__delete",
         "security": [
           {
@@ -389,7 +389,7 @@
           "users"
         ],
         "summary": "Set User Status",
-        "description": "Ativa ou desativa o usuário (admin).",
+        "description": "Ativa ou desativa o usu\u00e1rio (admin).",
         "operationId": "set_user_status_users__user_id__status_patch",
         "security": [
           {
@@ -441,13 +441,356 @@
         }
       }
     },
+    "/workspaces": {
+      "post": {
+        "tags": [
+          "workspaces"
+        ],
+        "summary": "Create Workspace",
+        "description": "Cria um workspace. O owner \u00e9 o usu\u00e1rio autenticado (extra\u00eddo do JWT).",
+        "operationId": "create_workspace_workspaces_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "workspaces"
+        ],
+        "summary": "List Workspaces",
+        "description": "Lista workspaces do usu\u00e1rio autenticado (dono ou membro).",
+        "operationId": "list_workspaces_workspaces_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "status_ativo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status Ativo"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace_id}": {
+      "get": {
+        "tags": [
+          "workspaces"
+        ],
+        "summary": "Get Workspace",
+        "description": "Busca workspace por id (s\u00f3 se o usu\u00e1rio \u00e9 membro).",
+        "operationId": "get_workspace_workspaces__workspace_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "workspaces"
+        ],
+        "summary": "Update Workspace",
+        "description": "Atualiza workspace (s\u00f3 owner ou admin do workspace).",
+        "operationId": "update_workspace_workspaces__workspace_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace_id}/status": {
+      "patch": {
+        "tags": [
+          "workspaces"
+        ],
+        "summary": "Set Workspace Status",
+        "description": "Ativa ou desativa workspace (s\u00f3 o owner).",
+        "operationId": "set_workspace_status_workspaces__workspace_id__status_patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceStatusUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace_id}/members": {
+      "post": {
+        "tags": [
+          "workspaces"
+        ],
+        "summary": "Add Workspace Member",
+        "description": "Adiciona membro ao workspace (s\u00f3 owner ou admin do workspace).",
+        "operationId": "add_workspace_member_workspaces__workspace_id__members_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceMemberAdd"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceMemberResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "tags": [
           "health"
         ],
         "summary": "Health",
-        "description": "Liveness: o processo está de pé.",
+        "description": "Liveness: o processo est\u00e1 de p\u00e9.",
         "operationId": "health_health_get",
         "responses": {
           "200": {
@@ -571,12 +914,12 @@
           "cpf": {
             "type": "string",
             "title": "Cpf",
-            "description": "CPF com ou sem máscara; armazenado só com dígitos"
+            "description": "CPF com ou sem m\u00e1scara; armazenado s\u00f3 com d\u00edgitos"
           },
           "telefone": {
             "type": "string",
             "title": "Telefone",
-            "description": "Telefone com DDD (10 ou 11 dígitos)"
+            "description": "Telefone com DDD (10 ou 11 d\u00edgitos)"
           },
           "senha": {
             "type": "string",
@@ -615,7 +958,7 @@
           "termos_contrato"
         ],
         "title": "UserCreate",
-        "description": "Criação por administrador."
+        "description": "Cria\u00e7\u00e3o por administrador."
       },
       "UserList": {
         "properties": {
@@ -658,12 +1001,12 @@
           "cpf": {
             "type": "string",
             "title": "Cpf",
-            "description": "CPF com ou sem máscara; armazenado só com dígitos"
+            "description": "CPF com ou sem m\u00e1scara; armazenado s\u00f3 com d\u00edgitos"
           },
           "telefone": {
             "type": "string",
             "title": "Telefone",
-            "description": "Telefone com DDD (10 ou 11 dígitos)"
+            "description": "Telefone com DDD (10 ou 11 d\u00edgitos)"
           },
           "senha": {
             "type": "string",
@@ -692,7 +1035,7 @@
           "termos_contrato"
         ],
         "title": "UserRegister",
-        "description": "Cadastro público: nunca define flags administrativas."
+        "description": "Cadastro p\u00fablico: nunca define flags administrativas."
       },
       "UserResponse": {
         "properties": {
@@ -803,7 +1146,7 @@
           "idade"
         ],
         "title": "UserUpdate",
-        "description": "Campos editáveis; senha, CPF e flags administrativas ficam fora."
+        "description": "Campos edit\u00e1veis; senha, CPF e flags administrativas ficam fora."
       },
       "ValidationError": {
         "properties": {
@@ -844,6 +1187,238 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WorkspaceCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 3,
+            "title": "Name"
+          },
+          "slug": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 3,
+            "title": "Slug"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "slug"
+        ],
+        "title": "WorkspaceCreate",
+        "description": "Payload para criar um workspace. owner_id \u00e9 extra\u00eddo do JWT, nunca do body."
+      },
+      "WorkspaceList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WorkspaceResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "skip": {
+            "type": "integer",
+            "title": "Skip"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "skip",
+          "limit"
+        ],
+        "title": "WorkspaceList"
+      },
+      "WorkspaceMemberAdd": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "role": {
+            "type": "string",
+            "pattern": "^(admin|member|viewer)$",
+            "title": "Role",
+            "default": "member"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id"
+        ],
+        "title": "WorkspaceMemberAdd"
+      },
+      "WorkspaceMemberResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "workspace_id": {
+            "type": "string",
+            "title": "Workspace Id"
+          },
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "criado_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Criado Em"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "workspace_id",
+          "user_id",
+          "role",
+          "criado_em"
+        ],
+        "title": "WorkspaceMemberResponse"
+      },
+      "WorkspaceResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "owner_id": {
+            "type": "string",
+            "title": "Owner Id"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "status_ativo": {
+            "type": "boolean",
+            "title": "Status Ativo"
+          },
+          "criado_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Criado Em"
+          },
+          "atualizado_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Atualizado Em"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "owner_id",
+          "description",
+          "status_ativo",
+          "criado_em",
+          "atualizado_em"
+        ],
+        "title": "WorkspaceResponse"
+      },
+      "WorkspaceStatusUpdate": {
+        "properties": {
+          "status_ativo": {
+            "type": "boolean",
+            "title": "Status Ativo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status_ativo"
+        ],
+        "title": "WorkspaceStatusUpdate"
+      },
+      "WorkspaceUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 3
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "status_ativo": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Ativo"
+          }
+        },
+        "type": "object",
+        "title": "WorkspaceUpdate",
+        "description": "Campos edit\u00e1veis; owner_id e slug n\u00e3o mudam ap\u00f3s a cria\u00e7\u00e3o."
       }
     },
     "securitySchemes": {

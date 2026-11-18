@@ -15,6 +15,10 @@ from app.config.settings import get_settings
 from app.database.engine import get_db
 from app.user import models  # noqa: F401  (registra as tabelas no metadata)
 from app.user.routes import router as user_router
+from app.workspace import (
+    models as workspace_models,  # noqa: F401  (registra as tabelas no metadata)
+)
+from app.workspace.routes import router as workspace_router
 
 
 class HealthResponse(BaseModel):
@@ -46,6 +50,7 @@ def create_app() -> FastAPI:
     setup_exception_handlers(app)
     app.include_router(auth_router)
     app.include_router(user_router)
+    app.include_router(workspace_router)
 
     @app.get("/health", response_model=HealthResponse, tags=["health"])
     def health() -> HealthResponse:
