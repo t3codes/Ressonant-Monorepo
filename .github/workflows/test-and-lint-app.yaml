@@ -1,0 +1,29 @@
+name: Test and Lint
+
+run-name: Running tests and lint of ${{ inputs.app_name }}
+
+on:
+  workflow_call:
+    inputs:
+      app_name:
+        type: string
+        required: true
+        description: "Project to test and lint"
+
+jobs:
+  test-and-lint:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/${{ inputs.app_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup app and dependencies
+        run: make ci/setup
+
+      - name: Run lint
+        run: make ci/lint
+
+      - name: Run tests
+        run: make ci/tests

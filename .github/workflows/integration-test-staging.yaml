@@ -1,0 +1,22 @@
+name: Integration Test Staging
+
+run-name: Running integration tests of ${{ github.event.inputs.app_name }} on Staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_name:
+        description: "Project to test"
+        type: choice
+        required: true
+        options:
+          - ressonant_backend
+
+jobs:
+  integration-test:
+    uses: ./.github/workflows/integration-test-app.yaml
+    with:
+      app_name: ${{ github.event.inputs.app_name }}
+      environment: staging
+      runs-on: ubuntu-latest
+    secrets: inherit

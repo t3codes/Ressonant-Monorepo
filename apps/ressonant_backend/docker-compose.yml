@@ -1,0 +1,29 @@
+# Compose do backend. Agregado pelo docker-compose.yml da raiz; o Postgres vem de infra/.
+x-backend: &backend
+  build:
+    context: ../..
+    dockerfile: apps/ressonant_backend/Dockerfile
+  image: ressonant/backend:local
+  env_file: [.env]
+  environment:
+    # Host `postgres` só existe dentro da rede `data`; o .env serve também para rodar fora do Docker.
+    DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-ressonant}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ressonant}
+  networks: [data, telemetry]
+
+services:
+  migrate:
+    <<: *backend
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  backend:
+    <<: *backend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully

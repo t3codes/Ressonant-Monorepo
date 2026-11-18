@@ -1,0 +1,62 @@
+[project]
+name = "ressonant_backend"
+version = "0.1.0"
+description = "Ressonant Python/FastAPI backend: autenticação e CRUD de usuários"
+requires-python = "==3.13.*"
+dependencies = [
+    "alembic>=1.14",
+    "argon2-cffi>=23.1",
+    "common-errors",
+    "common-logs",
+    "common-telemetry",
+    "email-validator>=2.2",
+    "fastapi>=0.136.1",
+    "psycopg2-binary>=2.9",
+    "pydantic>=2.13.3",
+    "pyjwt>=2.9",
+    "sqlalchemy>=2.0",
+    "uvicorn[standard]>=0.30",
+]
+
+[dependency-groups]
+dev = ["httpx>=0.28.1"]
+
+[project.scripts]
+ressonant_backend = "app.main:main"
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+common-errors = { workspace = true }
+common-logs = { workspace = true }
+common-telemetry = { workspace = true }
+
+[tool.ruff]
+extend = "../../pyproject.toml"
+src = ["app", "tests"]
+
+[tool.pytest.ini_options]
+addopts = "-q --import-mode=importlib"
+pythonpath = ["."]
+asyncio_mode = "strict"
+
+[tool.check-structure]
+root_package = "app"
+# TODO: remover quando existir a pasta modules/ (padrão: <root_package>.modules).
+# Hoje cada pasta de primeiro nível do pacote é tratada como um módulo.
+modules_package = "app"
+# TODO: migrar para o nome padrão (commons) e remover as duas chaves abaixo.
+common_package = "app.common"
+module_commons = "common"
+# TODO: reativar quando existir modules/. A regra exige a raiz com common, config e modules.
+disable = ["root-folders"]
+
+[[tool.check-structure.path_exceptions]]
+rule = "folder-names"
+path = "migrations/versions/*"
+reason = "Migrations geradas pelo Alembic com o hash da revisão no nome"
+
+[tool.setuptools.packages.find]
+include = ["app"]
+exclude = ["migrations"]

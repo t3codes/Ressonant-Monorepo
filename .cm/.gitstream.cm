@@ -1,0 +1,106 @@
+# -*- mode: yaml -*-
+# This example configuration provides basic automations to get started with gitStream.
+# View the gitStream quickstart for more examples: https://docs.gitstream.cm/examples/
+manifest:
+  version: 1.0
+
+review_team: 'Ressonant'
+
+
+automations:
+  # Add a label that indicates how many minutes it will take to review the PR.
+  estimated_time_to_review:
+    if:
+      - true
+    run:
+      - action: add-label@v1
+        args:
+          label: "{{ calc.etr }} min review"
+          color: {{ colors.red if (calc.etr >= 20) else ( colors.yellow if (calc.etr >= 5) else colors.green ) }}
+  # Inform PR authors when they fail to reference Jira tickets in the PR title or description.
+  label_missing_jira_info:
+    if:
+      - {{ not (has.jira_ticket_in_title or has.jira_ticket_in_desc or has.jira_ticket_in_branch) }}
+    run:
+      - action: add-label@v1
+        args:
+          label: "missing-jira"
+          color: {{ colors.red }}
+      - action: add-comment@v1
+        args:
+          comment: |
+            This PR is missing a Jira ticket reference in the title or description.
+            Please add a Jira ticket reference to the title, description or branch name of this PR.
+  # Post a comment that lists the best experts for the files that were modified.
+  explain_code_experts:
+    if:
+      - true
+    run:
+      - action: explain-code-experts@v1
+        args:
+          gt: 10
+  # Flag PRs that have unresolved comment threads.
+  # https://docs.gitstream.cm/automations/standard/label-management/label-unresolved-threads/
+  label_unresolved_threads:
+    if:
+      - {{ pr.status == 'open' }}
+      - {{ pr.unresolved_threads > 0 }}
+    run:
+      - action: add-label@v1
+        args:
+          label: 🚨 {{ pr.unresolved_threads }} Unresolved Thread(s)
+          color: {{ colors.yellow }}
+  # Set criteria for PRs that need extra reviewers.
+  # This helps bring in extra scrutiny for large PRs or PRs that touch sensitive parts of the code.
+  require_two_reviews:
+    if:
+      - {{ approvals.ltTwo }}
+    run:
+      - action: add-label@v1
+        args:
+          label: {{ '⏳ Waiting for 2 reviewers' if (approvals.zero) else '⏳ Waiting for 1 reviewer' }}
+          color: {{ colors.yellow }}
+      - action: add-reviewers@v1
+        args:
+          reviewers: [{{ review_team }}]
+          unless_reviewers_set: true
+      - action: set-required-approvals@v1
+        args:
+          approvals: 2
+  {% for app in apps %}
+  label_app_{{ app }}:
+    if:
+      - {{ files | match(term='apps/' + app + '/') | some }}
+    run:
+      - action: add-label@v1
+        args:
+          label: {{ app }}
+          color: {{ colors.blue }}
+  {% endfor %}
+
+
+# +----------------------------------------------------------------------------+
+# | Custom Expressions                                                         |
+# | https://docs.gitstream.cm/how-it-works/#custom-expressions                 |
+# +----------------------------------------------------------------------------+
+
+apps:
+  - ressonant_backend
+
+calc:
+  etr: {{ branch | estimatedReviewTime }}
+
+has:
+  jira_ticket_in_title: {{ pr.title | includes(regex=r/\b[A-Za-z]+-\d+\b/) }}
+  jira_ticket_in_desc: {{ pr.description | includes(regex=r/\b[A-Za-z]+-\d+\b/) }}
+  jira_ticket_in_branch: {{ pr.branch | includes(regex=r/\b[A-Za-z]+-\d+\b/) }}
+
+approvals:
+  zero: {{ pr.approvals | length == 0 }}
+  ltTwo: {{ pr.approvals | length < 2 }}
+
+colors:
+  red: 'b60205'
+  yellow: 'fbca04'
+  green: '0e8a16'
+  blue: '1d76db'

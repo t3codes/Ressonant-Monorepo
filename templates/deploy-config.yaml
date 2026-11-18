@@ -1,0 +1,6 @@
+# Deploy configuration placeholder.
+# Deploy configuration placeholder.
+
+# Available placeholders (replaced at runtime by the workflow):
+#   __APP_NAME__    ->  workflow app_name input
+#   __STACK_NAME__  ->  stack_name input (DEV/QA only)
