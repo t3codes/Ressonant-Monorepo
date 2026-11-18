@@ -1,9 +1,8 @@
 import uuid
 
+from app.modules.workspace.domain.models import Workspace, WorkspaceMember
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
-
-from app.workspace.models import Workspace, WorkspaceMember
 
 
 class WorkspaceRepository:
@@ -35,7 +34,11 @@ class WorkspaceRepository:
             return [], 0
         stmt = (
             select(Workspace)
-            .join(WorkspaceMember, WorkspaceMember.workspace_id == Workspace.id, isouter=True)
+            .join(
+                WorkspaceMember,
+                WorkspaceMember.workspace_id == Workspace.id,
+                isouter=True,
+            )
             .where(or_(Workspace.owner_id == user_id, WorkspaceMember.user_id == user_id))
             .distinct()
         )

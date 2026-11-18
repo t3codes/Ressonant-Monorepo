@@ -10,15 +10,15 @@ from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.auth.routes import router as auth_router
 from app.config.settings import get_settings
 from app.database.engine import get_db
-from app.user import models  # noqa: F401  (registra as tabelas no metadata)
-from app.user.routes import router as user_router
-from app.workspace import (
-    models as workspace_models,  # noqa: F401  (registra as tabelas no metadata)
+from app.modules.auth.entrypoints import routes as auth_routes
+from app.modules.user.domain.models import User  # noqa: F401  (registra as tabelas no metadata)
+from app.modules.user.entrypoints import routes as user_routes
+from app.modules.workspace.domain.models import (
+    Workspace,  # noqa: F401  (registra as tabelas no metadata)
 )
-from app.workspace.routes import router as workspace_router
+from app.modules.workspace.entrypoints import routes as workspace_routes
 
 
 class HealthResponse(BaseModel):
@@ -48,9 +48,9 @@ def create_app() -> FastAPI:
         allow_headers=["Authorization", "Content-Type"],
     )
     setup_exception_handlers(app)
-    app.include_router(auth_router)
-    app.include_router(user_router)
-    app.include_router(workspace_router)
+    app.include_router(auth_routes.router)
+    app.include_router(user_routes.router)
+    app.include_router(workspace_routes.router)
 
     @app.get("/health", response_model=HealthResponse, tags=["health"])
     def health() -> HealthResponse:

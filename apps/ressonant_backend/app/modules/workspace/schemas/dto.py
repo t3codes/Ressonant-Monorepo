@@ -31,10 +31,6 @@ class WorkspaceMemberAdd(BaseModel):
     role: str = Field(default="member", pattern="^(admin|member|viewer)$")
 
 
-class WorkspaceStatusUpdate(BaseModel):
-    status_ativo: bool
-
-
 class WorkspaceMemberResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -63,3 +59,7 @@ class WorkspaceList(BaseModel):
     total: int
     skip: int
     limit: int
+
+
+class WorkspaceStatusUpdate(BaseModel):
+    status_ativo: bool

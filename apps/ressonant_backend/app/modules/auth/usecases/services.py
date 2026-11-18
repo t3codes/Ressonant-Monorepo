@@ -1,7 +1,7 @@
-from app.auth.tokens import create_access_token
 from app.common.exceptions import invalid_credentials
 from app.common.security import verify_dummy, verify_password
-from app.user.repository import UserRepository
+from app.modules.auth.usecases.tokens import create_access_token
+from app.modules.user.dataproviders.repository import UserRepository
 
 
 class AuthService:
@@ -13,7 +13,6 @@ class AuthService:
         if user is None:
             verify_dummy(senha)
             raise invalid_credentials()
-        # Mesma resposta para senha errada e conta inativa: não revela o estado da conta.
         if not verify_password(senha, user.senha_hash) or not user.status_ativo:
             raise invalid_credentials()
         return create_access_token(user.id)

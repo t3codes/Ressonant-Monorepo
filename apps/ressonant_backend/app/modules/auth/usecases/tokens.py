@@ -1,11 +1,11 @@
 from datetime import UTC, datetime, timedelta
 
 import jwt
-
 from app.config.settings import get_settings
 
 
 def create_access_token(user_id: str) -> tuple[str, int]:
+    """Cria um access token JWT com claims sub, type, iat, exp."""
     settings = get_settings()
     expires_in = settings.access_token_expire_minutes * 60
     now = datetime.now(UTC)

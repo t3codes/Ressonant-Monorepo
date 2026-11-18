@@ -1,15 +1,14 @@
 from typing import Annotated
 
+from app.database.engine import get_db
+from app.modules.auth.usecases.services import AuthService
+from app.modules.auth.usecases.tokens import decode_access_token
+from app.modules.user.dataproviders.repository import UserRepository
+from app.modules.user.domain.models import User
 from common.errors import ExceptionData, ForbiddenException, UnauthorizedException
 from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
-
-from app.auth.services import AuthService
-from app.auth.tokens import decode_access_token
-from app.database.engine import get_db
-from app.user.models import User
-from app.user.repository import UserRepository
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
