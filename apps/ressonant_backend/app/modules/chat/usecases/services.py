@@ -46,9 +46,12 @@ class ChannelService:
         return self._repo.get_by_id(channel_id)
 
     def create(self, payload: ChannelCreate, created_by: str) -> Channel:
+        import re
+        slug = re.sub(r'[^a-z0-9]+', '-', payload.name.lower()).strip('-')
         channel = Channel(
             workspace_id=payload.workspace_id,
             name=payload.name,
+            slug=slug,
             topic=payload.topic,
             visibility=payload.visibility,
             member_ids="[]",
@@ -128,9 +131,9 @@ class MessageService:
             room_kind=payload.room_kind,
             author_id=payload.author_id,
             body=payload.body,
-            parentId=payload.parent_id,
+            parent_id=payload.parent_id,
             attachments=json.dumps(payload.attachments or []),
-            mentionIds=json.dumps(payload.mention_ids or []),
+            mention_ids=json.dumps(payload.mention_ids or []),
         )
         try:
             self._repo.add(message)

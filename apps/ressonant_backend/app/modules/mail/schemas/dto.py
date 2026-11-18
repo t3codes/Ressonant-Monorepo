@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class EmailBase(BaseModel):
+    workspace_id: str | None = None
     sender_id: str
     recipient_ids: list[str]
     cc_ids: list[str] | None = None
