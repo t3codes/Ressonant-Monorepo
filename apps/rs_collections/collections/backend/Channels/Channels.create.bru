@@ -1,0 +1,13 @@
+### Channels - Create
+
+POST {{baseUrl}}/channels
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "{{name}}",
+  "workspace_id": "{{workspaceId}}",
+  "topic": "{{topic}}",
+  "visibility": "{{visibility}}",
+  "created_by": "{{createdBy}}"
+}

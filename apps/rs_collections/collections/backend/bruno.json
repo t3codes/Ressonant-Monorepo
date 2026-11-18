@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "name": "Ressonant API Backend",
+  "description": "Coleção de requisições da API Ressonant para teste no Bruno",
+  "collections": [
+    "Health",
+    "Auth",
+    "Users",
+    "Workspaces",
+    "Teams",
+    "Boards",
+    "Cards",
+    "Channels",
+    "Messages",
+    "Reactions",
+    "ReadStates",
+    "Notifications",
+    "Mail",
+    "Upload"
+  ]
+}

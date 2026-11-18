@@ -1,0 +1,15 @@
+### Cards - Update
+
+PUT {{baseUrl}}/cards/{{cardId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "title": "{{title}}",
+  "description": "{{description}}",
+  "type": "{{type}}",
+  "priority": "{{priority}}",
+  "assignee_id": "{{assigneeId}}",
+  "due_date": "{{due_date}}",
+  "expected_version": {{expected_version}}
+}

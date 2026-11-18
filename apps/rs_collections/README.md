@@ -1,16 +1,16 @@
-# Ressonant API Collections
+# Ressonant API Collections (Bruno)
 
-Este repositório contém as collections da API Ressonant para testar as APIs do backend.
+Este repositório contém as collections do **Bruno** para testar as APIs do backend Ressonant.
 
 ## Pré-requisitos
 
-- [Postman](https://www.postman.com/) ou [Insomnia](https://insomnia.rest/) ou [Bruno](https://www.usebruno.com/) instalado
+- [Bruno](https://www.usebruno.com/) instalado
 
 ## Como usar
 
-1. Abra o Postman/Insomnia/Bruno
-2. Importe a collection desejada
-3. Configure o environment (Local Dev ou Homologação)
+1. Abra o Bruno
+2. Selecione "Open Collection" ou "Open Workspace"
+3. Navegue até este diretório e selecione o arquivo `workspace.yml`
 
 ## Estrutura
 
@@ -20,6 +20,4 @@ Este repositório contém as collections da API Ressonant para testar as APIs do
 
 ## Links úteis
 
-- [Postman](https://www.postman.com/)
-- [Insomnia](https://insomnia.rest/)
 - [Bruno](https://www.usebruno.com/)

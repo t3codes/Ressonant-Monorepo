@@ -1,0 +1,9 @@
+### Upload - Image
+
+POST {{baseUrl}}/upload/image
+Authorization: Bearer {{accessToken}}
+Content-Type: multipart/form-data
+
+<form-data>
+  { key = "file", type = "file", value = "{{filePath}}" }
+</form-data>

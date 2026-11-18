@@ -1,0 +1,18 @@
+### Mail - Create
+
+POST {{baseUrl}}/mail
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "senderId": "{{senderId}}",
+  "recipientIds": {{recipientIds}},
+  "ccIds": {{ccIds}},
+  "bccIds": {{bccIds}},
+  "subject": "{{subject}}",
+  "body": "{{body}}",
+  "threadId": "{{threadId}}",
+  "isReply": {{isReply}},
+  "forwarded": {{forwarded}},
+  "attachments": {{attachments}}
+}

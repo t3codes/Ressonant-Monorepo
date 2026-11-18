@@ -1,0 +1,9 @@
+### Users - Set Status
+
+PATCH {{baseUrl}}/users/{{userId}}/status
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "status_ativo": {{status_ativo}}
+}

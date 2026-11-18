@@ -1,0 +1,11 @@
+### Reactions - Toggle
+
+POST {{baseUrl}}/messages/{{messageId}}/reactions
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "message_id": "{{messageId}}",
+  "user_id": "{{userId}}",
+  "emoji": "{{emoji}}"
+}

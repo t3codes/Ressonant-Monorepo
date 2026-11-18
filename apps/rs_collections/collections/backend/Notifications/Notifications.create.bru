@@ -1,0 +1,12 @@
+### Notifications - Create
+
+POST {{baseUrl}}/notifications
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "user_id": "{{userId}}",
+  "kind": "{{kind}}",
+  "title": "{{title}}",
+  "body": "{{body}}"
+}

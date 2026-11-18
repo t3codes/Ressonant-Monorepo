@@ -1,0 +1,12 @@
+### Boards - Create Column
+
+POST {{baseUrl}}/boards/{{boardId}}/columns
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "{{name}}",
+  "slug": "{{slug}}",
+  "position": {{position}},
+  "wip_limit": {{wip_limit}}
+}

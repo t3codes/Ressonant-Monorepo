@@ -1,0 +1,10 @@
+### Workspaces - Add Member
+
+POST {{baseUrl}}/workspaces/{{workspaceId}}/members
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "user_id": "{{userId}}",
+  "role": "{{role}}"
+}
