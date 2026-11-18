@@ -34,7 +34,7 @@ def create_channel(
     user: CurrentUser,
     service: ChannelServiceDep,
 ) -> ChannelResponse:
-    return ChannelResponse.model_validate(service.create(payload))
+    return ChannelResponse.model_validate(service.create(payload, user.id))
 
 
 @router.get("", response_model=ChannelList)

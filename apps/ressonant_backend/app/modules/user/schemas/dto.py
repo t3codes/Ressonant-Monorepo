@@ -108,6 +108,9 @@ class UserResponse(BaseModel):
     termos_contrato: bool
     status_ativo: bool
     interno_adm: bool
+    avatar_url: str | None = None
+    avatar_content_type: str | None = None
+    avatar_size_bytes: int | None = None
     criado_em: datetime
     atualizado_em: datetime
 

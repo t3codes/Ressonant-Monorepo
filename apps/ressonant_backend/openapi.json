@@ -3061,6 +3061,46 @@
         }
       }
     },
+    "/upload/image": {
+      "post": {
+        "tags": [
+          "upload"
+        ],
+        "summary": "Upload Image",
+        "description": "Faz upload de uma imagem.\n\nValida\u00e7\u00f5es:\n- Tipo: image/jpeg, image/png, image/webp\n- Tamanho m\u00e1ximo: 5 MB\n\nRetorna a URL da imagem enviada.",
+        "operationId": "upload_image_upload_image_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_image_upload_image_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "tags": [
@@ -3413,6 +3453,20 @@
         "type": "object",
         "title": "BoardUpdate",
         "description": "Campos edit\u00e1veis; workspace_id, team_id e slug n\u00e3o mudam ap\u00f3s a cria\u00e7\u00e3o."
+      },
+      "Body_upload_image_upload_image_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_image_upload_image_post"
       },
       "CardCreate": {
         "properties": {
@@ -5591,6 +5645,39 @@
             "type": "boolean",
             "title": "Interno Adm"
           },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "avatar_content_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Content Type"
+          },
+          "avatar_size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Size Bytes"
+          },
           "criado_em": {
             "type": "string",
             "format": "date-time",
@@ -5859,6 +5946,39 @@
           "status_ativo": {
             "type": "boolean",
             "title": "Status Ativo"
+          },
+          "logo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logo Url"
+          },
+          "logo_content_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logo Content Type"
+          },
+          "logo_size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logo Size Bytes"
           },
           "criado_em": {
             "type": "string",

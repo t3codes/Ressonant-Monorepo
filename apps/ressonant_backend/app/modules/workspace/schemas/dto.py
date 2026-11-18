@@ -50,6 +50,9 @@ class WorkspaceResponse(BaseModel):
     owner_id: str
     description: str | None
     status_ativo: bool
+    logo_url: str | None = None
+    logo_content_type: str | None = None
+    logo_size_bytes: int | None = None
     criado_em: datetime
     atualizado_em: datetime
 

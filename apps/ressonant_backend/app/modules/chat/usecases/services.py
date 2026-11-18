@@ -45,14 +45,14 @@ class ChannelService:
     def get_by_id(self, channel_id: str) -> Channel | None:
         return self._repo.get_by_id(channel_id)
 
-    def create(self, payload: ChannelCreate) -> Channel:
+    def create(self, payload: ChannelCreate, created_by: str) -> Channel:
         channel = Channel(
             workspace_id=payload.workspace_id,
             name=payload.name,
             topic=payload.topic,
             visibility=payload.visibility,
-            member_ids=json.dumps(payload.member_ids),
-            created_by=payload.created_by,
+            member_ids="[]",
+            created_by=created_by,
         )
         try:
             self._repo.add(channel)

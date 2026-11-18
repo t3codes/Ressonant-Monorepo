@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Any, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -7,14 +7,19 @@ from pydantic import BaseModel, ConfigDict, Field
 class ChannelBase(BaseModel):
     workspace_id: str
     name: Annotated[str, Field(min_length=3, max_length=100)]
-    topic: str | None = Field(max_length=500, default=None)
+    topic: Optional[str] = Field(max_length=500, default=None)
     visibility: Annotated[str, Field(pattern="^(public|private)$", default="public")] = "public"
-    member_ids: list[str] = []
+    member_ids: Any | None = None
     created_by: str
 
 
-class ChannelCreate(ChannelBase):
-    pass
+class ChannelCreate(BaseModel):
+    workspace_id: str
+    name: Annotated[str, Field(min_length=3, max_length=100)]
+    topic: Optional[str] = Field(max_length=500, default=None)
+    visibility: Annotated[str, Field(pattern="^(public|private)$", default="public")] = "public"
+    member_ids: Any | None = None
+    created_by: str
 
 
 class ChannelResponse(BaseModel):
@@ -23,9 +28,10 @@ class ChannelResponse(BaseModel):
     id: str
     workspace_id: str
     name: str
+    slug: str
     topic: str | None
     visibility: str
-    member_ids: list[str]
+    member_ids: Any
     created_by: str
     status_ativo: bool
     criado_em: datetime
@@ -40,7 +46,7 @@ class ChannelList(BaseModel):
 
 class ConversationBase(BaseModel):
     workspace_id: str
-    member_ids: list[str]
+    member_ids: Any | None = None
 
 
 class ConversationCreate(ConversationBase):
@@ -52,7 +58,7 @@ class ConversationResponse(BaseModel):
 
     id: str
     workspace_id: str
-    member_ids: list[str]
+    member_ids: Any
     status_ativo: bool
     criado_em: datetime
 
