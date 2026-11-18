@@ -3098,7 +3098,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/health": {
@@ -4200,17 +4205,12 @@
               }
             ],
             "title": "Member Ids"
-          },
-          "created_by": {
-            "type": "string",
-            "title": "Created By"
           }
         },
         "type": "object",
         "required": [
           "workspace_id",
-          "name",
-          "created_by"
+          "name"
         ],
         "title": "ChannelCreate"
       },
@@ -4398,6 +4398,17 @@
       },
       "EmailCreate": {
         "properties": {
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          },
           "sender_id": {
             "type": "string",
             "title": "Sender Id"

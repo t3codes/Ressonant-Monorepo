@@ -10,7 +10,6 @@ class ChannelBase(BaseModel):
     topic: Optional[str] = Field(max_length=500, default=None)
     visibility: Annotated[str, Field(pattern="^(public|private)$", default="public")] = "public"
     member_ids: Any | None = None
-    created_by: str
 
 
 class ChannelCreate(BaseModel):
@@ -19,7 +18,6 @@ class ChannelCreate(BaseModel):
     topic: Optional[str] = Field(max_length=500, default=None)
     visibility: Annotated[str, Field(pattern="^(public|private)$", default="public")] = "public"
     member_ids: Any | None = None
-    created_by: str
 
 
 class ChannelResponse(BaseModel):

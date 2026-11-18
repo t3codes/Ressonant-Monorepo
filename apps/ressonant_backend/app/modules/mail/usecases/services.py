@@ -24,7 +24,7 @@ class MailService:
 
     def create(self, payload: EmailCreate) -> Email:
         email = Email(
-            workspace_id="",  # Será preenchido pelo contexto do workspace
+            workspace_id=payload.workspace_id or payload.sender_id,
             sender_id=payload.sender_id,
             recipient_ids=json.dumps(payload.recipient_ids),
             cc_ids=json.dumps(payload.cc_ids or []),

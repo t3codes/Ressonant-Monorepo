@@ -2,6 +2,7 @@
 
 from typing import Annotated
 
+from app.modules.auth.deps import CurrentUser
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 
 from app.modules.image_upload.usecases.services import ImageUploadService
@@ -17,6 +18,7 @@ def get_image_service() -> ImageUploadService:
 @router.post("/image", status_code=status.HTTP_201_CREATED)
 async def upload_image(
     file: UploadFile = File(...),
+    user: CurrentUser = CurrentUser,
     service: ImageUploadService = Depends(get_image_service),
 ):
     """Faz upload de uma imagem.

@@ -20,7 +20,7 @@ class ImageUploadService:
     configurado, armazena localmente em uploads/.
     """
 
-    def __init__(self, storage_provider: str = "local", upload_dir: str = "uploads"):
+    def __init__(self, storage_provider: str = "local", upload_dir: str = "/tmp/ressonant_uploads"):
         self.storage_provider = storage_provider
         self.upload_dir = Path(upload_dir)
         self.upload_dir.mkdir(parents=True, exist_ok=True)

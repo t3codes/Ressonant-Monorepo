@@ -14,6 +14,7 @@ class Channel(Base):
     )
     workspace_id: Mapped[str] = mapped_column(Uuid(as_uuid=False), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
+    slug: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
     topic: Mapped[str | None] = mapped_column(Text, nullable=True)
     visibility: Mapped[str] = mapped_column(String(20), default="public", nullable=False)
     member_ids: Mapped[str] = mapped_column(Text, nullable=False)  # JSON array de user_ids
