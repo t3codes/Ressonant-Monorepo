@@ -13,6 +13,8 @@ from sqlalchemy.orm import Session
 from app.config.settings import get_settings
 from app.database.engine import get_db
 from app.modules.auth.entrypoints import routes as auth_routes
+from app.modules.teams.domain.models import Team  # noqa: F401  (registra as tabelas no metadata)
+from app.modules.teams.entrypoints import routes as teams_routes
 from app.modules.user.domain.models import User  # noqa: F401  (registra as tabelas no metadata)
 from app.modules.user.entrypoints import routes as user_routes
 from app.modules.workspace.domain.models import (
@@ -51,6 +53,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_routes.router)
     app.include_router(user_routes.router)
     app.include_router(workspace_routes.router)
+    app.include_router(teams_routes.router)
 
     @app.get("/health", response_model=HealthResponse, tags=["health"])
     def health() -> HealthResponse:
