@@ -1,0 +1,28 @@
+# Infra compartilhada: PostgreSQL. Cada app usa o seu database/credenciais via DATABASE_URL.
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ressonant}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env (make setup)}
+      POSTGRES_DB: ${POSTGRES_DB:-ressonant}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [data]
+
+networks:
+  # Só o postgres e as apps que usam banco ficam nesta rede.
+  data:
+
+volumes:
+  pg-data:
+    # Nome legado preservado de propósito: este volume já guarda os dados do backend.
+    name: ressonant_backend_pg-data

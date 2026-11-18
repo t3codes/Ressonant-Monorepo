@@ -1,0 +1,36 @@
+# `.dockerignore` único do monorepo. O build context é sempre a raiz, então o BuildKit lê este
+# arquivo para todos os Dockerfiles.
+#
+# Padrão: deny por default + whitelist do que cada Dockerfile precisa.
+# Ao adicionar uma app, incluir `!apps/<nova-app>/**` aqui.
+
+*
+
+# Arquivos compartilhados do workspace uv.
+!pyproject.toml
+!uv.lock
+!packages
+!packages/**
+
+# Manifests de todas as apps: o uv.lock cobre o workspace inteiro.
+!apps/
+!apps/*/
+!apps/*/pyproject.toml
+
+# ressonant-backend
+!apps/ressonant_backend/**
+
+# Global excludes.
+**/.git
+**/.gitkeep
+**/.env
+**/.env.*
+!**/.env.example
+**/.DS_Store
+**/__pycache__
+**/*.py[cod]
+**/.venv
+**/.pytest_cache
+**/.ruff_cache
+**/*.egg-info
+**/tests

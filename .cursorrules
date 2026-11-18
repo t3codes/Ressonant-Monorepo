@@ -1,0 +1,3 @@
+# Cursor rules - Ressonant
+
+O arquivo central de contexto para assistentes de IA neste monorepo é `CLAUDE.md`, na raiz. Leia-o antes de qualquer tarefa e siga-o integralmente. Contexto por app: `apps/<app>/CLAUDE.md`.

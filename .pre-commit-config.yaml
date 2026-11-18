@@ -1,0 +1,20 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.12
+    hooks:
+      - id: ruff-check
+      - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: check-no-common-init
+        name: Namespace PEP 420 — sem __init__ em packages/*/src/common/
+        entry: python3 hooks/check_no_common_init.py
+        language: system
+        pass_filenames: false
+
+      - id: check-requires-python
+        name: requires-python == ==3.13.* em todos os pyproject.toml
+        entry: python3 hooks/check_requires_python_consistent.py
+        language: system
+        pass_filenames: false

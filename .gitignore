@@ -1,0 +1,62 @@
+# --- Python ---------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# --- Distribution / build -------------------------------------------------
+build/
+dist/
+*.egg-info/
+*.egg
+wheels/
+.installed.cfg
+MANIFEST
+
+# --- Virtual environments / uv -------------------------------------------
+.venv/
+venv/
+env/
+
+# --- Test / type-check / lint caches -------------------------------------
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+
+# --- Email exports (local) -------------------------------------------------
+*.eml
+
+# --- Local secrets / env files --------------------------------------------
+.env
+.env.local
+.env.*.local
+
+# --- Local dev mocks / setup (não versionados) ----------------------------
+**/local-dev/
+
+# --- Claude Code local overrides ------------------------------------------
+CLAUDE.local.md
+
+# --- Editors / OS ---------------------------------------------------------
+.cursor/
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+
+
+# Integration test plans (skill integration-tests-plan), in any app
+.plans/
+
+# --- Local PDF downloads (make storage/get) -------------------------------
+tmp_pdfs/
+.aider*

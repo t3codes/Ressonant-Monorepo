@@ -1,0 +1,12 @@
+# Índice do monorepo: não define serviços, só agrega os composes de infra e de cada app.
+# Cada serviço builda e sobe sozinho (`docker compose up -d backend`); o índice não acopla apps.
+# Ao adicionar uma app, inclua o compose dela aqui (ver README, "Adicionar um novo app").
+name: ressonant-monorepo
+
+include:
+  - path: infra/docker-compose.yml
+    env_file: .env
+  - path: infra/observability/docker-compose.yml
+    env_file: .env
+  - path: apps/ressonant_backend/docker-compose.yml
+    env_file: [.env, apps/ressonant_backend/.env]

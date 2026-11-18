@@ -1,0 +1,66 @@
+[project]
+name = "ressonant-monorepo"
+version = "0.0.0"
+description = "Monorepo Python do ecossistema Ressonant."
+requires-python = "==3.13.*"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "common-check-structure",
+    "common-http",
+    "common-logs",
+    "common-telemetry",
+    "mypy>=1.13",
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.8",
+    "pytest-cov>=7.1.0",
+    "common-errors>=0.1.0",
+    "respx>=0.21",
+    "faker>=37",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["packages/*", "apps/*"]
+
+
+# Membros editáveis do workspace; novas libs (common-logs, common-telemetry, …) entram aqui.
+[tool.uv.sources]
+common-check-structure = { workspace = true }
+common-http = { workspace = true }
+common-logs = { workspace = true }
+common-errors = { workspace = true }
+common-telemetry = { workspace = true }
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+extend-exclude = [".venv", "__pycache__"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "W"]
+
+[tool.pytest.ini_options]
+# --import-mode=importlib evita colisão de basenames de testes entre
+# packages/* (ex.: dois `test_config.py` em libs diferentes coexistem sem
+# precisar de __init__.py em cada tests/).
+addopts = "-q --import-mode=importlib"
+pythonpath = ["apps/ressonant_backend"]
+asyncio_mode = "strict"
+
+[tool.mypy]
+python_version = "3.13"
+strict = false
+warn_unused_configs = true
+files = [
+    "hooks/check_no_common_init.py",
+    "hooks/check_requires_python_consistent.py",
+]
+
+[tool.check-structure.platform]
+root_package = "common"
+app_packages = ["app"]

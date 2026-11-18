@@ -1,0 +1,373 @@
+_type: export
+__export_format: 4
+__export_date: '2026-11-18T00:00:00.000Z'
+__export_source: ressonant-collections generator
+resources:
+- _id: wrk_ressonant_api
+  _type: workspace
+  name: Ressonant API
+  description: Collection da Ressonant API (FastAPI). Gerada a partir de apps/ressonant_backend/openapi.json.
+  scope: collection
+  created: 1700000000000
+  modified: 1700000000000
+- _id: env_ressonant_base
+  _type: environment
+  parentId: wrk_ressonant_api
+  name: Base Environment
+  data:
+    base_url: http://localhost:8000
+    access_token: ''
+    user_id: ''
+    admin_email: admin@example.com
+    admin_senha: SenhaForte123
+    user_email: usuario@example.com
+    user_senha: SenhaForte123
+    skip: '0'
+    limit: '50'
+    status_ativo: 'true'
+  dataPropertyOrder:
+    '&':
+    - base_url
+    - access_token
+    - user_id
+    - admin_email
+    - admin_senha
+    - user_email
+    - user_senha
+    - skip
+    - limit
+    - status_ativo
+  color: null
+  isPrivate: false
+  metaSortKey: -1700000000000
+  created: 1700000000000
+  modified: 1700000000000
+- _id: fld_health
+  _type: request_group
+  parentId: wrk_ressonant_api
+  name: Health
+  description: ''
+  environment: {}
+  metaSortKey: -1700000000000
+  created: 1700000000000
+  modified: 1700000000000
+- _id: fld_auth
+  _type: request_group
+  parentId: wrk_ressonant_api
+  name: Auth
+  description: ''
+  environment: {}
+  metaSortKey: -1700000000000
+  created: 1700000000000
+  modified: 1700000000000
+- _id: fld_users
+  _type: request_group
+  parentId: wrk_ressonant_api
+  name: Users
+  description: ''
+  environment: {}
+  metaSortKey: -1700000000000
+  created: 1700000000000
+  modified: 1700000000000
+- _id: req_4c345cdc4771441fa633eeae
+  _type: request
+  parentId: fld_health
+  name: Health (liveness)
+  description: 'Liveness: o processo está de pé. Não exige autenticação. Resposta
+    esperada: 200.'
+  method: GET
+  url: '{{ _.base_url }}/health'
+  headers: []
+  parameters: []
+  body: {}
+  authentication: {}
+  metaSortKey: -1700000000000
+  created: 1700000000000
+  modified: 1700000000000
+  settingStoreCookies: true
+  settingSendCookies: true
+  settingDisableRenderRequestBody: false
+  settingEncodeUrl: true
+  settingRebuildPath: true
+  settingFollowRedirects: global
+- _id: req_30ce05846f664ea18ddb723e
+  _type: request
+  parentId: fld_health
+  name: Ready (readiness)
+  description: 'Readiness: o banco responde. Não exige autenticação. Resposta esperada:
+    200.'
+  method: GET
+  url: '{{ _.base_url }}/health/ready'
+  headers: []
+  parameters: []
+  body: {}
+  authentication: {}
+  metaSortKey: -1700000000000
+  created: 1700000000000
+  modified: 1700000000000
+  settingStoreCookies: true
+  settingSendCookies: true
+  settingDisableRenderRequestBody: false
+  settingEncodeUrl: true
+  settingRebuildPath: true
+  settingFollowRedirects: global
+- _id: req_a9812a7162a74758b6a3d0cf
+  _type: request
+  parentId: fld_auth
+  name: Register
+  description: 'Cadastro público de usuário comum (UserRegister). Resposta esperada:
+    201. Copie o campo id da resposta para a variável user_id do ambiente.'
+  method: POST
+  url: '{{ _.base_url }}/auth/register'
+  headers:
+  - &id001
+    name: Content-Type
+    value: application/json
+  parameters: []
+  body:
+    mimeType: application/json
+    text: "{\n  \"email\": \"usuario@example.com\",\n  \"cpf\": \"12345678901\",\n\
+      \  \"telefone\": \"11987654321\",\n  \"senha\": \"SenhaForte123\",\n  \"idade\"\
+      : 30,\n  \"termos_contrato\": true\n}"
+  authentication: {}
+  metaSortKey: -1700000000000
+  created: 1700000000000
+  modified: 1700000000000
+  settingStoreCookies: true
+  settingSendCookies: true
+  settingDisableRenderRequestBody: false
+  settingEncodeUrl: true
+  settingRebuildPath: true
+  settingFollowRedirects: global
+- _id: req_1f2cdabf3cb94b63b435b80e
+  _type: request
+  parentId: fld_auth
+  name: Login
+  description: 'Autentica por e-mail e senha (LoginRequest). Resposta esperada: 200.
+    Copie access_token da resposta para a variável access_token do ambiente.'
+  method: POST
+  url: '{{ _.base_url }}/auth/login'
+  headers:
+  - *id001
+  parameters: []
+  body:
+    mimeType: application/json
+    text: "{\n  \"email\": \"usuario@example.com\",\n  \"senha\": \"SenhaForte123\"\
+      \n}"
+  authentication: {}
+  metaSortKey: -1700000000000
+  created: 1700000000000
+  modified: 1700000000000
+  settingStoreCookies: true
+  settingSendCookies: true
+  settingDisableRenderRequestBody: false
+  settingEncodeUrl: true
+  settingRebuildPath: true
+  settingFollowRedirects: global
+- _id: req_7b003f889c544567a5e4b9ea
+  _type: request
+  parentId: fld_auth
+  name: Me
+  description: 'Dados do usuário autenticado. Requer Bearer access_token. Resposta
+    esperada: 200.'
+  method: GET
+  url: '{{ _.base_url }}/auth/me'
+  headers:
+  - &id002
+    name: Authorization
+    value: Bearer {{ _.access_token }}
+  parameters: []
+  body: {}
+  authentication: {}
+  metaSortKey: -1700000000000
+  created: 1700000000000
+  modified: 1700000000000
+  settingStoreCookies: true
+  settingSendCookies: true
+  settingDisableRenderRequestBody: false
+  settingEncodeUrl: true
+  settingRebuildPath: true
+  settingFollowRedirects: global
+- _id: req_433897b36c6a4974b0063176
+  _type: request
+  parentId: fld_users
+  name: Create User (admin)
+  description: 'Cria usuário (admin) - UserCreate (UserRegister + status_ativo, interno_adm).
+    Resposta esperada: 201.'
+  method: POST
+  url: '{{ _.base_url }}/users'
+  headers:
+  - *id001
+  - *id002
+  parameters: []
+  body:
+    mimeType: application/json
+    text: "{\n  \"email\": \"usuario@example.com\",\n  \"cpf\": \"12345678901\",\n\
+      \  \"telefone\": \"11987654321\",\n  \"senha\": \"SenhaForte123\",\n  \"idade\"\
+      : 30,\n  \"termos_contrato\": true,\n  \"status_ativo\": true,\n  \"interno_adm\"\
+      : false\n}"
+  authentication: {}
+  metaSortKey: -1700000000000
+  created: 1700000000000
+  modified: 1700000000000
+  settingStoreCookies: true
+  settingSendCookies: true
+  settingDisableRenderRequestBody: false
+  settingEncodeUrl: true
+  settingRebuildPath: true
+  settingFollowRedirects: global
+- _id: req_d9d4b6ade3824f9c9d8bbe88
+  _type: request
+  parentId: fld_users
+  name: Create Admin User (interno_adm)
+  description: 'Exemplo com interno_adm=true. Ajuste o e-mail para não colidir. Resposta
+    esperada: 201.'
+  method: POST
+  url: '{{ _.base_url }}/users'
+  headers:
+  - *id001
+  - *id002
+  parameters: []
+  body:
+    mimeType: application/json
+    text: "{\n  \"email\": \"admin-criado@example.com\",\n  \"cpf\": \"12345678901\"\
+      ,\n  \"telefone\": \"11987654321\",\n  \"senha\": \"SenhaForte123\",\n  \"idade\"\
+      : 30,\n  \"termos_contrato\": true,\n  \"status_ativo\": true,\n  \"interno_adm\"\
+      : true\n}"
+  authentication: {}
+  metaSortKey: -1700000000000
+  created: 1700000000000
+  modified: 1700000000000
+  settingStoreCookies: true
+  settingSendCookies: true
+  settingDisableRenderRequestBody: false
+  settingEncodeUrl: true
+  settingRebuildPath: true
+  settingFollowRedirects: global
+- _id: req_826f9e28b849472f981dc655
+  _type: request
+  parentId: fld_users
+  name: List Users
+  description: 'Lista usuários com paginação; status_ativo filtra, omitido traz todos.
+    Resposta esperada: 200.'
+  method: GET
+  url: '{{ _.base_url }}/users?skip={{ _.skip }}&limit={{ _.limit }}'
+  headers:
+  - *id002
+  parameters:
+  - name: skip
+    value: '{{ _.skip }}'
+    description: Offset (>= 0)
+    disabled: false
+  - name: limit
+    value: '{{ _.limit }}'
+    description: Tamanho da página (1-100)
+    disabled: false
+  - name: status_ativo
+    value: '{{ _.status_ativo }}'
+    description: 'Opcional: true/false. Omitido lista todos.'
+    disabled: true
+  body: {}
+  authentication: {}
+  metaSortKey: -1700000000000
+  created: 1700000000000
+  modified: 1700000000000
+  settingStoreCookies: true
+  settingSendCookies: true
+  settingDisableRenderRequestBody: false
+  settingEncodeUrl: true
+  settingRebuildPath: true
+  settingFollowRedirects: global
+- _id: req_58b3750c96fb47849edb36ed
+  _type: request
+  parentId: fld_users
+  name: Get User
+  description: 'Busca por id (admin ou o próprio usuário). Resposta esperada: 200.'
+  method: GET
+  url: '{{ _.base_url }}/users/{{ _.user_id }}'
+  headers:
+  - *id002
+  parameters: []
+  body: {}
+  authentication: {}
+  metaSortKey: -1700000000000
+  created: 1700000000000
+  modified: 1700000000000
+  settingStoreCookies: true
+  settingSendCookies: true
+  settingDisableRenderRequestBody: false
+  settingEncodeUrl: true
+  settingRebuildPath: true
+  settingFollowRedirects: global
+- _id: req_39ff366314b84dadaeae34b0
+  _type: request
+  parentId: fld_users
+  name: Update User
+  description: 'Atualiza e-mail, telefone, idade e termos (UserUpdate). Resposta esperada:
+    200.'
+  method: PUT
+  url: '{{ _.base_url }}/users/{{ _.user_id }}'
+  headers:
+  - *id001
+  - *id002
+  parameters: []
+  body:
+    mimeType: application/json
+    text: "{\n  \"email\": \"usuario.atualizado@example.com\",\n  \"telefone\": \"\
+      11987654321\",\n  \"idade\": 31,\n  \"termos_contrato\": true\n}"
+  authentication: {}
+  metaSortKey: -1700000000000
+  created: 1700000000000
+  modified: 1700000000000
+  settingStoreCookies: true
+  settingSendCookies: true
+  settingDisableRenderRequestBody: false
+  settingEncodeUrl: true
+  settingRebuildPath: true
+  settingFollowRedirects: global
+- _id: req_5c9885203d2342a5a0b6e6b5
+  _type: request
+  parentId: fld_users
+  name: Set User Status
+  description: 'Ativa ou desativa o usuário (admin) - UserStatusUpdate. Resposta esperada:
+    200.'
+  method: PATCH
+  url: '{{ _.base_url }}/users/{{ _.user_id }}/status'
+  headers:
+  - *id001
+  - *id002
+  parameters: []
+  body:
+    mimeType: application/json
+    text: "{\n  \"status_ativo\": false\n}"
+  authentication: {}
+  metaSortKey: -1700000000000
+  created: 1700000000000
+  modified: 1700000000000
+  settingStoreCookies: true
+  settingSendCookies: true
+  settingDisableRenderRequestBody: false
+  settingEncodeUrl: true
+  settingRebuildPath: true
+  settingFollowRedirects: global
+- _id: req_9372ef1cbc644d1eaf01c830
+  _type: request
+  parentId: fld_users
+  name: Delete User (soft delete)
+  description: 'Soft delete: desativa o usuário (admin). Resposta esperada: 204.'
+  method: DELETE
+  url: '{{ _.base_url }}/users/{{ _.user_id }}'
+  headers:
+  - *id002
+  parameters: []
+  body: {}
+  authentication: {}
+  metaSortKey: -1700000000000
+  created: 1700000000000
+  modified: 1700000000000
+  settingStoreCookies: true
+  settingSendCookies: true
+  settingDisableRenderRequestBody: false
+  settingEncodeUrl: true
+  settingRebuildPath: true
+  settingFollowRedirects: global
