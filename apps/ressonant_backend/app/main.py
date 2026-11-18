@@ -20,6 +20,7 @@ from app.modules.chat.domain.models import (  # noqa: F401  (registra as tabelas
 )
 from app.modules.chat.entrypoints import conversation_router, message_router
 from app.modules.chat.entrypoints import routes as chat_routes
+from app.modules.image_upload.entrypoints import routes as upload_routes  # noqa: F401
 from app.modules.kanban_boards.domain.models import (  # noqa: F401  (registra as tabelas no metadata)
     Board,
     BoardColumn,
@@ -93,6 +94,7 @@ def create_app() -> FastAPI:
     app.include_router(readstates_routes.router)
     app.include_router(notifications_routes.router)
     app.include_router(mail_routes.router)
+    app.include_router(upload_routes.router)
 
     @app.get("/health", response_model=HealthResponse, tags=["health"])
     def health() -> HealthResponse:

@@ -3,7 +3,7 @@ from datetime import datetime
 
 import sqlalchemy as sa
 from app.database.engine import Base
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Uuid, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
@@ -20,6 +20,9 @@ class Workspace(Base):
     )
     description: Mapped[str | None] = mapped_column(String(500), nullable=True)
     status_ativo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    logo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    logo_content_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    logo_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     criado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

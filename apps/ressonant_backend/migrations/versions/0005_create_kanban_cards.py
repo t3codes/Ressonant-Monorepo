@@ -18,7 +18,7 @@ def upgrade() -> None:
         "cards",
         sa.Column("id", sa.Uuid(as_uuid=False), primary_key=True),
         sa.Column("board_id", sa.Uuid(as_uuid=False), sa.ForeignKey("boards.id"), nullable=False, index=True),
-        sa.Column("column_id", sa.Uuid(as_uuid.ForeignKey("board_columns.id")), nullable=True, index=True),
+        sa.Column("column_id", sa.Uuid(as_uuid=False), sa.ForeignKey("board_columns.id"), nullable=True, index=True),
         sa.Column("team_id", sa.Uuid(as_uuid=False), nullable=False, index=True),
         sa.Column("title", sa.String(200), nullable=False),
         sa.Column("description", sa.Text(), nullable=True),

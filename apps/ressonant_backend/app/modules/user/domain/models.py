@@ -20,6 +20,9 @@ class User(Base):
     telefone: Mapped[str] = mapped_column(String(11))
     status_ativo: Mapped[bool] = mapped_column(Boolean, default=True)
     interno_adm: Mapped[bool] = mapped_column(Boolean, default=False)
+    avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    avatar_content_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    avatar_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     atualizado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
