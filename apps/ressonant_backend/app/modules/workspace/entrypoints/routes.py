@@ -1,10 +1,8 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, status
-
-from app.auth.deps import CurrentUser
-from app.workspace.deps import get_workspace_service
-from app.workspace.schemas import (
+from app.modules.auth.deps import CurrentUser
+from app.modules.workspace.deps import get_workspace_service
+from app.modules.workspace.schemas.dto import (
     WorkspaceCreate,
     WorkspaceList,
     WorkspaceMemberAdd,
@@ -13,7 +11,8 @@ from app.workspace.schemas import (
     WorkspaceStatusUpdate,
     WorkspaceUpdate,
 )
-from app.workspace.services import WorkspaceService
+from app.modules.workspace.usecases.services import WorkspaceService
+from fastapi import APIRouter, Depends, Query, status
 
 router = APIRouter(prefix="/workspaces", tags=["workspaces"])
 

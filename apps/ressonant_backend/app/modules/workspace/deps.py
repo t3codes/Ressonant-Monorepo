@@ -1,11 +1,10 @@
 from typing import Annotated
 
+from app.database.engine import get_db
+from app.modules.workspace.dataproviders.repository import WorkspaceRepository
+from app.modules.workspace.usecases.services import WorkspaceService
 from fastapi import Depends
 from sqlalchemy.orm import Session
-
-from app.database.engine import get_db
-from app.workspace.repository import WorkspaceRepository
-from app.workspace.services import WorkspaceService
 
 
 def get_workspace_repository(db: Annotated[Session, Depends(get_db)]) -> WorkspaceRepository:

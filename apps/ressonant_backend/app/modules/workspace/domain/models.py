@@ -2,10 +2,9 @@ import uuid
 from datetime import datetime
 
 import sqlalchemy as sa
+from app.database.engine import Base
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-from app.database.engine import Base
 
 
 class Workspace(Base):
@@ -54,16 +53,11 @@ class WorkspaceMember(Base):
         nullable=False,
         index=True,
     )
-    role: Mapped[str] = mapped_column(
-        String(20), default="member", nullable=False
-    )  # admin | member | viewer
+    role: Mapped[str] = mapped_column(String(20), default="member", nullable=False)
     criado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
     workspace: Mapped["Workspace"] = relationship("Workspace", back_populates="members")
 
-    __table_args__ = (
-        # um usuário só pode ter um papel por workspace
-        sa.UniqueConstraint("workspace_id", "user_id", name="uq_workspace_member"),
-    )
+    __table_args__ = (sa.UniqueConstraint("workspace_id", "user_id", name="uq_workspace_member"),)

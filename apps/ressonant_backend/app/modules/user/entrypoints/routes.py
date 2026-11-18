@@ -1,18 +1,17 @@
 from typing import Annotated
 
-from common.errors import ExceptionData, ForbiddenException
-from fastapi import APIRouter, Depends, Query, Response, status
-
-from app.auth.deps import AdminUser, CurrentUser
-from app.user.deps import get_user_service
-from app.user.schemas import (
+from app.modules.auth.deps import AdminUser, CurrentUser
+from app.modules.user.deps import get_user_service
+from app.modules.user.schemas.dto import (
     UserCreate,
     UserList,
     UserResponse,
     UserStatusUpdate,
     UserUpdate,
 )
-from app.user.services import UserService
+from app.modules.user.usecases.services import UserService
+from common.errors import ExceptionData, ForbiddenException
+from fastapi import APIRouter, Depends, Query, Response, status
 
 router = APIRouter(prefix="/users", tags=["users"])
 

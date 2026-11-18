@@ -1,9 +1,12 @@
-from common.errors import ExceptionData, ForbiddenException, NotFoundException
-
 from app.common.exceptions import ConflictException
-from app.workspace.models import Workspace, WorkspaceMember
-from app.workspace.repository import WorkspaceRepository
-from app.workspace.schemas import WorkspaceCreate, WorkspaceMemberAdd, WorkspaceUpdate
+from app.modules.workspace.dataproviders.repository import WorkspaceRepository
+from app.modules.workspace.domain.models import Workspace, WorkspaceMember
+from app.modules.workspace.schemas.dto import (
+    WorkspaceCreate,
+    WorkspaceMemberAdd,
+    WorkspaceUpdate,
+)
+from common.errors import ExceptionData, ForbiddenException, NotFoundException
 
 
 def _not_found() -> NotFoundException:
@@ -39,7 +42,6 @@ class WorkspaceService:
         )
         try:
             self._repo.add(workspace)
-            # O dono entra automaticamente como admin
             self._repo.add_member(
                 WorkspaceMember(workspace_id=workspace.id, user_id=owner_id, role="admin")
             )
@@ -64,7 +66,6 @@ class WorkspaceService:
 
     def update(self, workspace_id: str, payload: WorkspaceUpdate, user_id: str) -> Workspace:
         workspace = self.get(workspace_id, user_id)
-        # Somente owner ou admin do workspace pode editar
         member = self._repo.is_member(workspace_id, user_id)
         if workspace.owner_id != user_id and (member is None or member.role != "admin"):
             raise _forbidden("Somente o owner ou admin do workspace pode editar")
