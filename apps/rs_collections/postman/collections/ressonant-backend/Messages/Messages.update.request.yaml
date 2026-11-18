@@ -1,0 +1,15 @@
+$kind: http-request
+name: 'Messages - Update'
+method: PUT
+url: '{{baseUrl}}/messages/{{messageId}}'
+order: 5000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "body": "{{body}}",
+      "mention_ids": {{mentionIds}}
+    }

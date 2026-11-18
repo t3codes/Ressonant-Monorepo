@@ -1,0 +1,14 @@
+$kind: http-request
+name: 'Boards - Set Status'
+method: PATCH
+url: '{{baseUrl}}/boards/{{boardId}}/status'
+order: 6000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "status_ativo": {{status_ativo}}
+    }

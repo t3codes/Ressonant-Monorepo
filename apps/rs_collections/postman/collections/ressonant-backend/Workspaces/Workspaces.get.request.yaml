@@ -1,0 +1,5 @@
+$kind: http-request
+name: 'Workspaces - Get'
+method: GET
+url: '{{baseUrl}}/workspaces/{{workspaceId}}'
+order: 2000

@@ -1,0 +1,5 @@
+$kind: http-request
+name: 'Mail - Get'
+method: GET
+url: '{{baseUrl}}/mail/{{emailId}}'
+order: 2000

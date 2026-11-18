@@ -1,0 +1,12 @@
+$kind: http-request
+name: 'Teams - List'
+method: GET
+url: '{{baseUrl}}/teams?workspace_id={{workspaceId}}&skip={{skip}}&limit={{limit}}'
+order: 3000
+queryParams:
+  - key: workspace_id
+    value: '{{workspaceId}}'
+  - key: skip
+    value: '{{skip}}'
+  - key: limit
+    value: '{{limit}}'

@@ -1,0 +1,12 @@
+$kind: http-request
+name: 'Notifications - Mark Read'
+method: PATCH
+url: '{{baseUrl}}/notifications/mark-read'
+order: 4000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {{ids}}

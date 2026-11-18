@@ -1,0 +1,5 @@
+$kind: http-request
+name: 'Auth - Me'
+method: GET
+url: '{{baseUrl}}/auth/me'
+order: 2000

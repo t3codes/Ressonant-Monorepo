@@ -1,0 +1,5 @@
+$kind: http-request
+name: 'Cards - Get'
+method: GET
+url: '{{baseUrl}}/cards/{{cardId}}'
+order: 3000

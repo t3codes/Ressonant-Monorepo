@@ -1,0 +1,21 @@
+$kind: http-request
+name: 'Users - Create'
+method: POST
+url: '{{baseUrl}}/users'
+order: 1000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "{{email}}",
+      "senha": "{{senha}}",
+      "cpf": "{{cpf}}",
+      "telefone": "{{telefone}}",
+      "idade": {{idade}},
+      "termos_contrato": true,
+      "status_ativo": true,
+      "interno_adm": false
+    }

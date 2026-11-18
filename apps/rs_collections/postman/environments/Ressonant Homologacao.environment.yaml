@@ -1,0 +1,258 @@
+name: Ressonant Homologacao
+values:
+  - key: baseUrl
+    value: 'https://api-homolog.ressonant.dev'
+    enabled: true
+    type: default
+  - key: userId
+    value: ''
+    enabled: true
+    type: default
+  - key: workspaceId
+    value: ''
+    enabled: true
+    type: default
+  - key: teamId
+    value: ''
+    enabled: true
+    type: default
+  - key: boardId
+    value: ''
+    enabled: true
+    type: default
+  - key: cardId
+    value: ''
+    enabled: true
+    type: default
+  - key: channelId
+    value: ''
+    enabled: true
+    type: default
+  - key: messageId
+    value: ''
+    enabled: true
+    type: default
+  - key: emailId
+    value: ''
+    enabled: true
+    type: default
+  - key: assigneeId
+    value: ''
+    enabled: true
+    type: default
+  - key: attachments
+    value: '[]'
+    enabled: true
+    type: default
+  - key: authorId
+    value: ''
+    enabled: true
+    type: default
+  - key: bccIds
+    value: '[]'
+    enabled: true
+    type: default
+  - key: body
+    value: ''
+    enabled: true
+    type: default
+  - key: budget_project
+    value: ''
+    enabled: true
+    type: default
+  - key: ccIds
+    value: '[]'
+    enabled: true
+    type: default
+  - key: columnId
+    value: ''
+    enabled: true
+    type: default
+  - key: column_id
+    value: ''
+    enabled: true
+    type: default
+  - key: cpf
+    value: ''
+    enabled: true
+    type: default
+  - key: createdBy
+    value: ''
+    enabled: true
+    type: default
+  - key: description
+    value: ''
+    enabled: true
+    type: default
+  - key: due_date
+    value: ''
+    enabled: true
+    type: default
+  - key: email
+    value: 'user@example.com'
+    enabled: true
+    type: default
+  - key: emoji
+    value: '👍'
+    enabled: true
+    type: default
+  - key: expected_version
+    value: '1'
+    enabled: true
+    type: default
+  - key: filePath
+    value: ''
+    enabled: true
+    type: default
+  - key: fix_version
+    value: ''
+    enabled: true
+    type: default
+  - key: forwarded
+    value: 'false'
+    enabled: true
+    type: default
+  - key: idade
+    value: '30'
+    enabled: true
+    type: default
+  - key: ids
+    value: '[]'
+    enabled: true
+    type: default
+  - key: isReply
+    value: 'false'
+    enabled: true
+    type: default
+  - key: kind
+    value: 'info'
+    enabled: true
+    type: default
+  - key: limit
+    value: '20'
+    enabled: true
+    type: default
+  - key: mentionIds
+    value: '[]'
+    enabled: true
+    type: default
+  - key: name
+    value: ''
+    enabled: true
+    type: default
+  - key: objective
+    value: ''
+    enabled: true
+    type: default
+  - key: parentId
+    value: ''
+    enabled: true
+    type: default
+  - key: parent_id
+    value: ''
+    enabled: true
+    type: default
+  - key: points
+    value: '1'
+    enabled: true
+    type: default
+  - key: position
+    value: '0'
+    enabled: true
+    type: default
+  - key: priority
+    value: ''
+    enabled: true
+    type: default
+  - key: recipientIds
+    value: '[]'
+    enabled: true
+    type: default
+  - key: remindAt
+    value: ''
+    enabled: true
+    type: default
+  - key: reporterId
+    value: ''
+    enabled: true
+    type: default
+  - key: role
+    value: 'member'
+    enabled: true
+    type: default
+  - key: roomId
+    value: ''
+    enabled: true
+    type: default
+  - key: roomKind
+    value: 'channel'
+    enabled: true
+    type: default
+  - key: senderId
+    value: ''
+    enabled: true
+    type: default
+  - key: senha
+    value: 'changeme123'
+    enabled: true
+    type: default
+  - key: skip
+    value: '0'
+    enabled: true
+    type: default
+  - key: slug
+    value: ''
+    enabled: true
+    type: default
+  - key: starred
+    value: 'false'
+    enabled: true
+    type: default
+  - key: start_date
+    value: ''
+    enabled: true
+    type: default
+  - key: status_ativo
+    value: 'true'
+    enabled: true
+    type: default
+  - key: subject
+    value: ''
+    enabled: true
+    type: default
+  - key: telefone
+    value: ''
+    enabled: true
+    type: default
+  - key: threadId
+    value: ''
+    enabled: true
+    type: default
+  - key: title
+    value: ''
+    enabled: true
+    type: default
+  - key: topic
+    value: ''
+    enabled: true
+    type: default
+  - key: trashed
+    value: 'false'
+    enabled: true
+    type: default
+  - key: type
+    value: ''
+    enabled: true
+    type: default
+  - key: visibility
+    value: 'public'
+    enabled: true
+    type: default
+  - key: wip_limit
+    value: '5'
+    enabled: true
+    type: default
+  - key: accessToken
+    value: ''
+    enabled: true
+    type: secret

@@ -1,0 +1,15 @@
+$kind: http-request
+name: 'Teams - Add Member'
+method: POST
+url: '{{baseUrl}}/teams/{{teamId}}/members'
+order: 4000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "user_id": "{{userId}}",
+      "role": "{{role}}"
+    }

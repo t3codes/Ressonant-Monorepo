@@ -1,0 +1,16 @@
+$kind: http-request
+name: 'Mail - Update For User'
+method: PATCH
+url: '{{baseUrl}}/mail/{{emailId}}'
+order: 5000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "trashed": {{trashed}},
+      "starred": {{starred}},
+      "remindAt": "{{remindAt}}"
+    }

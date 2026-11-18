@@ -1,0 +1,20 @@
+$kind: http-request
+name: 'Cards - Update'
+method: PUT
+url: '{{baseUrl}}/cards/{{cardId}}'
+order: 6000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "title": "{{title}}",
+      "description": "{{description}}",
+      "type": "{{type}}",
+      "priority": "{{priority}}",
+      "assignee_id": "{{assigneeId}}",
+      "due_date": "{{due_date}}",
+      "expected_version": {{expected_version}}
+    }

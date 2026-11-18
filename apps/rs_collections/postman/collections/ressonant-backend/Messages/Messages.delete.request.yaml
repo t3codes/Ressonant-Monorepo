@@ -1,0 +1,5 @@
+$kind: http-request
+name: 'Messages - Delete'
+method: DELETE
+url: '{{baseUrl}}/messages/{{messageId}}'
+order: 2000

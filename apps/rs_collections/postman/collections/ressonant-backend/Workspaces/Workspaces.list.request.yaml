@@ -1,0 +1,10 @@
+$kind: http-request
+name: 'Workspaces - List'
+method: GET
+url: '{{baseUrl}}/workspaces?skip={{skip}}&limit={{limit}}'
+order: 3000
+queryParams:
+  - key: skip
+    value: '{{skip}}'
+  - key: limit
+    value: '{{limit}}'

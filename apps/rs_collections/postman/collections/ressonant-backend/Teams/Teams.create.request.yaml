@@ -1,0 +1,17 @@
+$kind: http-request
+name: 'Teams - Create'
+method: POST
+url: '{{baseUrl}}/teams'
+order: 1000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "{{name}}",
+      "slug": "{{slug}}",
+      "workspace_id": "{{workspaceId}}",
+      "description": "{{description}}"
+    }

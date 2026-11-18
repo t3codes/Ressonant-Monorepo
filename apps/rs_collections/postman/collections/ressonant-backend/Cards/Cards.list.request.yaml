@@ -1,0 +1,12 @@
+$kind: http-request
+name: 'Cards - List'
+method: GET
+url: '{{baseUrl}}/cards?board_id={{boardId}}&skip={{skip}}&limit={{limit}}'
+order: 4000
+queryParams:
+  - key: board_id
+    value: '{{boardId}}'
+  - key: skip
+    value: '{{skip}}'
+  - key: limit
+    value: '{{limit}}'

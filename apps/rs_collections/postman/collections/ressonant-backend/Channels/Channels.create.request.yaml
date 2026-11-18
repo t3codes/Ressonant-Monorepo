@@ -1,0 +1,18 @@
+$kind: http-request
+name: 'Channels - Create'
+method: POST
+url: '{{baseUrl}}/channels'
+order: 1000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "{{name}}",
+      "workspace_id": "{{workspaceId}}",
+      "topic": "{{topic}}",
+      "visibility": "{{visibility}}",
+      "created_by": "{{createdBy}}"
+    }

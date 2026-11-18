@@ -1,0 +1,17 @@
+$kind: http-request
+name: 'Boards - Create Column'
+method: POST
+url: '{{baseUrl}}/boards/{{boardId}}/columns'
+order: 1000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "{{name}}",
+      "slug": "{{slug}}",
+      "position": {{position}},
+      "wip_limit": {{wip_limit}}
+    }

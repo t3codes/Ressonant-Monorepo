@@ -1,0 +1,5 @@
+$kind: http-request
+name: 'Read-states - Mark Read'
+method: POST
+url: '{{baseUrl}}/read-states/{{roomId}}'
+order: 2000

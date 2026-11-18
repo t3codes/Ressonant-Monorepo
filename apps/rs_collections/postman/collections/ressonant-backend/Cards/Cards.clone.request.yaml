@@ -1,0 +1,5 @@
+$kind: http-request
+name: 'Cards - Clone'
+method: POST
+url: '{{baseUrl}}/cards/{{cardId}}/clone'
+order: 1000

@@ -1,0 +1,5 @@
+$kind: http-request
+name: 'Notifications - Mark All Read'
+method: PATCH
+url: '{{baseUrl}}/notifications/mark-all-read'
+order: 3000

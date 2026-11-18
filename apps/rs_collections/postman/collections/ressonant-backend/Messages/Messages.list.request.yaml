@@ -1,0 +1,12 @@
+$kind: http-request
+name: 'Messages - List'
+method: GET
+url: '{{baseUrl}}/messages?room_id={{roomId}}&skip={{skip}}&limit={{limit}}'
+order: 4000
+queryParams:
+  - key: room_id
+    value: '{{roomId}}'
+  - key: skip
+    value: '{{skip}}'
+  - key: limit
+    value: '{{limit}}'
