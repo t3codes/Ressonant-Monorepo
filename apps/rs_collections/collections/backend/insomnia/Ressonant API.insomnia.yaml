@@ -1,0 +1,499 @@
+__export_format: 4
+__export_date: 2026-11-18T16:45:00.000Z
+__export_source: insomnia.desktop.app:v2024.5.0
+
+resources:
+  - _id: wrk_ressonant_api
+    parentId: null
+    type: workspace
+    name: Ressonant API
+    description: |
+      Coleção de requisições da API Ressonant (Auth, Users, Workspaces, Health).
+      Autenticação: JWT Bearer via header Authorization.
+      O user_id é extraído exclusivamente do token — nunca trafegado por URL ou body.
+
+      Ambientes:
+      - Local Dev: http://localhost:8000
+      - Homologação: https://api-homolog.ressonant.dev
+
+  - _id: env_ressonant_local
+    parentId: wrk_ressonant_api
+    type: environment
+    name: Local Dev
+    data:
+      baseUrl: "http://localhost:8000"
+      accessToken: ""
+      userId: ""
+      workspaceId: ""
+      memberUserId: ""
+      skip: "0"
+      limit: "50"
+      status_ativo: ""
+
+  - _id: env_ressonant_homolog
+    parentId: wrk_ressonant_api
+    type: environment
+    name: Homologação
+    data:
+      baseUrl: "https://api-homolog.ressonant.dev"
+      accessToken: ""
+      userId: ""
+      workspaceId: ""
+      memberUserId: ""
+      skip: "0"
+      limit: "50"
+      status_ativo: ""
+
+  - _id: req_health_liveness
+    parentId: wrk_ressonant_api
+    type: request
+    name: Health (liveness)
+    description: "Liveness: o processo está de pé. Sem autenticação."
+    url: "{{ baseUrl }}/health"
+    method: GET
+    body: {}
+    parameters: []
+    headers: []
+    auth: {}
+    metaSortKey: -1699999999999.0
+    isPrivate: false
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingCookies: []
+    settingTimeout: ""
+
+  - _id: req_health_ready
+    parentId: wrk_ressonant_api
+    type: request
+    name: Ready (readiness)
+    description: "Readiness: o banco responde. Sem autenticação."
+    url: "{{ baseUrl }}/health/ready"
+    method: GET
+    body: {}
+    parameters: []
+    headers: []
+    auth: {}
+    metaSortKey: -1699999999998.0
+    isPrivate: false
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingCookies: []
+    settingTimeout: ""
+
+  - _id: req_auth_register
+    parentId: wrk_ressonant_api
+    type: request
+    name: Register
+    description: "Cadastro público de usuário comum. Retorna UserResponse (sem senha_hash)."
+    url: "{{ baseUrl }}/auth/register"
+    method: POST
+    body:
+      mimeType: application/json
+      text: |
+        {
+          "email": "usuario@example.com",
+          "senha": "SenhaForte123",
+          "cpf": "12345678901",
+          "telefone": "11987654321",
+          "idade": 30,
+          "termos_contrato": true
+        }
+    parameters: []
+    headers:
+      - { name: "Content-Type", value: "application/json" }
+    auth: {}
+    metaSortKey: -1699999999997.0
+    isPrivate: false
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingCookies: []
+    settingTimeout: ""
+
+  - _id: req_auth_login
+    parentId: wrk_ressonant_api
+    type: request
+    name: Login
+    description: "Autentica por e-mail e senha. Devolve access_token JWT HS256 (30 min)."
+    url: "{{ baseUrl }}/auth/login"
+    method: POST
+    body:
+      mimeType: application/json
+      text: |
+        {
+          "email": "usuario@example.com",
+          "senha": "SenhaForte123"
+        }
+    parameters: []
+    headers:
+      - { name: "Content-Type", value: "application/json" }
+    auth: {}
+    metaSortKey: -1699999999996.0
+    isPrivate: false
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingCookies: []
+    settingTimeout: ""
+
+  - _id: req_auth_me
+    parentId: wrk_ressonant_api
+    type: request
+    name: Me
+    description: "Dados do usuário autenticado. user_id extraído exclusivamente do JWT."
+    url: "{{ baseUrl }}/auth/me"
+    method: GET
+    body: {}
+    parameters: []
+    headers:
+      - { name: "Authorization", value: "Bearer {{ accessToken }}" }
+    auth: {}
+    metaSortKey: -1699999999995.0
+    isPrivate: false
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingCookies: []
+    settingTimeout: ""
+
+  - _id: req_users_create
+    parentId: wrk_ressonant_api
+    type: request
+    name: Create User (admin)
+    description: "Cria usuário (admin apenas). Podendo definir flags administrativas."
+    url: "{{ baseUrl }}/users"
+    method: POST
+    body:
+      mimeType: application/json
+      text: |
+        {
+          "email": "admin@example.com",
+          "senha": "SenhaForte123",
+          "cpf": "11144477735",
+          "telefone": "11987654322",
+          "idade": 35,
+          "termos_contrato": true,
+          "status_ativo": true,
+          "interno_adm": false
+        }
+    parameters: []
+    headers:
+      - { name: "Content-Type", value: "application/json" }
+      - { name: "Authorization", value: "Bearer {{ accessToken }}" }
+    auth: {}
+    metaSortKey: -1699999999994.0
+    isPrivate: false
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingCookies: []
+    settingTimeout: ""
+
+  - _id: req_users_list
+    parentId: wrk_ressonant_api
+    type: request
+    name: List Users
+    description: "Lista usuários com paginação. Admin apenas."
+    url: "{{ baseUrl }}/users"
+    method: GET
+    body: {}
+    parameters:
+      - { name: "skip", value: "{{ skip }}" }
+      - { name: "limit", value: "{{ limit }}" }
+      - { name: "status_ativo", value: "{{ status_ativo }}" }
+    headers:
+      - { name: "Authorization", value: "Bearer {{ accessToken }}" }
+    auth: {}
+    metaSortKey: -1699999999993.0
+    isPrivate: false
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingCookies: []
+    settingTimeout: ""
+
+  - _id: req_users_get
+    parentId: wrk_ressonant_api
+    type: request
+    name: Get User
+    description: "Busca usuário por id. Admin ou o próprio usuário (extraído do JWT)."
+    url: "{{ baseUrl }}/users/{{ userId }}"
+    method: GET
+    body: {}
+    parameters: []
+    headers:
+      - { name: "Authorization", value: "Bearer {{ accessToken }}" }
+    auth: {}
+    metaSortKey: -1699999999992.0
+    isPrivate: false
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingCookies: []
+    settingTimeout: ""
+
+  - _id: req_users_update
+    parentId: wrk_ressonant_api
+    type: request
+    name: Update User
+    description: "Atualiza e-mail, telefone, idade e termos. Admin ou o próprio usuário. Senha, CPF e flags admin ficam fora."
+    url: "{{ baseUrl }}/users/{{ userId }}"
+    method: PUT
+    body:
+      mimeType: application/json
+      text: |
+        {
+          "email": "usuario.atualizado@example.com",
+          "telefone": "11987654323",
+          "idade": 31,
+          "termos_contrato": true
+        }
+    parameters: []
+    headers:
+      - { name: "Content-Type", value: "application/json" }
+      - { name: "Authorization", value: "Bearer {{ accessToken }}" }
+    auth: {}
+    metaSortKey: -1699999999991.0
+    isPrivate: false
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingCookies: []
+    settingTimeout: ""
+
+  - _id: req_users_status
+    parentId: wrk_ressonant_api
+    type: request
+    name: Set User Status
+    description: "Ativa ou desativa usuário (admin apenas)."
+    url: "{{ baseUrl }}/users/{{ userId }}/status"
+    method: PATCH
+    body:
+      mimeType: application/json
+      text: |
+        {
+          "status_ativo": false
+        }
+    parameters: []
+    headers:
+      - { name: "Content-Type", value: "application/json" }
+      - { name: "Authorization", value: "Bearer {{ accessToken }}" }
+    auth: {}
+    metaSortKey: -1699999999990.0
+    isPrivate: false
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingCookies: []
+    settingTimeout: ""
+
+  - _id: req_users_delete
+    parentId: wrk_ressonant_api
+    type: request
+    name: Delete User (soft delete)
+    description: "Soft delete: desativa o usuário (admin apenas)."
+    url: "{{ baseUrl }}/users/{{ userId }}"
+    method: DELETE
+    body: {}
+    parameters: []
+    headers:
+      - { name: "Authorization", value: "Bearer {{ accessToken }}" }
+    auth: {}
+    metaSortKey: -1699999999989.0
+    isPrivate: false
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingCookies: []
+    settingTimeout: ""
+
+  - _id: req_workspaces_create
+    parentId: wrk_ressonant_api
+    type: request
+    name: Create Workspace
+    description: |
+      Cria workspace. O owner é o usuário autenticado (extraído do JWT — nunca enviado no body).
+    url: "{{ baseUrl }}/workspaces"
+    method: POST
+    body:
+      mimeType: application/json
+      text: |
+        {
+          "name": "Plataforma",
+          "slug": "plataforma",
+          "description": "Time de plataforma"
+        }
+    parameters: []
+    headers:
+      - { name: "Content-Type", value: "application/json" }
+      - { name: "Authorization", value: "Bearer {{ accessToken }}" }
+    auth: {}
+    metaSortKey: -1699999999988.0
+    isPrivate: false
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingCookies: []
+    settingTimeout: ""
+
+  - _id: req_workspaces_list
+    parentId: wrk_ressonant_api
+    type: request
+    name: List Workspaces
+    description: "Lista workspaces do usuário autenticado (dono ou membro)."
+    url: "{{ baseUrl }}/workspaces"
+    method: GET
+    body: {}
+    parameters:
+      - { name: "skip", value: "{{ skip }}" }
+      - { name: "limit", value: "{{ limit }}" }
+      - { name: "status_ativo", value: "{{ status_ativo }}" }
+    headers:
+      - { name: "Authorization", value: "Bearer {{ accessToken }}" }
+    auth: {}
+    metaSortKey: -1699999999987.0
+    isPrivate: false
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingCookies: []
+    settingTimeout: ""
+
+  - _id: req_workspaces_get
+    parentId: wrk_ressonant_api
+    type: request
+    name: Get Workspace
+    description: "Busca workspace por id. Apenas se o usuário é membro."
+    url: "{{ baseUrl }}/workspaces/{{ workspaceId }}"
+    method: GET
+    body: {}
+    parameters: []
+    headers:
+      - { name: "Authorization", value: "Bearer {{ accessToken }}" }
+    auth: {}
+    metaSortKey: -1699999999986.0
+    isPrivate: false
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingCookies: []
+    settingTimeout: ""
+
+  - _id: req_workspaces_update
+    parentId: wrk_ressonant_api
+    type: request
+    name: Update Workspace
+    description: |
+      Atualiza workspace. Apenas owner ou admin do workspace. owner_id e slug não podem ser alterados.
+    url: "{{ baseUrl }}/workspaces/{{ workspaceId }}"
+    method: PUT
+    body:
+      mimeType: application/json
+      text: |
+        {
+          "name": "Plataforma Atualizada",
+          "description": "Time de plataforma - atualizado"
+        }
+    parameters: []
+    headers:
+      - { name: "Content-Type", value: "application/json" }
+      - { name: "Authorization", value: "Bearer {{ accessToken }}" }
+    auth: {}
+    metaSortKey: -1699999999985.0
+    isPrivate: false
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingCookies: []
+    settingTimeout: ""
+
+  - _id: req_workspaces_status
+    parentId: wrk_ressonant_api
+    type: request
+    name: Set Workspace Status
+    description: "Ativa ou desativa workspace. Apenas o owner."
+    url: "{{ baseUrl }}/workspaces/{{ workspaceId }}/status"
+    method: PATCH
+    body:
+      mimeType: application/json
+      text: |
+        {
+          "status_ativo": false
+        }
+    parameters: []
+    headers:
+      - { name: "Content-Type", value: "application/json" }
+      - { name: "Authorization", value: "Bearer {{ accessToken }}" }
+    auth: {}
+    metaSortKey: -1699999999984.0
+    isPrivate: false
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingCookies: []
+    settingTimeout: ""
+
+  - _id: req_workspaces_members
+    parentId: wrk_ressonant_api
+    type: request
+    name: Add Workspace Member
+    description: |
+      Adiciona membro ao workspace. Apenas owner ou admin do workspace.
+      role: admin | member | viewer
+    url: "{{ baseUrl }}/workspaces/{{ workspaceId }}/members"
+    method: POST
+    body:
+      mimeType: application/json
+      text: |
+        {
+          "user_id": "{{ memberUserId }}",
+          "role": "member"
+        }
+    parameters: []
+    headers:
+      - { name: "Content-Type", value: "application/json" }
+      - { name: "Authorization", value: "Bearer {{ accessToken }}" }
+    auth: {}
+    metaSortKey: -1699999999983.0
+    isPrivate: false
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingCookies: []
+    settingTimeout: ""

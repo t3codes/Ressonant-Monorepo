@@ -13,6 +13,36 @@ from sqlalchemy.orm import Session
 from app.config.settings import get_settings
 from app.database.engine import get_db
 from app.modules.auth.entrypoints import routes as auth_routes
+from app.modules.chat.domain.models import (  # noqa: F401  (registra as tabelas no metadata)
+    Channel,
+    Conversation,
+    Message,
+)
+from app.modules.chat.entrypoints import conversation_router, message_router
+from app.modules.chat.entrypoints import routes as chat_routes
+from app.modules.kanban_boards.domain.models import (  # noqa: F401  (registra as tabelas no metadata)
+    Board,
+    BoardColumn,
+)
+from app.modules.kanban_boards.entrypoints import routes as kanban_boards_routes
+from app.modules.kanban_cards.domain.models import (
+    Card,  # noqa: F401  (registra as tabelas no metadata)
+)
+from app.modules.kanban_cards.entrypoints import routes as kanban_cards_routes
+from app.modules.mail.domain.models import Email  # noqa: F401  (registra as tabelas no metadata)
+from app.modules.mail.entrypoints import routes as mail_routes  # noqa: F401
+from app.modules.notifications.domain.models import (
+    AppNotification,  # noqa: F401  (registra as tabelas no metadata)
+)
+from app.modules.notifications.entrypoints import routes as notifications_routes  # noqa: F401
+from app.modules.reactions.domain.models import (
+    MessageReaction,  # noqa: F401  (registra as tabelas no metadata)
+)
+from app.modules.reactions.entrypoints import routes as reactions_routes  # noqa: F401
+from app.modules.readstates.domain.models import (
+    ReadState,  # noqa: F401  (registra as tabelas no metadata)
+)
+from app.modules.readstates.entrypoints import routes as readstates_routes  # noqa: F401
 from app.modules.teams.domain.models import Team  # noqa: F401  (registra as tabelas no metadata)
 from app.modules.teams.entrypoints import routes as teams_routes
 from app.modules.user.domain.models import User  # noqa: F401  (registra as tabelas no metadata)
@@ -54,6 +84,15 @@ def create_app() -> FastAPI:
     app.include_router(user_routes.router)
     app.include_router(workspace_routes.router)
     app.include_router(teams_routes.router)
+    app.include_router(kanban_boards_routes.router)
+    app.include_router(kanban_cards_routes.router)
+    app.include_router(chat_routes.router)
+    app.include_router(conversation_router)
+    app.include_router(message_router)
+    app.include_router(reactions_routes.router)
+    app.include_router(readstates_routes.router)
+    app.include_router(notifications_routes.router)
+    app.include_router(mail_routes.router)
 
     @app.get("/health", response_model=HealthResponse, tags=["health"])
     def health() -> HealthResponse:
