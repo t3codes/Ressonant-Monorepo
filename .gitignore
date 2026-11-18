@@ -60,3 +60,4 @@ Thumbs.db
 # --- Local PDF downloads (make storage/get) -------------------------------
 tmp_pdfs/
 .aider*
+apps/ressonant_backend/app/uploads/
