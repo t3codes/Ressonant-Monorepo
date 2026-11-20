@@ -256,3 +256,55 @@ values:
     value: ''
     enabled: true
     type: secret
+  - key: conversationId
+    value: ''
+    enabled: true
+    type: default
+  - key: notificationId
+    value: ''
+    enabled: true
+    type: default
+  - key: clonedCardId
+    value: ''
+    enabled: true
+    type: default
+  - key: managedUserId
+    value: ''
+    enabled: true
+    type: default
+  - key: managedEmail
+    value: ''
+    enabled: true
+    type: default
+  - key: managedCpf
+    value: ''
+    enabled: true
+    type: default
+  - key: managedTelefone
+    value: ''
+    enabled: true
+    type: default
+  - key: memberIds
+    value: '[]'
+    enabled: true
+    type: default
+  - key: collectionRunId
+    value: ''
+    enabled: true
+    type: default
+  - key: autoRegisterTestUser
+    value: 'false'
+    enabled: true
+    type: default
+  - key: skipRegister
+    value: 'true'
+    enabled: true
+    type: default
+  - key: runAdminOperations
+    value: 'false'
+    enabled: true
+    type: default
+  - key: allowDestructive
+    value: 'false'
+    enabled: true
+    type: default

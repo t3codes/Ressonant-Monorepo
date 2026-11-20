@@ -6,8 +6,10 @@ requires-python = "==3.13.*"
 dependencies = [
     "alembic>=1.14",
     "argon2-cffi>=23.1",
+    "common-datadog",
     "common-errors",
     "common-logs",
+    "common-s3",
     "common-telemetry",
     "email-validator>=2.2",
     "fastapi>=0.136.1",
@@ -29,8 +31,10 @@ ressonant_backend = "app.main:main"
 package = false
 
 [tool.uv.sources]
+common-datadog = { workspace = true }
 common-errors = { workspace = true }
 common-logs = { workspace = true }
+common-s3 = { workspace = true }
 common-telemetry = { workspace = true }
 
 [tool.ruff]
@@ -38,7 +42,7 @@ extend = "../../pyproject.toml"
 src = ["app", "tests"]
 
 [tool.pytest.ini_options]
-addopts = "-q --import-mode=importlib"
+addopts = "-q --import-mode=importlib -p no:ddtrace -p no:ddtrace.pytest_bdd -p no:ddtrace.pytest_benchmark"
 pythonpath = ["."]
 asyncio_mode = "strict"
 

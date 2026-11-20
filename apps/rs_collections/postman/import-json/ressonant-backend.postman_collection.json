@@ -1,7 +1,8 @@
 {
   "info": {
     "name": "Ressonant API Backend",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Collection Postman v2.1, sincronizada com apps/ressonant_backend/openapi.json. Inclui as 63 operações HTTP, testes de status/JSON, captura de IDs, requests de conversas e logout. Use os ambientes da pasta postman/environments; consulte postman/README.md. DELETE e upload sem filePath são ignorados por segurança."
   },
   "auth": {
     "type": "bearer",
@@ -17,6 +18,94 @@
     {
       "name": "Auth",
       "item": [
+        {
+          "name": "Auth - Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"senha\": \"{{senha}}\",\n  \"cpf\": \"{{cpf}}\",\n  \"idade\": {{idade}},\n  \"termos_contrato\": true,\n  \"telefone\": \"{{telefone}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;",
+                  "pm.environment.set('collectionRunId', runId);",
+                  "const generated = { name: `Postman ${runId}`, slug: `postman-${runId.replace(/[^a-zA-Z0-9]/g, '')}`, title: `Postman test ${runId}`, description: 'Registro de teste criado pela collection Postman.', body: `Mensagem de teste ${runId}`, subject: `Email de teste ${runId}`, topic: 'Tópico de teste Postman' };",
+                  "Object.keys(generated).forEach((key) => pm.environment.set(key, generated[key]));",
+                  "['userId','workspaceId','teamId','boardId','columnId','cardId','clonedCardId','channelId','roomId','messageId','emailId','notificationId','conversationId','managedUserId','accessToken'].forEach((key) => pm.environment.unset(key));",
+                  "if (pm.environment.get('skipRegister') === 'true' && pm.environment.get('autoRegisterTestUser') !== 'true') {",
+                  "  pm.execution.skipRequest();",
+                  "} else if (pm.environment.get('autoRegisterTestUser') === 'true') {",
+                  "  const digits = Array.from({length: 9}, () => Math.floor(Math.random() * 10));",
+                  "  const digit = (n) => { const sum = n.reduce((acc, value, index) => acc + value * (n.length + 1 - index), 0); const mod = sum % 11; return mod < 2 ? 0 : 11 - mod; };",
+                  "  digits.push(digit(digits)); digits.push(digit(digits));",
+                  "  const cpf = digits.join('');",
+                  "  pm.environment.set('email', `postman-${runId.replace(/[^a-zA-Z0-9]/g, '')}@example.com`);",
+                  "  pm.environment.set('cpf', cpf);",
+                  "  pm.environment.set('telefone', `1199${String(Date.now()).slice(-7)}`);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201 conforme OpenAPI — Auth - Register', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});",
+                  "if (responseBody && typeof responseBody === 'object' && responseBody.id) {",
+                  "  pm.environment.set('userId', String(responseBody.id));",
+                  "}",
+                  "pm.test('ID capturado em userId', function () {",
+                  "  pm.expect(responseBody && responseBody.id).to.be.ok;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
         {
           "name": "Auth - Login",
           "request": {
@@ -57,10 +146,25 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('login ok', () => pm.response.to.have.status(200));",
-                  "if (pm.response.code === 200) {",
-                  "  pm.environment.set('accessToken', pm.response.json().access_token);",
-                  "}"
+                  "pm.test('HTTP 200 conforme OpenAPI — Auth - Login', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});",
+                  "if (responseBody && responseBody.access_token) {",
+                  "  pm.environment.set('accessToken', responseBody.access_token);",
+                  "}",
+                  "pm.test('access token capturado', function () {",
+                  "  pm.expect(responseBody && responseBody.access_token).to.be.a('string').and.not.empty;",
+                  "});"
                 ]
               }
             }
@@ -82,517 +186,41 @@
               ]
             }
           },
-          "response": []
-        },
-        {
-          "name": "Auth - Register",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/auth/register",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "register"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{email}}\",\n  \"senha\": \"{{senha}}\",\n  \"cpf\": \"{{cpf}}\",\n  \"idade\": {{idade}},\n  \"termos_contrato\": true,\n  \"telefone\": \"{{telefone}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "auth": {
-              "type": "noauth"
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Boards",
-      "item": [
-        {
-          "name": "Boards - Create Column",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/boards/{{boardId}}/columns",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "boards",
-                "{{boardId}}",
-                "columns"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"{{name}}\",\n  \"slug\": \"{{slug}}\",\n  \"position\": {{position}},\n  \"wip_limit\": {{wip_limit}}\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Auth - Me', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});",
+                  "if (responseBody && typeof responseBody === 'object' && responseBody.id) {",
+                  "  pm.environment.set('userId', String(responseBody.id));",
+                  "}",
+                  "pm.test('ID capturado em userId', function () {",
+                  "  pm.expect(responseBody && responseBody.id).to.be.ok;",
+                  "});",
+                  "if (responseBody && responseBody.id) {",
+                  "  pm.environment.set('authorId', String(responseBody.id));",
+                  "  pm.environment.set('senderId', String(responseBody.id));",
+                  "  pm.environment.set('createdBy', String(responseBody.id));",
+                  "}"
+                ]
               }
             }
-          },
-          "response": []
-        },
-        {
-          "name": "Boards - List Columns",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/boards/{{boardId}}/columns",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "boards",
-                "{{boardId}}",
-                "columns"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Boards - Create",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/boards",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "boards"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"{{name}}\",\n  \"slug\": \"{{slug}}\",\n  \"workspace_id\": \"{{workspaceId}}\",\n  \"team_id\": \"{{teamId}}\",\n  \"description\": \"{{description}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Boards - Get",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/boards/{{boardId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "boards",
-                "{{boardId}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Boards - List",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/boards?workspace_id={{workspaceId}}&skip={{skip}}&limit={{limit}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "boards"
-              ],
-              "query": [
-                {
-                  "key": "workspace_id",
-                  "value": "{{workspaceId}}"
-                },
-                {
-                  "key": "skip",
-                  "value": "{{skip}}"
-                },
-                {
-                  "key": "limit",
-                  "value": "{{limit}}"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Boards - Set Status",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/boards/{{boardId}}/status",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "boards",
-                "{{boardId}}",
-                "status"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"status_ativo\": {{status_ativo}}\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Boards - Update",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/boards/{{boardId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "boards",
-                "{{boardId}}"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"{{name}}\",\n  \"description\": \"{{description}}\",\n  \"status_ativo\": {{status_ativo}}\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Cards",
-      "item": [
-        {
-          "name": "Cards - Clone",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/cards/{{cardId}}/clone",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "cards",
-                "{{cardId}}",
-                "clone"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Cards - Create",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/cards",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "cards"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"board_id\": \"{{boardId}}\",\n  \"team_id\": \"{{teamId}}\",\n  \"title\": \"{{title}}\",\n  \"description\": \"{{description}}\",\n  \"type\": \"{{type}}\",\n  \"priority\": \"{{priority}}\",\n  \"assignee_id\": \"{{assigneeId}}\",\n  \"reporter_id\": \"{{reporterId}}\",\n  \"due_date\": \"{{due_date}}\",\n  \"start_date\": \"{{start_date}}\",\n  \"objective\": \"{{objective}}\",\n  \"points\": {{points}},\n  \"fix_version\": \"{{fix_version}}\",\n  \"budget_project\": \"{{budget_project}}\",\n  \"parent_id\": \"{{parent_id}}\",\n  \"column_id\": \"{{column_id}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Cards - Get",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/cards/{{cardId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "cards",
-                "{{cardId}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Cards - List",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/cards?board_id={{boardId}}&skip={{skip}}&limit={{limit}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "cards"
-              ],
-              "query": [
-                {
-                  "key": "board_id",
-                  "value": "{{boardId}}"
-                },
-                {
-                  "key": "skip",
-                  "value": "{{skip}}"
-                },
-                {
-                  "key": "limit",
-                  "value": "{{limit}}"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Cards - Move",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/cards/{{cardId}}/move",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "cards",
-                "{{cardId}}",
-                "move"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"column_id\": \"{{columnId}}\",\n  \"expected_version\": {{expected_version}}\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Cards - Update",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/cards/{{cardId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "cards",
-                "{{cardId}}"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"{{title}}\",\n  \"description\": \"{{description}}\",\n  \"type\": \"{{type}}\",\n  \"priority\": \"{{priority}}\",\n  \"assignee_id\": \"{{assigneeId}}\",\n  \"due_date\": \"{{due_date}}\",\n  \"expected_version\": {{expected_version}}\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Channels",
-      "item": [
-        {
-          "name": "Channels - Create",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/channels",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "channels"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"{{name}}\",\n  \"workspace_id\": \"{{workspaceId}}\",\n  \"topic\": \"{{topic}}\",\n  \"visibility\": \"{{visibility}}\",\n  \"created_by\": \"{{createdBy}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Channels - Get",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/channels/{{channelId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "channels",
-                "{{channelId}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Channels - List",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/channels?workspace_id={{workspaceId}}&skip={{skip}}&limit={{limit}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "channels"
-              ],
-              "query": [
-                {
-                  "key": "workspace_id",
-                  "value": "{{workspaceId}}"
-                },
-                {
-                  "key": "skip",
-                  "value": "{{skip}}"
-                },
-                {
-                  "key": "limit",
-                  "value": "{{limit}}"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Channels - Add Member",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/channels/{{channelId}}/members",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "channels",
-                "{{channelId}}",
-                "members"
-              ]
-            }
-          },
-          "response": []
+          ]
         }
       ]
     },
@@ -617,7 +245,30 @@
               "type": "noauth"
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Health - Liveness', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Health - Readiness",
@@ -638,864 +289,30 @@
               "type": "noauth"
             }
           },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Mail",
-      "item": [
-        {
-          "name": "Mail - Create",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/mail",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "mail"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"senderId\": \"{{senderId}}\",\n  \"recipientIds\": {{recipientIds}},\n  \"ccIds\": {{ccIds}},\n  \"bccIds\": {{bccIds}},\n  \"subject\": \"{{subject}}\",\n  \"body\": \"{{body}}\",\n  \"threadId\": \"{{threadId}}\",\n  \"isReply\": {{isReply}},\n  \"forwarded\": {{forwarded}},\n  \"attachments\": {{attachments}}\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Health - Readiness', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
               }
             }
-          },
-          "response": []
-        },
-        {
-          "name": "Mail - Get",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/mail/{{emailId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "mail",
-                "{{emailId}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Mail - List",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/mail?skip={{skip}}&limit={{limit}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "mail"
-              ],
-              "query": [
-                {
-                  "key": "skip",
-                  "value": "{{skip}}"
-                },
-                {
-                  "key": "limit",
-                  "value": "{{limit}}"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Mail - Mark Read",
-          "request": {
-            "method": "PATCH",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/mail/{{emailId}}/read",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "mail",
-                "{{emailId}}",
-                "read"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Mail - Update For User",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/mail/{{emailId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "mail",
-                "{{emailId}}"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"trashed\": {{trashed}},\n  \"starred\": {{starred}},\n  \"remindAt\": \"{{remindAt}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Messages",
-      "item": [
-        {
-          "name": "Messages - Create",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/messages",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "messages"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"workspace_id\": \"{{workspaceId}}\",\n  \"room_id\": \"{{roomId}}\",\n  \"room_kind\": \"{{roomKind}}\",\n  \"author_id\": \"{{authorId}}\",\n  \"body\": \"{{body}}\",\n  \"parent_id\": \"{{parentId}}\",\n  \"attachments\": {{attachments}},\n  \"mention_ids\": {{mentionIds}}\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Messages - Delete",
-          "request": {
-            "method": "DELETE",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/messages/{{messageId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "messages",
-                "{{messageId}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Messages - Get",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/messages/{{messageId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "messages",
-                "{{messageId}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Messages - List",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/messages?room_id={{roomId}}&skip={{skip}}&limit={{limit}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "messages"
-              ],
-              "query": [
-                {
-                  "key": "room_id",
-                  "value": "{{roomId}}"
-                },
-                {
-                  "key": "skip",
-                  "value": "{{skip}}"
-                },
-                {
-                  "key": "limit",
-                  "value": "{{limit}}"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Messages - Update",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/messages/{{messageId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "messages",
-                "{{messageId}}"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"body\": \"{{body}}\",\n  \"mention_ids\": {{mentionIds}}\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Notifications",
-      "item": [
-        {
-          "name": "Notifications - Create",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/notifications",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "notifications"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"user_id\": \"{{userId}}\",\n  \"kind\": \"{{kind}}\",\n  \"title\": \"{{title}}\",\n  \"body\": \"{{body}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Notifications - List",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/notifications?skip={{skip}}&limit={{limit}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "notifications"
-              ],
-              "query": [
-                {
-                  "key": "skip",
-                  "value": "{{skip}}"
-                },
-                {
-                  "key": "limit",
-                  "value": "{{limit}}"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Notifications - Mark All Read",
-          "request": {
-            "method": "PATCH",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/notifications/mark-all-read",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "notifications",
-                "mark-all-read"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Notifications - Mark Read",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/notifications/mark-read",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "notifications",
-                "mark-read"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{{ids}}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Reactions",
-      "item": [
-        {
-          "name": "Reactions - List",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/messages/{{messageId}}/reactions",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "messages",
-                "{{messageId}}",
-                "reactions"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Reactions - Toggle",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/messages/{{messageId}}/reactions",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "messages",
-                "{{messageId}}",
-                "reactions"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"message_id\": \"{{messageId}}\",\n  \"user_id\": \"{{userId}}\",\n  \"emoji\": \"{{emoji}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "ReadStates",
-      "item": [
-        {
-          "name": "Read-states - List",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/read-states",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "read-states"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Read-states - Mark Read",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/read-states/{{roomId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "read-states",
-                "{{roomId}}"
-              ]
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Teams",
-      "item": [
-        {
-          "name": "Teams - Create",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/teams",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "teams"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"{{name}}\",\n  \"slug\": \"{{slug}}\",\n  \"workspace_id\": \"{{workspaceId}}\",\n  \"description\": \"{{description}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Teams - Get",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/teams/{{teamId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "teams",
-                "{{teamId}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Teams - List",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/teams?workspace_id={{workspaceId}}&skip={{skip}}&limit={{limit}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "teams"
-              ],
-              "query": [
-                {
-                  "key": "workspace_id",
-                  "value": "{{workspaceId}}"
-                },
-                {
-                  "key": "skip",
-                  "value": "{{skip}}"
-                },
-                {
-                  "key": "limit",
-                  "value": "{{limit}}"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Teams - Add Member",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/teams/{{teamId}}/members",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "teams",
-                "{{teamId}}",
-                "members"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"user_id\": \"{{userId}}\",\n  \"role\": \"{{role}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Teams - Set Status",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/teams/{{teamId}}/status",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "teams",
-                "{{teamId}}",
-                "status"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"status_ativo\": {{status_ativo}}\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Teams - Update",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/teams/{{teamId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "teams",
-                "{{teamId}}"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"{{name}}\",\n  \"description\": \"{{description}}\",\n  \"status_ativo\": {{status_ativo}}\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Upload",
-      "item": [
-        {
-          "name": "Upload - Image",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/upload/image",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "upload",
-                "image"
-              ]
-            },
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "file",
-                  "type": "file",
-                  "src": []
-                }
-              ]
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Users",
-      "item": [
-        {
-          "name": "Users - Create",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/users",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{email}}\",\n  \"senha\": \"{{senha}}\",\n  \"cpf\": \"{{cpf}}\",\n  \"telefone\": \"{{telefone}}\",\n  \"idade\": {{idade}},\n  \"termos_contrato\": true,\n  \"status_ativo\": true,\n  \"interno_adm\": false\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Users - Delete",
-          "request": {
-            "method": "DELETE",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/users/{{userId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users",
-                "{{userId}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Users - Get",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/users/{{userId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users",
-                "{{userId}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Users - List",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/users?skip={{skip}}&limit={{limit}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users"
-              ],
-              "query": [
-                {
-                  "key": "skip",
-                  "value": "{{skip}}"
-                },
-                {
-                  "key": "limit",
-                  "value": "{{limit}}"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Users - Set Status",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/users/{{userId}}/status",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users",
-                "{{userId}}",
-                "status"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"status_ativo\": {{status_ativo}}\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Users - Update",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/users/{{userId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users",
-                "{{userId}}"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{email}}\",\n  \"telefone\": \"{{telefone}}\",\n  \"idade\": {{idade}},\n  \"termos_contrato\": true\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
+          ]
         }
       ]
     },
@@ -1531,7 +348,36 @@
               }
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201 conforme OpenAPI — Workspaces - Create', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});",
+                  "if (responseBody && typeof responseBody === 'object' && responseBody.id) {",
+                  "  pm.environment.set('workspaceId', String(responseBody.id));",
+                  "}",
+                  "pm.test('ID capturado em workspaceId', function () {",
+                  "  pm.expect(responseBody && responseBody.id).to.be.ok;",
+                  "});"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Workspaces - Get",
@@ -1549,7 +395,30 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Workspaces - Get', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Workspaces - List",
@@ -1576,7 +445,30 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Workspaces - List', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Workspaces - Add Member",
@@ -1609,7 +501,85 @@
               }
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201 conforme OpenAPI — Workspaces - Add Member', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Workspaces - Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workspaces/{{workspaceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workspaces",
+                "{{workspaceId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{name}}\",\n  \"description\": \"{{description}}\",\n  \"status_ativo\": {{status_ativo}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Workspaces - Update', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Workspaces - Set Status",
@@ -1642,10 +612,249 @@
               }
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Workspaces - Set Status', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Teams",
+      "item": [
+        {
+          "name": "Teams - Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/teams",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "teams"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{name}}\",\n  \"slug\": \"{{slug}}\",\n  \"workspace_id\": \"{{workspaceId}}\",\n  \"description\": \"{{description}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201 conforme OpenAPI — Teams - Create', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});",
+                  "if (responseBody && typeof responseBody === 'object' && responseBody.id) {",
+                  "  pm.environment.set('teamId', String(responseBody.id));",
+                  "}",
+                  "pm.test('ID capturado em teamId', function () {",
+                  "  pm.expect(responseBody && responseBody.id).to.be.ok;",
+                  "});"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Workspaces - Update",
+          "name": "Teams - Get",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/teams/{{teamId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "teams",
+                "{{teamId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Teams - Get', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Teams - List",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/teams?workspace_id={{workspaceId}}&skip={{skip}}&limit={{limit}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "teams"
+              ],
+              "query": [
+                {
+                  "key": "workspace_id",
+                  "value": "{{workspaceId}}"
+                },
+                {
+                  "key": "skip",
+                  "value": "{{skip}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "{{limit}}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Teams - List', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Teams - Add Member",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/teams/{{teamId}}/members",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "teams",
+                "{{teamId}}",
+                "members"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{userId}}\",\n  \"role\": \"{{role}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201 conforme OpenAPI — Teams - Add Member', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Teams - Update",
           "request": {
             "method": "PUT",
             "header": [
@@ -1655,13 +864,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/workspaces/{{workspaceId}}",
+              "raw": "{{baseUrl}}/teams/{{teamId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "workspaces",
-                "{{workspaceId}}"
+                "teams",
+                "{{teamId}}"
               ]
             },
             "body": {
@@ -1674,9 +883,2613 @@
               }
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Teams - Update', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Teams - Set Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/teams/{{teamId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "teams",
+                "{{teamId}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status_ativo\": {{status_ativo}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Teams - Set Status', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
         }
       ]
+    },
+    {
+      "name": "Boards",
+      "item": [
+        {
+          "name": "Boards - Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/boards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "boards"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{name}}\",\n  \"slug\": \"{{slug}}\",\n  \"workspace_id\": \"{{workspaceId}}\",\n  \"team_id\": \"{{teamId}}\",\n  \"description\": \"{{description}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201 conforme OpenAPI — Boards - Create', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});",
+                  "if (responseBody && typeof responseBody === 'object' && responseBody.id) {",
+                  "  pm.environment.set('boardId', String(responseBody.id));",
+                  "}",
+                  "pm.test('ID capturado em boardId', function () {",
+                  "  pm.expect(responseBody && responseBody.id).to.be.ok;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Boards - Get",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/boards/{{boardId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "boards",
+                "{{boardId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Boards - Get', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Boards - List",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/boards?workspace_id={{workspaceId}}&skip={{skip}}&limit={{limit}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "boards"
+              ],
+              "query": [
+                {
+                  "key": "workspace_id",
+                  "value": "{{workspaceId}}"
+                },
+                {
+                  "key": "skip",
+                  "value": "{{skip}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "{{limit}}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Boards - List', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Boards - Create Column",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/boards/{{boardId}}/columns",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "boards",
+                "{{boardId}}",
+                "columns"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{name}}\",\n  \"slug\": \"{{slug}}\",\n  \"position\": {{position}},\n  \"wip_limit\": {{wip_limit}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201 conforme OpenAPI — Boards - Create Column', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});",
+                  "if (responseBody && typeof responseBody === 'object' && responseBody.id) {",
+                  "  pm.environment.set('columnId', String(responseBody.id));",
+                  "}",
+                  "pm.test('ID capturado em columnId', function () {",
+                  "  pm.expect(responseBody && responseBody.id).to.be.ok;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Boards - List Columns",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/boards/{{boardId}}/columns",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "boards",
+                "{{boardId}}",
+                "columns"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Boards - List Columns', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Boards - Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/boards/{{boardId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "boards",
+                "{{boardId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{name}}\",\n  \"description\": \"{{description}}\",\n  \"status_ativo\": {{status_ativo}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Boards - Update', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Boards - Set Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/boards/{{boardId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "boards",
+                "{{boardId}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status_ativo\": {{status_ativo}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Boards - Set Status', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Channels",
+      "item": [
+        {
+          "name": "Channels - Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/channels",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "channels"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{name}}\",\n  \"workspace_id\": \"{{workspaceId}}\",\n  \"topic\": \"{{topic}}\",\n  \"visibility\": \"{{visibility}}\",\n  \"member_ids\": {{memberIds}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201 conforme OpenAPI — Channels - Create', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});",
+                  "if (responseBody && typeof responseBody === 'object' && responseBody.id) {",
+                  "  pm.environment.set('channelId', String(responseBody.id));",
+                  "  pm.environment.set('roomId', String(responseBody.id));",
+                  "}",
+                  "pm.test('ID capturado em channelId', function () {",
+                  "  pm.expect(responseBody && responseBody.id).to.be.ok;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Channels - Get",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/channels/{{channelId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "channels",
+                "{{channelId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Channels - Get', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Channels - List",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/channels?workspace_id={{workspaceId}}&skip={{skip}}&limit={{limit}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "channels"
+              ],
+              "query": [
+                {
+                  "key": "workspace_id",
+                  "value": "{{workspaceId}}"
+                },
+                {
+                  "key": "skip",
+                  "value": "{{skip}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "{{limit}}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Channels - List', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Channels - Add Member",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/channels/{{channelId}}/members?user_id={{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "channels",
+                "{{channelId}}",
+                "members"
+              ],
+              "query": [
+                {
+                  "key": "user_id",
+                  "value": "{{userId}}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Channels - Add Member', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Conversations",
+      "item": [
+        {
+          "name": "Conversations - Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conversations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"workspace_id\": \"{{workspaceId}}\",\n  \"member_ids\": {{memberIds}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Cria uma conversa para o workspace atual; o teste salva conversationId automaticamente."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201 conforme OpenAPI — Conversations - Create', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});",
+                  "if (responseBody && typeof responseBody === 'object' && responseBody.id) {",
+                  "  pm.environment.set('conversationId', String(responseBody.id));",
+                  "}",
+                  "pm.test('ID capturado em conversationId', function () {",
+                  "  pm.expect(responseBody && responseBody.id).to.be.ok;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Conversations - List",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/conversations?workspace_id={{workspaceId}}&skip={{skip}}&limit={{limit}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations"
+              ],
+              "query": [
+                {
+                  "key": "workspace_id",
+                  "value": "{{workspaceId}}"
+                },
+                {
+                  "key": "skip",
+                  "value": "{{skip}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "{{limit}}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Conversations - List', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Conversations - Get",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/conversations/{{conversationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations",
+                "{{conversationId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Conversations - Get', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Messages",
+      "item": [
+        {
+          "name": "Messages - Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "messages"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"workspace_id\": \"{{workspaceId}}\",\n  \"room_id\": \"{{roomId}}\",\n  \"room_kind\": \"{{roomKind}}\",\n  \"author_id\": \"{{authorId}}\",\n  \"body\": \"{{body}}\",\n  \"parent_id\": null,\n  \"attachments\": {{attachments}},\n  \"mention_ids\": {{mentionIds}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201 conforme OpenAPI — Messages - Create', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});",
+                  "if (responseBody && typeof responseBody === 'object' && responseBody.id) {",
+                  "  pm.environment.set('messageId', String(responseBody.id));",
+                  "}",
+                  "pm.test('ID capturado em messageId', function () {",
+                  "  pm.expect(responseBody && responseBody.id).to.be.ok;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Messages - Get",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/messages/{{messageId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "messages",
+                "{{messageId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Messages - Get', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Messages - List",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/messages?room_id={{roomId}}&skip={{skip}}&limit={{limit}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "messages"
+              ],
+              "query": [
+                {
+                  "key": "room_id",
+                  "value": "{{roomId}}"
+                },
+                {
+                  "key": "skip",
+                  "value": "{{skip}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "{{limit}}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Messages - List', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Messages - Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/messages/{{messageId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "messages",
+                "{{messageId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"{{body}}\",\n  \"mention_ids\": {{mentionIds}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Messages - Update', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Cards",
+      "item": [
+        {
+          "name": "Cards - Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cards"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"board_id\": \"{{boardId}}\",\n  \"team_id\": \"{{teamId}}\",\n  \"title\": \"{{title}}\",\n  \"description\": null,\n  \"type\": \"tarefa\",\n  \"priority\": \"media\",\n  \"assignee_id\": null,\n  \"reporter_id\": null,\n  \"due_date\": null,\n  \"start_date\": null,\n  \"objective\": null,\n  \"points\": 1,\n  \"fix_version\": null,\n  \"budget_project\": null,\n  \"parent_id\": null,\n  \"column_id\": \"{{columnId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201 conforme OpenAPI — Cards - Create', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});",
+                  "if (responseBody && typeof responseBody === 'object' && responseBody.id) {",
+                  "  pm.environment.set('cardId', String(responseBody.id));",
+                  "}",
+                  "if (responseBody && responseBody.version !== undefined) {",
+                  "  pm.environment.set('expected_version', String(responseBody.version));",
+                  "}",
+                  "pm.test('ID capturado em cardId', function () {",
+                  "  pm.expect(responseBody && responseBody.id).to.be.ok;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cards - Get",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cards/{{cardId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cards",
+                "{{cardId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Cards - Get', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cards - List",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cards?board_id={{boardId}}&skip={{skip}}&limit={{limit}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cards"
+              ],
+              "query": [
+                {
+                  "key": "board_id",
+                  "value": "{{boardId}}"
+                },
+                {
+                  "key": "skip",
+                  "value": "{{skip}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "{{limit}}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Cards - List', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cards - Move",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cards/{{cardId}}/move",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cards",
+                "{{cardId}}",
+                "move"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"column_id\": \"{{columnId}}\",\n  \"expected_version\": {{expected_version}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Cards - Move', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cards - Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cards/{{cardId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cards",
+                "{{cardId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{title}}\",\n  \"description\": null,\n  \"type\": \"tarefa\",\n  \"priority\": \"media\",\n  \"assignee_id\": null,\n  \"due_date\": null,\n  \"expected_version\": {{expected_version}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Cards - Update', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cards - Clone",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cards/{{cardId}}/clone",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cards",
+                "{{cardId}}",
+                "clone"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201 conforme OpenAPI — Cards - Clone', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});",
+                  "if (responseBody && typeof responseBody === 'object' && responseBody.id) {",
+                  "  pm.environment.set('clonedCardId', String(responseBody.id));",
+                  "}",
+                  "if (responseBody && responseBody.version !== undefined) {",
+                  "  pm.environment.set('expected_version', String(responseBody.version));",
+                  "}",
+                  "pm.test('ID capturado em clonedCardId', function () {",
+                  "  pm.expect(responseBody && responseBody.id).to.be.ok;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Mail",
+      "item": [
+        {
+          "name": "Mail - Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mail",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mail"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"workspace_id\": \"{{workspaceId}}\",\n  \"sender_id\": \"{{senderId}}\",\n  \"recipient_ids\": {{recipientIds}},\n  \"cc_ids\": {{ccIds}},\n  \"bcc_ids\": {{bccIds}},\n  \"subject\": \"{{subject}}\",\n  \"body\": \"{{body}}\",\n  \"thread_id\": null,\n  \"is_reply\": false,\n  \"forwarded\": false,\n  \"attachments\": {{attachments}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('senderId')) pm.environment.set('senderId', pm.environment.get('userId') || '');",
+                  "let recipients = [];",
+                  "try { recipients = JSON.parse(pm.environment.get('recipientIds') || '[]'); } catch (e) { recipients = []; }",
+                  "if (!recipients.length && pm.environment.get('userId')) {",
+                  "  recipients = [pm.environment.get('userId')];",
+                  "  pm.environment.set('recipientIds', JSON.stringify(recipients));",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201 conforme OpenAPI — Mail - Create', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});",
+                  "if (responseBody && typeof responseBody === 'object' && responseBody.id) {",
+                  "  pm.environment.set('emailId', String(responseBody.id));",
+                  "}",
+                  "pm.test('ID capturado em emailId', function () {",
+                  "  pm.expect(responseBody && responseBody.id).to.be.ok;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mail - Get",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/mail/{{emailId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mail",
+                "{{emailId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Mail - Get', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mail - List",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/mail?skip={{skip}}&limit={{limit}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mail"
+              ],
+              "query": [
+                {
+                  "key": "skip",
+                  "value": "{{skip}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "{{limit}}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Mail - List', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mail - Mark Read",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/mail/{{emailId}}/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mail",
+                "{{emailId}}",
+                "read"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Mail - Mark Read', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mail - Update For User",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mail/{{emailId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mail",
+                "{{emailId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"trashed\": {{trashed}},\n  \"starred\": {{starred}},\n  \"remindAt\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Mail - Update For User', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "Notifications - Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{userId}}\",\n  \"kind\": \"{{kind}}\",\n  \"title\": \"{{title}}\",\n  \"body\": \"{{body}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201 conforme OpenAPI — Notifications - Create', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});",
+                  "if (responseBody && typeof responseBody === 'object' && responseBody.id) {",
+                  "  pm.environment.set('notificationId', String(responseBody.id));",
+                  "}",
+                  "pm.test('ID capturado em notificationId', function () {",
+                  "  pm.expect(responseBody && responseBody.id).to.be.ok;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Notifications - List",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications?skip={{skip}}&limit={{limit}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "skip",
+                  "value": "{{skip}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "{{limit}}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Notifications - List', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Notifications - Mark Read",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/mark-read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "mark-read"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{{ids}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let ids = [];",
+                  "try { ids = JSON.parse(pm.environment.get('ids') || '[]'); } catch (e) { ids = []; }",
+                  "if (!ids.length && pm.environment.get('notificationId')) {",
+                  "  ids = [pm.environment.get('notificationId')];",
+                  "  pm.environment.set('ids', JSON.stringify(ids));",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 204 conforme OpenAPI — Notifications - Mark Read', function () {",
+                  "  pm.response.to.have.status(204);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Notifications - Mark All Read",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/mark-all-read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "mark-all-read"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 204 conforme OpenAPI — Notifications - Mark All Read', function () {",
+                  "  pm.response.to.have.status(204);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Reactions",
+      "item": [
+        {
+          "name": "Reactions - Toggle",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/messages/{{messageId}}/reactions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "messages",
+                "{{messageId}}",
+                "reactions"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message_id\": \"{{messageId}}\",\n  \"user_id\": \"{{userId}}\",\n  \"emoji\": \"{{emoji}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Reactions - Toggle', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reactions - List",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/messages/{{messageId}}/reactions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "messages",
+                "{{messageId}}",
+                "reactions"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Reactions - List', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ReadStates",
+      "item": [
+        {
+          "name": "Read-states - Mark Read",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/read-states/{{roomId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "read-states",
+                "{{roomId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Read-states - Mark Read', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Read-states - List",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/read-states",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "read-states"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Read-states - List', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Upload",
+      "item": [
+        {
+          "name": "Upload - Image",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/upload/image",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "upload",
+                "image"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "{{filePath}}"
+                }
+              ]
+            },
+            "description": "Informe filePath com um caminho local acessível pelo cliente Postman/Newman; sem ele, o request é ignorado."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('filePath')) pm.execution.skipRequest();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201 conforme OpenAPI — Upload - Image', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Users - Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{managedEmail}}\",\n  \"senha\": \"{{senha}}\",\n  \"cpf\": \"{{managedCpf}}\",\n  \"telefone\": \"{{managedTelefone}}\",\n  \"idade\": {{idade}},\n  \"termos_contrato\": true,\n  \"status_ativo\": true,\n  \"interno_adm\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.environment.get('runAdminOperations') !== 'true') pm.execution.skipRequest();",
+                  "const runId = (pm.environment.get('collectionRunId') || `${Date.now()}`).replace(/[^a-zA-Z0-9]/g, '');",
+                  "const digits = Array.from({length: 9}, () => Math.floor(Math.random() * 10));",
+                  "const digit = (n) => { const sum = n.reduce((acc, value, index) => acc + value * (n.length + 1 - index), 0); const mod = sum % 11; return mod < 2 ? 0 : 11 - mod; };",
+                  "digits.push(digit(digits)); digits.push(digit(digits));",
+                  "pm.environment.set('managedEmail', `postman-managed-${runId}@example.com`);",
+                  "pm.environment.set('managedCpf', digits.join(''));",
+                  "pm.environment.set('managedTelefone', `1198${String(Date.now()).slice(-7)}`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201 conforme OpenAPI — Users - Create', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});",
+                  "if (responseBody && typeof responseBody === 'object' && responseBody.id) {",
+                  "  pm.environment.set('managedUserId', String(responseBody.id));",
+                  "}",
+                  "pm.test('ID capturado em managedUserId', function () {",
+                  "  pm.expect(responseBody && responseBody.id).to.be.ok;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Users - Get",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{managedUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{managedUserId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.environment.get('runAdminOperations') !== 'true') pm.execution.skipRequest();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Users - Get', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Users - List",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?skip={{skip}}&limit={{limit}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "skip",
+                  "value": "{{skip}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "{{limit}}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.environment.get('runAdminOperations') !== 'true') pm.execution.skipRequest();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Users - List', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Users - Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{managedUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{managedUserId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"telefone\": \"{{telefone}}\",\n  \"idade\": {{idade}},\n  \"termos_contrato\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.environment.get('runAdminOperations') !== 'true') pm.execution.skipRequest();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Users - Update', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Users - Set Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{managedUserId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{managedUserId}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status_ativo\": {{status_ativo}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.environment.get('runAdminOperations') !== 'true') pm.execution.skipRequest();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Users - Set Status', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Cleanup (opt-in)",
+      "description": "Operações DELETE removidas do fluxo principal; ative allowDestructive=true apenas em dados descartáveis.",
+      "item": [
+        {
+          "name": "Messages - Delete",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/messages/{{messageId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "messages",
+                "{{messageId}}"
+              ]
+            },
+            "description": "Cleanup destrutivo ignorado por padrão. Defina allowDestructive=true no ambiente para habilitar."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.environment.get('allowDestructive') !== 'true') pm.execution.skipRequest();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 204 conforme OpenAPI — Messages - Delete', function () {",
+                  "  pm.response.to.have.status(204);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Users - Delete",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{managedUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{managedUserId}}"
+              ]
+            },
+            "description": "Cleanup destrutivo ignorado por padrão. Defina allowDestructive=true no ambiente para habilitar."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.environment.get('allowDestructive') !== 'true') pm.execution.skipRequest();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 204 conforme OpenAPI — Users - Delete', function () {",
+                  "  pm.response.to.have.status(204);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Session",
+      "description": "Logout é intencionalmente o último folder; a chamada invalida o token da execução.",
+      "item": [
+        {
+          "name": "Auth - Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 conforme OpenAPI — Auth - Logout', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Resposta sem erro de transporte', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.a('number');",
+                  "});",
+                  "let responseBody;",
+                  "pm.test('Resposta JSON válida', function () {",
+                  "  const contentType = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(contentType.toLowerCase()).to.include('application/json');",
+                  "  responseBody = pm.response.json();",
+                  "  pm.expect(responseBody).to.not.equal(undefined);",
+                  "});",
+                  "if (pm.response.code === 200) pm.environment.unset('accessToken');",
+                  "pm.test('token removido após logout', function () {",
+                  "  pm.expect(pm.environment.get('accessToken')).to.be.undefined;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const runId = pm.environment.get('collectionRunId') || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;",
+          "pm.environment.set('collectionRunId', runId);",
+          "const defaults = {",
+          "  name: `Postman ${runId}`,",
+          "  slug: `postman-${runId}`,",
+          "  title: `Postman test ${runId}`,",
+          "  description: 'Registro de teste criado pela collection Postman.',",
+          "  body: `Mensagem de teste ${runId}`,",
+          "  subject: `Email de teste ${runId}`,",
+          "  topic: 'Tópico de teste Postman',",
+          "  visibility: 'public',",
+          "  kind: 'info',",
+          "  roomKind: 'channel',",
+          "  role: 'member',",
+          "  expected_version: '1',",
+          "  status_ativo: 'true',",
+          "  position: '0',",
+          "  wip_limit: '5',",
+          "  points: '1',",
+          "  skip: '0',",
+          "  limit: '20',",
+          "  attachments: '[]',",
+          "  mentionIds: '[]',",
+          "  memberIds: '[]',",
+          "  ids: '[]',",
+          "  recipientIds: '[]',",
+          "  ccIds: '[]',",
+          "  bccIds: '[]'",
+          "};",
+          "Object.keys(defaults).forEach((key) => {",
+          "  if (!pm.environment.get(key)) pm.environment.set(key, defaults[key]);",
+          "});"
+        ]
+      }
     }
   ]
 }

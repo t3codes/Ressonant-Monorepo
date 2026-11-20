@@ -1,0 +1,15 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-and-lint:
+    strategy:
+      matrix:
+        app_name: [ressonant_backend]
+      fail-fast: false
+    uses: ./.github/workflows/test-and-lint-app.yaml
+    with:
+      app_name: ${{ matrix.app_name }}
