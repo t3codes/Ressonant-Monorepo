@@ -3,7 +3,9 @@ name = "ressonant-monorepo"
 version = "0.0.0"
 description = "Monorepo Python do ecossistema Ressonant."
 requires-python = "==3.13.*"
-dependencies = []
+dependencies = [
+    "redis>=8.1.0",
+]
 
 [dependency-groups]
 dev = [
@@ -35,6 +37,8 @@ common-http = { workspace = true }
 common-logs = { workspace = true }
 common-errors = { workspace = true }
 common-telemetry = { workspace = true }
+common-s3 = { workspace = true }
+common-datadog = { workspace = true }
 
 [tool.ruff]
 target-version = "py313"
@@ -48,7 +52,7 @@ select = ["E", "F", "I", "UP", "W"]
 # --import-mode=importlib evita colisão de basenames de testes entre
 # packages/* (ex.: dois `test_config.py` em libs diferentes coexistem sem
 # precisar de __init__.py em cada tests/).
-addopts = "-q --import-mode=importlib"
+addopts = "-q --import-mode=importlib -p no:ddtrace -p no:ddtrace.pytest_bdd -p no:ddtrace.pytest_benchmark"
 pythonpath = ["apps/ressonant_backend"]
 asyncio_mode = "strict"
 

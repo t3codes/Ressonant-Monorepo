@@ -21,13 +21,18 @@ def get_current_user(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
     db: Annotated[Session, Depends(get_db)],
 ) -> User:
+    """Get current user, checking token blacklist."""
     unauthorized = UnauthorizedException(
         ExceptionData(message="Token ausente ou inválido", error_code="INVALID_TOKEN"),
         is_expected=True,
     )
     if credentials is None:
         raise unauthorized
-    user_id = decode_access_token(credentials.credentials)
+    token = credentials.credentials
+    service = get_auth_service(db)
+    if service.is_token_blacklisted(token):
+        raise unauthorized
+    user_id = decode_access_token(token)
     if user_id is None:
         raise unauthorized
     user = UserRepository(db).get_by_id(user_id)

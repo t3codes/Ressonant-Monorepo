@@ -47,14 +47,15 @@ class ChannelService:
 
     def create(self, payload: ChannelCreate, created_by: str) -> Channel:
         import re
-        slug = re.sub(r'[^a-z0-9]+', '-', payload.name.lower()).strip('-')
+
+        slug = re.sub(r"[^a-z0-9]+", "-", payload.name.lower()).strip("-")
         channel = Channel(
             workspace_id=payload.workspace_id,
             name=payload.name,
             slug=slug,
             topic=payload.topic,
             visibility=payload.visibility,
-            member_ids="[]",
+            member_ids=json.dumps([created_by]),
             created_by=created_by,
         )
         try:

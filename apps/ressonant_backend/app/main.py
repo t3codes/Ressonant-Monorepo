@@ -2,6 +2,11 @@ import os
 from contextlib import asynccontextmanager
 from typing import Annotated
 
+if os.getenv("DD_TRACE_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}:
+    from common.datadog import initialize_datadog
+
+    initialize_datadog()
+
 from common.errors import setup_exception_handlers
 from common.logs import setup_logging
 from fastapi import Depends, FastAPI
@@ -20,6 +25,7 @@ from app.modules.chat.domain.models import (  # noqa: F401  (registra as tabelas
 )
 from app.modules.chat.entrypoints import conversation_router, message_router
 from app.modules.chat.entrypoints import routes as chat_routes
+from app.modules.chat.entrypoints import websocket as chat_websocket_routes
 from app.modules.image_upload.entrypoints import routes as upload_routes  # noqa: F401
 from app.modules.kanban_boards.domain.models import (  # noqa: F401  (registra as tabelas no metadata)
     Board,
@@ -88,6 +94,7 @@ def create_app() -> FastAPI:
     app.include_router(kanban_boards_routes.router)
     app.include_router(kanban_cards_routes.router)
     app.include_router(chat_routes.router)
+    app.include_router(chat_websocket_routes.router)
     app.include_router(conversation_router)
     app.include_router(message_router)
     app.include_router(reactions_routes.router)

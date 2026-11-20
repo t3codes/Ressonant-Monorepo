@@ -1,0 +1,26 @@
+name: Integration Test DEV/QA
+
+run-name: Running integration tests of ${{ github.event.inputs.app_name }} on DEV/QA stack ${{ github.event.inputs.stack-name }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_name:
+        description: "Project to test"
+        type: choice
+        required: true
+        options:
+          - ressonant_backend
+      stack-name:
+        description: "Name of the deployed stack to test"
+        required: true
+
+jobs:
+  integration-test:
+    uses: ./.github/workflows/integration-test-app.yaml
+    with:
+      app_name: ${{ github.event.inputs.app_name }}
+      environment: development
+      runs-on: dev-runner
+      stack-name: ${{ github.event.inputs.stack-name }}
+    secrets: inherit

@@ -121,3 +121,27 @@ def test_deactivated_user_loses_access_with_existing_token(
     )
 
     assert client.get("/auth/me", headers=headers).status_code == 401
+
+
+def test_logout_revokes_access_token(client: TestClient) -> None:
+    client.post("/auth/register", json=register_payload())
+    headers = login(client, "ana@ressonant.dev")
+
+    response = client.post("/auth/logout", headers=headers)
+
+    assert response.status_code == 200
+    assert client.get("/auth/me", headers=headers).status_code == 401
+
+
+def test_login_rate_limit_blocks_after_five_failed_attempts(client: TestClient) -> None:
+    client.post("/auth/register", json=register_payload())
+
+    responses = [
+        client.post(
+            "/auth/login",
+            json={"email": "ana@ressonant.dev", "senha": "senha-incorreta"},
+        )
+        for _ in range(6)
+    ]
+
+    assert [response.status_code for response in responses] == [401, 401, 401, 401, 401, 429]

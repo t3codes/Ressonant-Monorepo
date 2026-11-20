@@ -57,10 +57,13 @@ API em <http://localhost:8000>, Swagger em <http://localhost:8000/docs>. `make h
 
 # Estado atual: o que está implementado
 
-- **Implementado** (`apps/ressonant_backend`): health check (`GET /health`, `GET /health/ready`), autenticação (`POST /auth/register`, `POST /auth/login`, `GET /auth/me`) e CRUD completo de usuários (`POST /users`, `GET /users`, `GET /users/{user_id}`, `PUT /users/{user_id}`, `PATCH /users/{user_id}/status`, `DELETE /users/{user_id}`).
-- **Planejado** (sem código): canais, threads, mensagens, tempo real (WebSocket), Redis, mensageria, execução de fluxos por agentes de IA, RAG, mail, notificações, presença, busca, preferências, boards/sprints e refresh token/rate limit.
+- **Backend implementado** (`apps/ressonant_backend`): health/readiness, autenticação com bloqueio de tentativas no processo e revogação de access token, CRUD de usuários e domínios de workspace/equipes, canais/conversas/mensagens, boards/cards, mail, notificações, reações, read states e upload de imagens. Mensagens de sala também podem ser enviadas e difundidas por WebSocket autenticado, com persistência no banco.
+- **Integrações compartilhadas**: armazenamento compatível com S3 (endpoint configurável e fallback local quando não habilitado) e inicialização opcional de Datadog por `DD_TRACE_ENABLED`.
+- **Ainda não implementado neste backend**: presença, busca avançada, preferências, execução de fluxos por agentes de IA e RAG. O refresh de tokens depende de Redis configurado.
 
-Rotas implementadas hoje (contrato versionado em `apps/ressonant_backend/openapi.json`):
+A spec OpenAPI versionada em `apps/ressonant_backend/openapi.json` cobre as rotas HTTP. O endpoint WebSocket é `/ws/channel/{room_id}` ou `/ws/conversation/{room_id}`; autentique enviando `Sec-WebSocket-Protocol: bearer, <access_token>`.
+
+A tabela abaixo destaca as rotas de saúde/autenticação/usuários; o catálogo completo de requests e payloads está na collection Postman em `apps/rs_collections/postman/import-json/`:
 
 | Método | Rota | Descrição |
 | --- | --- | --- |

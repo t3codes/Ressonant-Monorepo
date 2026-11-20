@@ -10,7 +10,7 @@ class ImageUploadResult:
     url: str
     content_type: str
     size_bytes: int
-    storage_provider: str  # "minio" | "local"
+    storage_provider: str  # "s3" | "local"
 
 
 @dataclass

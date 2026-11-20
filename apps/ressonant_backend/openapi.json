@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Ressonant API",
-    "description": "Autentica\u00e7\u00e3o e CRUD de usu\u00e1rios do Ressonant.",
+    "description": "Autenticação e CRUD de usuários do Ressonant.",
     "version": "0.1.0"
   },
   "paths": {
@@ -12,7 +12,7 @@
           "auth"
         ],
         "summary": "Register",
-        "description": "Cadastro p\u00fablico de usu\u00e1rio comum.",
+        "description": "Cadastro público de usuário comum.",
         "operationId": "register_auth_register_post",
         "requestBody": {
           "content": {
@@ -90,13 +90,42 @@
         }
       }
     },
+    "/auth/logout": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Logout",
+        "description": "Invalidar token de acesso ao fazer logout.",
+        "operationId": "logout_auth_logout_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Logout Auth Logout Post"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/auth/me": {
       "get": {
         "tags": [
           "auth"
         ],
         "summary": "Me",
-        "description": "Dados do usu\u00e1rio autenticado.",
+        "description": "Dados do usuário autenticado.",
         "operationId": "me_auth_me_get",
         "responses": {
           "200": {
@@ -123,7 +152,7 @@
           "users"
         ],
         "summary": "Create User",
-        "description": "Cria usu\u00e1rio (admin), podendo definir flags administrativas.",
+        "description": "Cria usuário (admin), podendo definir flags administrativas.",
         "operationId": "create_user_users_post",
         "security": [
           {
@@ -168,7 +197,7 @@
           "users"
         ],
         "summary": "List Users",
-        "description": "Lista usu\u00e1rios com pagina\u00e7\u00e3o; `status_ativo` filtra, omitido traz todos.",
+        "description": "Lista usuários com paginação; `status_ativo` filtra, omitido traz todos.",
         "operationId": "list_users_users_get",
         "security": [
           {
@@ -246,7 +275,7 @@
           "users"
         ],
         "summary": "Get User",
-        "description": "Busca por id (admin ou o pr\u00f3prio usu\u00e1rio).",
+        "description": "Busca por id (admin ou o próprio usuário).",
         "operationId": "get_user_users__user_id__get",
         "security": [
           {
@@ -292,7 +321,7 @@
           "users"
         ],
         "summary": "Update User",
-        "description": "Atualiza e-mail, telefone, idade e termos (admin ou o pr\u00f3prio usu\u00e1rio).",
+        "description": "Atualiza e-mail, telefone, idade e termos (admin ou o próprio usuário).",
         "operationId": "update_user_users__user_id__put",
         "security": [
           {
@@ -348,7 +377,7 @@
           "users"
         ],
         "summary": "Delete User",
-        "description": "Soft delete: desativa o usu\u00e1rio (admin).",
+        "description": "Soft delete: desativa o usuário (admin).",
         "operationId": "delete_user_users__user_id__delete",
         "security": [
           {
@@ -389,7 +418,7 @@
           "users"
         ],
         "summary": "Set User Status",
-        "description": "Ativa ou desativa o usu\u00e1rio (admin).",
+        "description": "Ativa ou desativa o usuário (admin).",
         "operationId": "set_user_status_users__user_id__status_patch",
         "security": [
           {
@@ -447,7 +476,7 @@
           "workspaces"
         ],
         "summary": "Create Workspace",
-        "description": "Cria um workspace. O owner \u00e9 o usu\u00e1rio autenticado (extra\u00eddo do JWT).",
+        "description": "Cria um workspace. O owner é o usuário autenticado (extraído do JWT).",
         "operationId": "create_workspace_workspaces_post",
         "security": [
           {
@@ -492,7 +521,7 @@
           "workspaces"
         ],
         "summary": "List Workspaces",
-        "description": "Lista workspaces do usu\u00e1rio autenticado (dono ou membro).",
+        "description": "Lista workspaces do usuário autenticado (dono ou membro).",
         "operationId": "list_workspaces_workspaces_get",
         "security": [
           {
@@ -570,7 +599,7 @@
           "workspaces"
         ],
         "summary": "Get Workspace",
-        "description": "Busca workspace por id (s\u00f3 se o usu\u00e1rio \u00e9 membro).",
+        "description": "Busca workspace por id (só se o usuário é membro).",
         "operationId": "get_workspace_workspaces__workspace_id__get",
         "security": [
           {
@@ -616,7 +645,7 @@
           "workspaces"
         ],
         "summary": "Update Workspace",
-        "description": "Atualiza workspace (s\u00f3 owner ou admin do workspace).",
+        "description": "Atualiza workspace (só owner ou admin do workspace).",
         "operationId": "update_workspace_workspaces__workspace_id__put",
         "security": [
           {
@@ -674,7 +703,7 @@
           "workspaces"
         ],
         "summary": "Set Workspace Status",
-        "description": "Ativa ou desativa workspace (s\u00f3 o owner).",
+        "description": "Ativa ou desativa workspace (só o owner).",
         "operationId": "set_workspace_status_workspaces__workspace_id__status_patch",
         "security": [
           {
@@ -732,7 +761,7 @@
           "workspaces"
         ],
         "summary": "Add Workspace Member",
-        "description": "Adiciona membro ao workspace (s\u00f3 owner ou admin do workspace).",
+        "description": "Adiciona membro ao workspace (só owner ou admin do workspace).",
         "operationId": "add_workspace_member_workspaces__workspace_id__members_post",
         "security": [
           {
@@ -835,7 +864,7 @@
           "teams"
         ],
         "summary": "List Teams",
-        "description": "Lista teams de um workspace. O usu\u00e1rio deve ser membro do workspace.",
+        "description": "Lista teams de um workspace. O usuário deve ser membro do workspace.",
         "operationId": "list_teams_teams_get",
         "security": [
           {
@@ -922,7 +951,7 @@
           "teams"
         ],
         "summary": "Get Team",
-        "description": "Busca team por id (s\u00f3 se o usu\u00e1rio \u00e9 membro).",
+        "description": "Busca team por id (só se o usuário é membro).",
         "operationId": "get_team_teams__team_id__get",
         "security": [
           {
@@ -968,7 +997,7 @@
           "teams"
         ],
         "summary": "Update Team",
-        "description": "Atualiza team (s\u00f3 owner ou admin do team).",
+        "description": "Atualiza team (só owner ou admin do team).",
         "operationId": "update_team_teams__team_id__put",
         "security": [
           {
@@ -1026,7 +1055,7 @@
           "teams"
         ],
         "summary": "Set Team Status",
-        "description": "Ativa ou desativa team (s\u00f3 o owner).",
+        "description": "Ativa ou desativa team (só o owner).",
         "operationId": "set_team_status_teams__team_id__status_patch",
         "security": [
           {
@@ -1084,7 +1113,7 @@
           "teams"
         ],
         "summary": "Add Team Member",
-        "description": "Adiciona membro ao team (s\u00f3 owner ou admin do team).",
+        "description": "Adiciona membro ao team (só owner ou admin do team).",
         "operationId": "add_team_member_teams__team_id__members_post",
         "security": [
           {
@@ -1142,7 +1171,7 @@
           "boards"
         ],
         "summary": "Create Board",
-        "description": "Cria um board. workspace_id e team_id v\u00eam do payload; owner_id do JWT.",
+        "description": "Cria um board. workspace_id e team_id vêm do payload; owner_id do JWT.",
         "operationId": "create_board_boards_post",
         "security": [
           {
@@ -1187,7 +1216,7 @@
           "boards"
         ],
         "summary": "List Boards",
-        "description": "Lista boards de um workspace (s\u00f3 times que o usu\u00e1rio \u00e9 membro).",
+        "description": "Lista boards de um workspace (só times que o usuário é membro).",
         "operationId": "list_boards_boards_get",
         "security": [
           {
@@ -1274,7 +1303,7 @@
           "boards"
         ],
         "summary": "Get Board",
-        "description": "Busca board por id (s\u00f3 se o usu\u00e1rio \u00e9 membro do time).",
+        "description": "Busca board por id (só se o usuário é membro do time).",
         "operationId": "get_board_boards__board_id__get",
         "security": [
           {
@@ -1320,7 +1349,7 @@
           "boards"
         ],
         "summary": "Update Board",
-        "description": "Atualiza board (s\u00f3 owner/admin do time).",
+        "description": "Atualiza board (só owner/admin do time).",
         "operationId": "update_board_boards__board_id__put",
         "security": [
           {
@@ -1378,7 +1407,7 @@
           "boards"
         ],
         "summary": "Set Board Status",
-        "description": "Ativa ou desativa board (s\u00f3 admin do time).",
+        "description": "Ativa ou desativa board (só admin do time).",
         "operationId": "set_board_status_boards__board_id__status_patch",
         "security": [
           {
@@ -1436,7 +1465,7 @@
           "boards"
         ],
         "summary": "List Board Columns",
-        "description": "Lista colunas de um board (s\u00f3 se o usu\u00e1rio \u00e9 membro do time).",
+        "description": "Lista colunas de um board (só se o usuário é membro do time).",
         "operationId": "list_board_columns_boards__board_id__columns_get",
         "security": [
           {
@@ -1482,7 +1511,7 @@
           "boards"
         ],
         "summary": "Create Board Column",
-        "description": "Cria uma coluna no board (s\u00f3 admin do time).",
+        "description": "Cria uma coluna no board (só admin do time).",
         "operationId": "create_board_column_boards__board_id__columns_post",
         "security": [
           {
@@ -1540,7 +1569,7 @@
           "cards"
         ],
         "summary": "Create Card",
-        "description": "Cria um card. columnId \u00e9 ignorado: nasce no backlog do time.",
+        "description": "Cria um card. columnId é ignorado: nasce no backlog do time.",
         "operationId": "create_card_cards_post",
         "security": [
           {
@@ -1585,7 +1614,7 @@
           "cards"
         ],
         "summary": "List Cards",
-        "description": "Lista cards de um board (s\u00f3 se o usu\u00e1rio \u00e9 membro do time).",
+        "description": "Lista cards de um board (só se o usuário é membro do time).",
         "operationId": "list_cards_cards_get",
         "security": [
           {
@@ -1672,7 +1701,7 @@
           "cards"
         ],
         "summary": "Get Card",
-        "description": "Busca card por id (s\u00f3 se o usu\u00e1rio \u00e9 membro do time).",
+        "description": "Busca card por id (só se o usuário é membro do time).",
         "operationId": "get_card_cards__card_id__get",
         "security": [
           {
@@ -1834,7 +1863,7 @@
           "cards"
         ],
         "summary": "Clone Card",
-        "description": "Clona card no backlog do time (sem coment\u00e1rios/hist\u00f3rico).",
+        "description": "Clona card no backlog do time (sem comentários/histórico).",
         "operationId": "clone_card_cards__card_id__clone_post",
         "security": [
           {
@@ -3067,7 +3096,7 @@
           "upload"
         ],
         "summary": "Upload Image",
-        "description": "Faz upload de uma imagem.\n\nValida\u00e7\u00f5es:\n- Tipo: image/jpeg, image/png, image/webp\n- Tamanho m\u00e1ximo: 5 MB\n\nRetorna a URL da imagem enviada.",
+        "description": "Faz upload de uma imagem.\n\nValidações:\n- Tipo: image/jpeg, image/png, image/webp\n- Tamanho máximo: 5 MB\n\nRetorna a URL da imagem enviada.",
         "operationId": "upload_image_upload_image_post",
         "requestBody": {
           "content": {
@@ -3112,7 +3141,7 @@
           "health"
         ],
         "summary": "Health",
-        "description": "Liveness: o processo est\u00e1 de p\u00e9.",
+        "description": "Liveness: o processo está de pé.",
         "operationId": "health_health_get",
         "responses": {
           "200": {
@@ -3308,7 +3337,7 @@
           "team_id"
         ],
         "title": "BoardCreate",
-        "description": "Payload para criar um board. workspace_id e team_id s\u00e3o obrigat\u00f3rios."
+        "description": "Payload para criar um board. workspace_id e team_id são obrigatórios."
       },
       "BoardList": {
         "properties": {
@@ -3457,7 +3486,7 @@
         },
         "type": "object",
         "title": "BoardUpdate",
-        "description": "Campos edit\u00e1veis; workspace_id, team_id e slug n\u00e3o mudam ap\u00f3s a cria\u00e7\u00e3o."
+        "description": "Campos editáveis; workspace_id, team_id e slug não mudam após a criação."
       },
       "Body_upload_image_upload_image_post": {
         "properties": {
@@ -3706,7 +3735,7 @@
           "team_id"
         ],
         "title": "CardCreate",
-        "description": "Payload para criar um card. board_id e team_id s\u00e3o obrigat\u00f3rios; columnId \u00e9 ignorado."
+        "description": "Payload para criar um card. board_id e team_id são obrigatórios; columnId é ignorado."
       },
       "CardList": {
         "properties": {
@@ -4165,7 +4194,7 @@
           "expected_version"
         ],
         "title": "CardUpdate",
-        "description": "Campos edit\u00e1veis; version para otimistic locking."
+        "description": "Campos editáveis; version para otimistic locking."
       },
       "ChannelCreate": {
         "properties": {
@@ -5261,7 +5290,7 @@
           "workspace_id"
         ],
         "title": "TeamCreate",
-        "description": "Payload para criar um team. workspace_id \u00e9 obrigat\u00f3rio; owner_id vem do JWT."
+        "description": "Payload para criar um team. workspace_id é obrigatório; owner_id vem do JWT."
       },
       "TeamList": {
         "properties": {
@@ -5463,7 +5492,7 @@
         },
         "type": "object",
         "title": "TeamUpdate",
-        "description": "Campos edit\u00e1veis; workspace_id e slug n\u00e3o mudam ap\u00f3s a cria\u00e7\u00e3o."
+        "description": "Campos editáveis; workspace_id e slug não mudam após a criação."
       },
       "TokenResponse": {
         "properties": {
@@ -5498,12 +5527,12 @@
           "cpf": {
             "type": "string",
             "title": "Cpf",
-            "description": "CPF com ou sem m\u00e1scara; armazenado s\u00f3 com d\u00edgitos"
+            "description": "CPF com ou sem máscara; armazenado só com dígitos"
           },
           "telefone": {
             "type": "string",
             "title": "Telefone",
-            "description": "Telefone com DDD (10 ou 11 d\u00edgitos)"
+            "description": "Telefone com DDD (10 ou 11 dígitos)"
           },
           "senha": {
             "type": "string",
@@ -5542,7 +5571,7 @@
           "termos_contrato"
         ],
         "title": "UserCreate",
-        "description": "Cria\u00e7\u00e3o por administrador."
+        "description": "Criação por administrador."
       },
       "UserList": {
         "properties": {
@@ -5585,12 +5614,12 @@
           "cpf": {
             "type": "string",
             "title": "Cpf",
-            "description": "CPF com ou sem m\u00e1scara; armazenado s\u00f3 com d\u00edgitos"
+            "description": "CPF com ou sem máscara; armazenado só com dígitos"
           },
           "telefone": {
             "type": "string",
             "title": "Telefone",
-            "description": "Telefone com DDD (10 ou 11 d\u00edgitos)"
+            "description": "Telefone com DDD (10 ou 11 dígitos)"
           },
           "senha": {
             "type": "string",
@@ -5619,7 +5648,7 @@
           "termos_contrato"
         ],
         "title": "UserRegister",
-        "description": "Cadastro p\u00fablico: nunca define flags administrativas."
+        "description": "Cadastro público: nunca define flags administrativas."
       },
       "UserResponse": {
         "properties": {
@@ -5763,7 +5792,7 @@
           "idade"
         ],
         "title": "UserUpdate",
-        "description": "Campos edit\u00e1veis; senha, CPF e flags administrativas ficam fora."
+        "description": "Campos editáveis; senha, CPF e flags administrativas ficam fora."
       },
       "ValidationError": {
         "properties": {
@@ -5838,7 +5867,7 @@
           "slug"
         ],
         "title": "WorkspaceCreate",
-        "description": "Payload para criar um workspace. owner_id \u00e9 extra\u00eddo do JWT, nunca do body."
+        "description": "Payload para criar um workspace. owner_id é extraído do JWT, nunca do body."
       },
       "WorkspaceList": {
         "properties": {
@@ -6068,7 +6097,7 @@
         },
         "type": "object",
         "title": "WorkspaceUpdate",
-        "description": "Campos edit\u00e1veis; owner_id e slug n\u00e3o mudam ap\u00f3s a cria\u00e7\u00e3o."
+        "description": "Campos editáveis; owner_id e slug não mudam após a criação."
       }
     },
     "securitySchemes": {

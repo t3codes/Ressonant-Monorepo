@@ -9,6 +9,7 @@ import pytest  # noqa: E402
 from app.common.security import hash_password  # noqa: E402
 from app.database.engine import Base, get_db  # noqa: E402
 from app.main import app  # noqa: E402
+from app.modules.auth.usecases.services import _rate_limit  # noqa: E402
 from app.user.models import User  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import create_engine  # noqa: E402
@@ -16,6 +17,13 @@ from sqlalchemy.orm import Session, sessionmaker  # noqa: E402
 from sqlalchemy.pool import StaticPool  # noqa: E402
 
 VALID_CPFS = ["52998224725", "11144477735", "39053344705", "16899535009"]
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limit_state() -> Iterator[None]:
+    with _rate_limit._lock:
+        _rate_limit.attempts.clear()
+    yield
 
 
 @pytest.fixture

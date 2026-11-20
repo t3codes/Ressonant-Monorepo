@@ -3,29 +3,48 @@
 import os
 import uuid
 from pathlib import Path
-from typing import Optional
+from typing import Protocol
 
 from app.modules.image_upload.domain.models import (
-    ImageUploadResult,
-    ImageValidationError,
     ALLOWED_IMAGE_CONTENT_TYPES,
     MAX_IMAGE_SIZE_BYTES,
+    ImageUploadResult,
+    ImageValidationError,
 )
+from common.s3 import S3ObjectStore
+
+
+class ImageStorage(Protocol):
+    def upload_bytes(
+        self, key: str, content: bytes, content_type: str, *, expires_in: int = 3600
+    ) -> str: ...
 
 
 class ImageUploadService:
     """Serviço responsável pelo upload e validação de imagens.
 
-    Preparado para integração com MinIO. Enquanto o MinIO não estiver
-    configurado, armazena localmente em uploads/.
+    Usa S3 quando AWS_S3_BUCKET está configurado; caso contrário, mantém o
+    armazenamento local para desenvolvimento e testes sem infraestrutura externa.
     """
 
-    def __init__(self, storage_provider: str = "local", upload_dir: str = "/tmp/ressonant_uploads"):
-        self.storage_provider = storage_provider
+    def __init__(
+        self,
+        storage_provider: str = "local",
+        upload_dir: str = "/tmp/ressonant_uploads",
+        storage_client: ImageStorage | None = None,
+    ) -> None:
+        use_s3 = (
+            storage_client is not None
+            or storage_provider == "s3"
+            or bool(os.getenv("AWS_S3_BUCKET", "").strip())
+        )
+        self._s3 = storage_client or (S3ObjectStore.from_env() if use_s3 else None)
+        self.storage_provider = "s3" if self._s3 is not None else "local"
         self.upload_dir = Path(upload_dir)
-        self.upload_dir.mkdir(parents=True, exist_ok=True)
+        if self._s3 is None:
+            self.upload_dir.mkdir(parents=True, exist_ok=True)
 
-    def validate_image(self, content_type: str, size_bytes: int) -> Optional[ImageValidationError]:
+    def validate_image(self, content_type: str, size_bytes: int) -> ImageValidationError | None:
         """Valida tipo e tamanho da imagem.
 
         Returns None se válido, ou ImageValidationError se inválido.
@@ -59,11 +78,16 @@ class ImageUploadService:
         unique_filename = f"{uuid.uuid4()}{file_extension}"
         file_path = self.upload_dir / unique_filename
 
-        # Salvar arquivo localmente (substituir por MinIO quando configurado)
-        with open(file_path, "wb") as f:
-            f.write(file_content)
-
-        url = f"/uploads/{unique_filename}"
+        if self._s3 is not None:
+            url = self._s3.upload_bytes(
+                f"images/{unique_filename}",
+                file_content,
+                content_type,
+            )
+        else:
+            with open(file_path, "wb") as f:
+                f.write(file_content)
+            url = f"/uploads/{unique_filename}"
 
         return ImageUploadResult(
             url=url,
