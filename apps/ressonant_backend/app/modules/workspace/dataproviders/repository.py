@@ -73,6 +73,26 @@ class WorkspaceRepository:
         self._db.flush()
         return member
 
+    def get_member(self, workspace_id: str, user_id: str) -> WorkspaceMember | None:
+        return self.is_member(workspace_id, user_id)
+
+    def list_members(self, workspace_id: str) -> list[WorkspaceMember]:
+        try:
+            uuid.UUID(workspace_id)
+        except ValueError:
+            return []
+        return list(
+            self._db.scalars(
+                select(WorkspaceMember)
+                .where(WorkspaceMember.workspace_id == workspace_id)
+                .order_by(WorkspaceMember.criado_em)
+            )
+        )
+
+    def remove_member(self, member: WorkspaceMember) -> None:
+        self._db.delete(member)
+        self._db.flush()
+
     def commit(self) -> None:
         self._db.commit()
 

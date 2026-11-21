@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 Slug = Annotated[str, Field(min_length=3, max_length=100)]
 Name = Annotated[str, Field(min_length=3, max_length=100)]
@@ -29,8 +29,21 @@ class TeamUpdate(BaseModel):
 
 
 class TeamMemberAdd(BaseModel):
-    user_id: str
+    """Adiciona membro por e-mail exato (preferencial) ou user_id."""
+
+    user_id: str | None = None
+    email: EmailStr | None = None
     role: str = Field(default="member", pattern="^(admin|member|viewer)$")
+
+    @model_validator(mode="after")
+    def _require_identifier(self) -> "TeamMemberAdd":
+        if not self.user_id and not self.email:
+            raise ValueError("Informe user_id ou email")
+        return self
+
+
+class TeamMemberUpdate(BaseModel):
+    role: str = Field(pattern="^(admin|member|viewer)$")
 
 
 class TeamMemberResponse(BaseModel):
@@ -41,6 +54,11 @@ class TeamMemberResponse(BaseModel):
     user_id: str
     role: str
     criado_em: datetime
+
+
+class TeamMemberList(BaseModel):
+    items: list[TeamMemberResponse]
+    total: int
 
 
 class TeamResponse(BaseModel):

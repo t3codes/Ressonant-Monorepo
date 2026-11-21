@@ -53,6 +53,20 @@ class TeamRepository:
         items = self._db.scalars(stmt.order_by(Team.criado_em, Team.id).offset(skip).limit(limit))
         return list(items), total
 
+    def list_members(self, team_id: str) -> list[TeamMember]:
+        """Lista membros de um time."""
+        try:
+            uuid.UUID(team_id)
+        except ValueError:
+            return []
+        return list(
+            self._db.scalars(
+                select(TeamMember)
+                .where(TeamMember.team_id == team_id)
+                .order_by(TeamMember.criado_em)
+            )
+        )
+
     def is_member(self, team_id: str, user_id: str) -> TeamMember | None:
         try:
             uuid.UUID(team_id)
@@ -75,6 +89,13 @@ class TeamRepository:
         self._db.add(member)
         self._db.flush()
         return member
+
+    def get_member(self, team_id: str, user_id: str) -> TeamMember | None:
+        return self.is_member(team_id, user_id)
+
+    def remove_member(self, member: TeamMember) -> None:
+        self._db.delete(member)
+        self._db.flush()
 
     def commit(self) -> None:
         self._db.commit()

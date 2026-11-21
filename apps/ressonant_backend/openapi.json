@@ -470,6 +470,64 @@
         }
       }
     },
+    "/users/{user_id}/admin": {
+      "patch": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Set User Admin",
+        "description": "Concede ou revoga acesso administrativo global (somente interno_adm).",
+        "operationId": "set_user_admin_users__user_id__admin_patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserAdminUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/workspaces": {
       "post": {
         "tags": [
@@ -756,12 +814,58 @@
       }
     },
     "/workspaces/{workspace_id}/members": {
+      "get": {
+        "tags": [
+          "workspaces"
+        ],
+        "summary": "List Workspace Members",
+        "description": "Lista membros do workspace (só se o usuário é membro).",
+        "operationId": "list_workspace_members_workspaces__workspace_id__members_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceMemberList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "workspaces"
         ],
         "summary": "Add Workspace Member",
-        "description": "Adiciona membro ao workspace (só owner ou admin do workspace).",
+        "description": "Adiciona membro ao workspace por e-mail exato ou user_id (owner/admin do workspace ou interno_adm).",
         "operationId": "add_workspace_member_workspaces__workspace_id__members_post",
         "security": [
           {
@@ -791,6 +895,73 @@
         },
         "responses": {
           "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceMemberResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace_id}/members/{user_id}": {
+      "patch": {
+        "tags": [
+          "workspaces"
+        ],
+        "summary": "Update Workspace Member",
+        "description": "Altera papel do membro (só owner do workspace ou interno_adm). role=owner transfere a propriedade.",
+        "operationId": "update_workspace_member_workspaces__workspace_id__members__user_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workspace Id"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceMemberUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
@@ -864,7 +1035,7 @@
           "teams"
         ],
         "summary": "List Teams",
-        "description": "Lista teams de um workspace. O usuário deve ser membro do workspace.",
+        "description": "Lista teams de um workspace onde o usuário é membro do time.",
         "operationId": "list_teams_teams_get",
         "security": [
           {
@@ -1108,12 +1279,58 @@
       }
     },
     "/teams/{team_id}/members": {
+      "get": {
+        "tags": [
+          "teams"
+        ],
+        "summary": "List Team Members",
+        "description": "Lista membros do team (só se o usuário é membro).",
+        "operationId": "list_team_members_teams__team_id__members_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "team_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Team Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamMemberList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "teams"
         ],
         "summary": "Add Team Member",
-        "description": "Adiciona membro ao team (só owner ou admin do team).",
+        "description": "Adiciona membro à equipe por e-mail exato ou user_id (owner/admin do workspace, admin do time ou interno_adm).",
         "operationId": "add_team_member_teams__team_id__members_post",
         "security": [
           {
@@ -1143,6 +1360,73 @@
         },
         "responses": {
           "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamMemberResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teams/{team_id}/members/{user_id}": {
+      "patch": {
+        "tags": [
+          "teams"
+        ],
+        "summary": "Update Team Member",
+        "description": "Altera papel do membro na equipe (owner/admin do workspace, admin do time ou interno_adm).",
+        "operationId": "update_team_member_teams__team_id__members__user_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "team_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Team Id"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamMemberUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
@@ -5326,8 +5610,27 @@
       "TeamMemberAdd": {
         "properties": {
           "user_id": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "User Id"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "email"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
           },
           "role": {
             "type": "string",
@@ -5337,10 +5640,29 @@
           }
         },
         "type": "object",
+        "title": "TeamMemberAdd",
+        "description": "Adiciona membro por e-mail exato (preferencial) ou user_id."
+      },
+      "TeamMemberList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TeamMemberResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
         "required": [
-          "user_id"
+          "items",
+          "total"
         ],
-        "title": "TeamMemberAdd"
+        "title": "TeamMemberList"
       },
       "TeamMemberResponse": {
         "properties": {
@@ -5375,6 +5697,20 @@
           "criado_em"
         ],
         "title": "TeamMemberResponse"
+      },
+      "TeamMemberUpdate": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "pattern": "^(admin|member|viewer)$",
+            "title": "Role"
+          }
+        },
+        "type": "object",
+        "required": [
+          "role"
+        ],
+        "title": "TeamMemberUpdate"
       },
       "TeamResponse": {
         "properties": {
@@ -5516,6 +5852,19 @@
           "expires_in"
         ],
         "title": "TokenResponse"
+      },
+      "UserAdminUpdate": {
+        "properties": {
+          "interno_adm": {
+            "type": "boolean",
+            "title": "Interno Adm"
+          }
+        },
+        "type": "object",
+        "required": [
+          "interno_adm"
+        ],
+        "title": "UserAdminUpdate"
       },
       "UserCreate": {
         "properties": {
@@ -5903,21 +6252,59 @@
       "WorkspaceMemberAdd": {
         "properties": {
           "user_id": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "User Id"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "email"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
           },
           "role": {
             "type": "string",
-            "pattern": "^(admin|member|viewer)$",
+            "pattern": "^(admin|member)$",
             "title": "Role",
             "default": "member"
           }
         },
         "type": "object",
+        "title": "WorkspaceMemberAdd",
+        "description": "Adiciona membro por e-mail exato (preferencial) ou user_id."
+      },
+      "WorkspaceMemberList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WorkspaceMemberResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
         "required": [
-          "user_id"
+          "items",
+          "total"
         ],
-        "title": "WorkspaceMemberAdd"
+        "title": "WorkspaceMemberList"
       },
       "WorkspaceMemberResponse": {
         "properties": {
@@ -5952,6 +6339,20 @@
           "criado_em"
         ],
         "title": "WorkspaceMemberResponse"
+      },
+      "WorkspaceMemberUpdate": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "pattern": "^(owner|admin|member)$",
+            "title": "Role"
+          }
+        },
+        "type": "object",
+        "required": [
+          "role"
+        ],
+        "title": "WorkspaceMemberUpdate"
       },
       "WorkspaceResponse": {
         "properties": {

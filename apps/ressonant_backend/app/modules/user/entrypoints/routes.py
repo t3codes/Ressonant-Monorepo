@@ -3,6 +3,7 @@ from typing import Annotated
 from app.modules.auth.deps import AdminUser, CurrentUser
 from app.modules.user.deps import get_user_service
 from app.modules.user.schemas.dto import (
+    UserAdminUpdate,
     UserCreate,
     UserList,
     UserResponse,
@@ -71,6 +72,14 @@ def set_user_status(
 ) -> UserResponse:
     """Ativa ou desativa o usuário (admin)."""
     return UserResponse.model_validate(service.set_status(user_id, payload.status_ativo))
+
+
+@router.patch("/{user_id}/admin", response_model=UserResponse)
+def set_user_admin(
+    user_id: str, payload: UserAdminUpdate, _: AdminUser, service: Service
+) -> UserResponse:
+    """Concede ou revoga acesso administrativo global (somente interno_adm)."""
+    return UserResponse.model_validate(service.set_admin(user_id, payload.interno_adm))
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)

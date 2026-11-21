@@ -28,18 +28,23 @@ class CardService:
         self._card_repo = card_repository
         self._board_repo = board_repository
 
+    def _require_editor(self, team_id: str, user_id: str) -> None:
+        from app.modules.teams.dataproviders.repository import TeamRepository
+
+        team_repo = TeamRepository(self._card_repo._db)
+        member = team_repo.is_member(team_id, user_id)
+        if member is None:
+            raise _forbidden("Você não é membro do time deste board")
+        if member.role == "viewer":
+            raise _forbidden("Usuário com papel viewer não pode editar cards")
+
     def create(self, payload: CardCreate, owner_id: str) -> Card:
         """Cria card. board_id e team_id vêm do payload; owner_id do JWT.
         columnId é ignorado: card nasce no backlog do time."""
         board = self._board_repo.get_by_id(payload.board_id)
         if board is None:
             raise _not_found()
-        # Valida que o usuário é membro do time do board
-        from app.modules.teams.dataproviders.repository import TeamRepository
-
-        team_repo = TeamRepository(self._card_repo._db)
-        if team_repo.is_member(board.team_id, owner_id) is None:
-            raise _forbidden("Você não é membro do time deste board")
+        self._require_editor(board.team_id, owner_id)
 
         card = Card(
             board_id=payload.board_id,
@@ -99,6 +104,7 @@ class CardService:
 
     def update(self, card_id: str, payload: CardUpdate, user_id: str) -> Card:
         card = self.get(card_id, user_id)
+        self._require_editor(card.team_id, user_id)
         if card.version != payload.expected_version:
             raise _conflict(
                 "Versão desatualizada. O card foi modificado por outro usuário.",
@@ -137,6 +143,7 @@ class CardService:
     def move(self, card_id: str, input_data: CardMoveInput, user_id: str) -> Card:
         """Move card entre colunas (expectedVersion para otimistic locking)."""
         card = self.get(card_id, user_id)
+        self._require_editor(card.team_id, user_id)
         if card.version != input_data.expected_version:
             raise _conflict(
                 "Versão desatualizada. O card foi modificado por outro usuário.",
@@ -154,6 +161,7 @@ class CardService:
     def clone(self, card_id: str, user_id: str) -> Card:
         """Clona card (subtarefas, checklist, sem comentários/histórico)."""
         original = self.get(card_id, user_id)
+        self._require_editor(original.team_id, user_id)
         from app.modules.kanban_boards.dataproviders.repository import BoardRepository
 
         board_repo = BoardRepository(self._card_repo._db)

@@ -36,6 +36,12 @@ class UserRepository:
         self._db.flush()
         return user
 
+    def count(self) -> int:
+        return self._db.scalar(select(func.count()).select_from(User)) or 0
+
+    def exists_admin(self) -> bool:
+        return self._db.scalar(select(User.id).where(User.interno_adm.is_(True)).limit(1)) is not None
+
     def commit(self) -> None:
         self._db.commit()
 
