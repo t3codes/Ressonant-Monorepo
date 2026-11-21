@@ -30,6 +30,7 @@ from app.modules.chat.domain.models import (  # noqa: F401  (registra as tabelas
 from app.modules.chat.entrypoints import conversation_router, message_router
 from app.modules.chat.entrypoints import routes as chat_routes
 from app.modules.chat.entrypoints import websocket as chat_websocket_routes
+from app.modules.context.entrypoints import routes as context_routes
 from app.modules.image_upload.entrypoints import routes as upload_routes  # noqa: F401
 from app.modules.kanban_boards.domain.models import (  # noqa: F401  (registra as tabelas no metadata)
     Board,
@@ -102,6 +103,7 @@ def create_app() -> FastAPI:
     )
     setup_exception_handlers(app)
     app.include_router(auth_routes.router)
+    app.include_router(context_routes.router)
     app.include_router(user_routes.router)
     app.include_router(workspace_routes.router)
     app.include_router(workspace_management_routes.router)

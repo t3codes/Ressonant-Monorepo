@@ -146,6 +146,33 @@
         ]
       }
     },
+    "/me/context": {
+      "get": {
+        "tags": [
+          "context"
+        ],
+        "summary": "Get Context",
+        "description": "Bootstrap do cliente em uma chamada, sem montar contexto no frontend.",
+        "operationId": "get_context_me_context_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeContextResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/users": {
       "post": {
         "tags": [
@@ -4595,6 +4622,25 @@
         ],
         "title": "AuditEventResponse"
       },
+      "BillingCapabilities": {
+        "properties": {
+          "view": {
+            "type": "boolean",
+            "title": "View"
+          },
+          "manage": {
+            "type": "boolean",
+            "title": "Manage"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "view",
+          "manage"
+        ],
+        "title": "BillingCapabilities"
+      },
       "BlockedCardResponse": {
         "properties": {
           "id": {
@@ -5983,6 +6029,27 @@
         ],
         "title": "ChannelResponse"
       },
+      "ContextCapabilities": {
+        "properties": {
+          "management": {
+            "$ref": "#/components/schemas/ManagementCapabilities"
+          },
+          "billing": {
+            "$ref": "#/components/schemas/BillingCapabilities"
+          },
+          "domain": {
+            "$ref": "#/components/schemas/DomainCapabilities"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "management",
+          "billing",
+          "domain"
+        ],
+        "title": "ContextCapabilities"
+      },
       "ConversationCreate": {
         "properties": {
           "workspace_id": {
@@ -6068,6 +6135,20 @@
           "criado_em"
         ],
         "title": "ConversationResponse"
+      },
+      "DomainCapabilities": {
+        "properties": {
+          "cards_write": {
+            "type": "boolean",
+            "title": "Cards Write"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "cards_write"
+        ],
+        "title": "DomainCapabilities"
       },
       "EmailCreate": {
         "properties": {
@@ -6688,6 +6769,66 @@
         ],
         "title": "ManagementGrantResponse"
       },
+      "MeContextResponse": {
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/UserResponse"
+          },
+          "organizations": {
+            "items": {
+              "$ref": "#/components/schemas/OrganizationContextResponse"
+            },
+            "type": "array",
+            "title": "Organizations"
+          },
+          "active_organization": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrganizationContextResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "workspaces": {
+            "items": {
+              "$ref": "#/components/schemas/WorkspaceContextResponse"
+            },
+            "type": "array",
+            "title": "Workspaces"
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/ContextCapabilities"
+          },
+          "subscription": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SubscriptionContextResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "permission_version": {
+            "type": "integer",
+            "title": "Permission Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "user",
+          "organizations",
+          "active_organization",
+          "workspaces",
+          "capabilities",
+          "subscription",
+          "permission_version"
+        ],
+        "title": "MeContextResponse"
+      },
       "MessageCreate": {
         "properties": {
           "workspace_id": {
@@ -7043,6 +7184,40 @@
         ],
         "title": "NotificationResponse"
       },
+      "OrganizationContextResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "role",
+          "status"
+        ],
+        "title": "OrganizationContextResponse"
+      },
       "ReactionList": {
         "properties": {
           "items": {
@@ -7172,6 +7347,130 @@
           "last_read_at"
         ],
         "title": "ReadStateResponse"
+      },
+      "SubscriptionContextResponse": {
+        "properties": {
+          "plan_code": {
+            "type": "string",
+            "title": "Plan Code"
+          },
+          "plan_name": {
+            "type": "string",
+            "title": "Plan Name"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "seats_purchased": {
+            "type": "integer",
+            "title": "Seats Purchased"
+          },
+          "seat_limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seat Limit"
+          },
+          "trial_ends_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trial Ends At"
+          },
+          "current_period_end": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Period End"
+          },
+          "price_cents": {
+            "type": "integer",
+            "title": "Price Cents"
+          },
+          "overage_cents_per_seat": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overage Cents Per Seat"
+          },
+          "provider": {
+            "type": "string",
+            "const": "stub",
+            "title": "Provider",
+            "default": "stub"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "plan_code",
+          "plan_name",
+          "status",
+          "seats_purchased",
+          "seat_limit",
+          "trial_ends_at",
+          "current_period_end",
+          "price_cents",
+          "overage_cents_per_seat"
+        ],
+        "title": "SubscriptionContextResponse"
+      },
+      "TeamContextResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "key_prefix": {
+            "type": "string",
+            "title": "Key Prefix"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "key_prefix",
+          "role"
+        ],
+        "title": "TeamContextResponse"
       },
       "TeamCreate": {
         "properties": {
@@ -7754,6 +8053,28 @@
             "type": "boolean",
             "title": "Interno Adm"
           },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
           "avatar_url": {
             "anyOf": [
               {
@@ -7903,6 +8224,65 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WorkspaceContextResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "organization_id": {
+            "type": "string",
+            "title": "Organization Id"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "member_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Member Ids"
+          },
+          "teams": {
+            "items": {
+              "$ref": "#/components/schemas/TeamContextResponse"
+            },
+            "type": "array",
+            "title": "Teams"
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/ManagementCapabilities"
+          },
+          "permission_version": {
+            "type": "integer",
+            "title": "Permission Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "organization_id",
+          "role",
+          "member_ids",
+          "teams",
+          "capabilities",
+          "permission_version"
+        ],
+        "title": "WorkspaceContextResponse"
       },
       "WorkspaceCreate": {
         "properties": {
