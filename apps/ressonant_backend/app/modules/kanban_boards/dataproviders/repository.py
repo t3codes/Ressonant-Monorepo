@@ -91,16 +91,30 @@ class BoardColumnRepository:
         return self._db.get(BoardColumn, column_id)
 
     def list_by_board(self, board_id: str) -> list[BoardColumn]:
-        return self._db.scalars(
-            select(BoardColumn)
-            .where(BoardColumn.board_id == board_id)
-            .order_by(BoardColumn.position, BoardColumn.created_at)
-        ).all()
+        return list(
+            self._db.scalars(
+                select(BoardColumn)
+                .where(BoardColumn.board_id == board_id)
+                .order_by(BoardColumn.position, BoardColumn.created_at)
+            ).all()
+        )
+
+    def count_cards(self, column_id: str) -> int:
+        from app.modules.kanban_cards.domain.models import Card
+
+        return (
+            self._db.scalar(select(func.count()).select_from(Card).where(Card.column_id == column_id))
+            or 0
+        )
 
     def add(self, column: BoardColumn) -> BoardColumn:
         self._db.add(column)
         self._db.flush()
         return column
+
+    def delete(self, column: BoardColumn) -> None:
+        self._db.delete(column)
+        self._db.flush()
 
     def commit(self) -> None:
         self._db.commit()
