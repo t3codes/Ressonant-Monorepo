@@ -111,7 +111,7 @@ def add_workspace_member(
     user: CurrentUser,
     service: Service,
 ) -> WorkspaceMemberResponse:
-    """Adiciona membro ao workspace por e-mail exato ou user_id (owner/admin do workspace ou interno_adm)."""
+    """Adiciona membro ao workspace por e-mail exato ou user_id (owner/admin do workspace ou interno_adm)."""  # noqa: E501 - text is part of the published OpenAPI description
     return WorkspaceMemberResponse.model_validate(
         service.add_member(workspace_id, payload, user.id, user.interno_adm)
     )
@@ -128,7 +128,7 @@ def update_workspace_member(
     user: CurrentUser,
     service: Service,
 ) -> WorkspaceMemberResponse:
-    """Altera papel do membro (só owner do workspace ou interno_adm). role=owner transfere a propriedade."""
+    """Altera papel do membro (só owner do workspace ou interno_adm). role=owner transfere a propriedade."""  # noqa: E501 - text is part of the published OpenAPI description
     return WorkspaceMemberResponse.model_validate(
         service.update_member(workspace_id, user_id, payload, user.id, user.interno_adm)
     )

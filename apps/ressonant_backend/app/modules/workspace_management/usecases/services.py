@@ -3,15 +3,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from common.errors import ExceptionData, ForbiddenException, NotFoundException
 from app.common.exceptions import ConflictException
-
 from app.modules.user.domain.models import User
 from app.modules.workspace.domain.models import Workspace
 from app.modules.workspace_management.dataproviders.repository import WorkspaceManagementRepository
 from app.modules.workspace_management.domain.models import AuditEvent, WorkspaceManagementGrant
-from app.modules.workspace_management.schemas.dto import ManagementAccessResponse, ManagementCapabilities
-
+from app.modules.workspace_management.schemas.dto import (
+    ManagementAccessResponse,
+    ManagementCapabilities,
+)
+from common.errors import ExceptionData, ForbiddenException, NotFoundException
 
 ManagementLevel = Literal["none", "read", "modify", "grant"]
 LEVEL_RANK = {"none": 0, "read": 1, "modify": 2, "grant": 3}
@@ -45,10 +46,18 @@ class WorkspaceManagementService:
 
     @staticmethod
     def _not_found(message: str, error_code: str) -> NotFoundException:
-        return NotFoundException(ExceptionData(message=message, error_code=error_code), is_expected=True)
+        return NotFoundException(
+            ExceptionData(message=message, error_code=error_code), is_expected=True
+        )
 
     @staticmethod
-    def _forbidden(message: str, *, error_code: str = "MANAGEMENT_ACCESS_DENIED", layer: str = "management", required: str | None = None) -> ForbiddenException:
+    def _forbidden(
+        message: str,
+        *,
+        error_code: str = "MANAGEMENT_ACCESS_DENIED",
+        layer: str = "management",
+        required: str | None = None,
+    ) -> ForbiddenException:
         return ForbiddenException(
             ExceptionData(
                 message=message,
@@ -61,7 +70,9 @@ class WorkspaceManagementService:
 
     @staticmethod
     def _conflict(message: str, error_code: str) -> ConflictException:
-        return ConflictException(ExceptionData(message=message, error_code=error_code), is_expected=True)
+        return ConflictException(
+            ExceptionData(message=message, error_code=error_code), is_expected=True
+        )
 
     def _require_workspace(self, workspace_id: str) -> Workspace:
         ws = self._repo.get_workspace(workspace_id)
@@ -78,7 +89,16 @@ class WorkspaceManagementService:
     def _redact(payload: dict | None) -> dict | None:
         if payload is None:
             return None
-        sensitive = {"password", "senha", "token", "secret", "cpf", "telefone", "email", "authorization"}
+        sensitive = {
+            "password",
+            "senha",
+            "token",
+            "secret",
+            "cpf",
+            "telefone",
+            "email",
+            "authorization",
+        }
         out = {}
         for k, v in payload.items():
             if k.lower() in sensitive:
@@ -123,7 +143,9 @@ class WorkspaceManagementService:
         )
         self._repo.add_audit_event(event)
 
-    def _ensure_break_glass(self, workspace: Workspace, actor: User, reason: str | None, action: str) -> dict | None:
+    def _ensure_break_glass(
+        self, workspace: Workspace, actor: User, reason: str | None, action: str
+    ) -> dict | None:
         if not actor.interno_adm:
             return None
         if self._is_member_operational(workspace, actor):
@@ -135,7 +157,12 @@ class WorkspaceManagementService:
                 layer="management",
                 required="management.break_glass_reason",
             )
-        return {"interno_adm": True, "break_glass": True, "reason": reason.strip(), "action": action}
+        return {
+            "interno_adm": True,
+            "break_glass": True,
+            "reason": reason.strip(),
+            "action": action,
+        }
 
     def resolve_access(self, workspace_id: str, user: User) -> ManagementAccess:
         workspace = self._require_workspace(workspace_id)
@@ -192,26 +219,44 @@ class WorkspaceManagementService:
     def require_read(self, workspace_id: str, user: User) -> ManagementAccess:
         access = self.resolve_access(workspace_id, user)
         if not access.can_read:
-            raise self._forbidden("Você não tem permissão de leitura na gestão deste workspace.", required="management.read")
+            raise self._forbidden(
+                "Você não tem permissão de leitura na gestão deste workspace.",
+                required="management.read",
+            )
         return access
 
     def require_modify(self, workspace_id: str, user: User) -> ManagementAccess:
         access = self.resolve_access(workspace_id, user)
         if not access.can_modify:
-            raise self._forbidden("Você não tem permissão de modificação na gestão deste workspace.", required="management.modify")
+            raise self._forbidden(
+                "Você não tem permissão de modificação na gestão deste workspace.",
+                required="management.modify",
+            )
         return access
 
     def require_grant(self, workspace_id: str, user: User) -> ManagementAccess:
         access = self.resolve_access(workspace_id, user)
         if not access.can_grant:
-            raise self._forbidden("Você não tem permissão para gerenciar grants da gestão.", required="management.grant")
+            raise self._forbidden(
+                "Você não tem permissão para gerenciar grants da gestão.",
+                required="management.grant",
+            )
         return access
 
     def list_grants(self, workspace_id: str, actor: User) -> list[WorkspaceManagementGrant]:
         self.require_read(workspace_id, actor)
         return self._repo.list_active_grants(workspace_id)
 
-    def create_or_update_grant(self, workspace_id: str, actor: User, *, target_user_id: str, level: str, reason: str | None = None, request_id: str | None = None) -> WorkspaceManagementGrant:
+    def create_or_update_grant(
+        self,
+        workspace_id: str,
+        actor: User,
+        *,
+        target_user_id: str,
+        level: str,
+        reason: str | None = None,
+        request_id: str | None = None,
+    ) -> WorkspaceManagementGrant:
         access = self.require_grant(workspace_id, actor)
         workspace = access.workspace
         if level not in ("read", "modify", "grant"):
@@ -223,13 +268,31 @@ class WorkspaceManagementService:
                 error_code="MANAGEMENT_GRANT_ESCALATION_DENIED",
                 required="management.grant.grant",
             )
-        # target must be workspace member? plan says "qualquer usuário do workspace" - we'll require they exist as user? at least check not self weird cases; better require workspace member
-        if not self._is_member_operational(workspace, User(id=target_user_id, email="", senha_hash="", cpf="", idade=0, termos_contrato=True, interno_adm=False, status_ativo=True)) and self._repo.get_workspace_member(workspace_id, target_user_id) is None:
+        # target must be workspace member? plan says "qualquer usuário do workspace" - we'll require
+        # they exist as user? at least check not self weird cases; better require workspace member
+        if (
+            not self._is_member_operational(
+                workspace,
+                User(
+                    id=target_user_id,
+                    email="",
+                    senha_hash="",
+                    cpf="",
+                    idade=0,
+                    termos_contrato=True,
+                    interno_adm=False,
+                    status_ativo=True,
+                ),
+            )
+            and self._repo.get_workspace_member(workspace_id, target_user_id) is None
+        ):
             # owner is operational; for target, just check membership by repo
             pass
         target_member = self._repo.get_workspace_member(workspace_id, target_user_id)
         if workspace.owner_id != target_user_id and target_member is None:
-            raise self._not_found("Usuário alvo não é membro do workspace", "WORKSPACE_MEMBER_NOT_FOUND")
+            raise self._not_found(
+                "Usuário alvo não é membro do workspace", "WORKSPACE_MEMBER_NOT_FOUND"
+            )
 
         break_glass = self._ensure_break_glass(workspace, actor, reason, "management.grant.upsert")
         existing = self._repo.get_active_grant(workspace_id, target_user_id)
@@ -269,7 +332,15 @@ class WorkspaceManagementService:
             self._repo.rollback()
             raise
 
-    def revoke_grant(self, workspace_id: str, actor: User, *, target_user_id: str, reason: str | None = None, request_id: str | None = None) -> None:
+    def revoke_grant(
+        self,
+        workspace_id: str,
+        actor: User,
+        *,
+        target_user_id: str,
+        reason: str | None = None,
+        request_id: str | None = None,
+    ) -> None:
         access = self.require_grant(workspace_id, actor)
         workspace = access.workspace
         break_glass = self._ensure_break_glass(workspace, actor, reason, "management.grant.revoke")
@@ -304,7 +375,6 @@ class WorkspaceManagementService:
             self._repo.rollback()
             raise
 
-
     def list_people(self, workspace_id: str, actor: User):
         self.require_read(workspace_id, actor)
         members = self._repo.list_workspace_members(workspace_id)
@@ -313,26 +383,57 @@ class WorkspaceManagementService:
     def list_teams(self, workspace_id: str, actor: User, include_deleted: bool = False):
         self.require_read(workspace_id, actor)
         teams = self._repo.list_teams(workspace_id, include_deleted=include_deleted)
-        return [{
-            "id": t.id, "workspace_id": t.workspace_id, "name": t.name, "slug": t.slug,
-            "description": t.description, "status_ativo": t.status_ativo, "is_deleted": t.is_deleted,
-            "deleted_at": t.deleted_at, "members_count": self._repo.count_team_members(t.id),
-        } for t in teams]
+        return [
+            {
+                "id": t.id,
+                "workspace_id": t.workspace_id,
+                "name": t.name,
+                "slug": t.slug,
+                "description": t.description,
+                "status_ativo": t.status_ativo,
+                "is_deleted": t.is_deleted,
+                "deleted_at": t.deleted_at,
+                "members_count": self._repo.count_team_members(t.id),
+            }
+            for t in teams
+        ]
 
     def list_audit(self, workspace_id: str, actor: User, skip: int = 0, limit: int = 50):
         self.require_read(workspace_id, actor)
         events = self._repo.list_audit_events(workspace_id, skip=skip, limit=limit)
-        return [{
-            "id": e.id, "workspace_id": e.workspace_id, "occurred_at": e.occurred_at,
-            "actor_user_id": e.actor_user_id, "actor_type": e.actor_type, "action": e.action,
-            "entity_type": e.entity_type, "entity_id": e.entity_id, "target_user_id": e.target_user_id,
-            "request_id": e.request_id, "before": e.before, "after": e.after, "metadata": e.metadata_, "result": e.result,
-        } for e in events]
+        return [
+            {
+                "id": e.id,
+                "workspace_id": e.workspace_id,
+                "occurred_at": e.occurred_at,
+                "actor_user_id": e.actor_user_id,
+                "actor_type": e.actor_type,
+                "action": e.action,
+                "entity_type": e.entity_type,
+                "entity_id": e.entity_id,
+                "target_user_id": e.target_user_id,
+                "request_id": e.request_id,
+                "before": e.before,
+                "after": e.after,
+                "metadata": e.metadata_,
+                "result": e.result,
+            }
+            for e in events
+        ]
 
     def list_blocked_cards(self, workspace_id: str, actor: User):
         self.require_read(workspace_id, actor)
         cards = self._repo.list_blocked_cards(workspace_id)
-        return [{
-            "id": c.id, "title": c.title, "team_id": c.team_id, "board_id": c.board_id, "column_id": c.column_id,
-            "block_reason": c.block_reason, "blocked_by": c.blocked_by, "blocked_at": c.blocked_at,
-        } for c in cards]
+        return [
+            {
+                "id": c.id,
+                "title": c.title,
+                "team_id": c.team_id,
+                "board_id": c.board_id,
+                "column_id": c.column_id,
+                "block_reason": c.block_reason,
+                "blocked_by": c.blocked_by,
+                "blocked_at": c.blocked_at,
+            }
+            for c in cards
+        ]

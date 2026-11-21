@@ -18,7 +18,8 @@ class ErrorSchema:
     )
     error_layer: str | None = Field(
         default=None,
-        description="Authorization/policy layer that denied the request: management, domain, or null",
+        description="Authorization/policy layer that denied the request: "
+        "management, domain, or null",
     )
     required_capability: str | None = Field(
         default=None,

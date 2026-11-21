@@ -16,21 +16,49 @@ depends_on = None
 def upgrade() -> None:
     op.add_column(
         "workspaces",
-        sa.Column("management_permission_version", sa.Integer(), nullable=False, server_default="1"),
+        sa.Column(
+            "management_permission_version", sa.Integer(), nullable=False, server_default="1"
+        ),
     )
 
     op.create_table(
         "workspace_management_grants",
         sa.Column("id", sa.Uuid(as_uuid=False), primary_key=True),
-        sa.Column("workspace_id", sa.Uuid(as_uuid=False), sa.ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True),
-        sa.Column("user_id", sa.Uuid(as_uuid=False), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column(
+            "workspace_id",
+            sa.Uuid(as_uuid=False),
+            sa.ForeignKey("workspaces.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
+        sa.Column(
+            "user_id",
+            sa.Uuid(as_uuid=False),
+            sa.ForeignKey("users.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("level", sa.String(20), nullable=False),
-        sa.Column("granted_by_id", sa.Uuid(as_uuid=False), sa.ForeignKey("users.id", ondelete="RESTRICT"), nullable=False),
+        sa.Column(
+            "granted_by_id",
+            sa.Uuid(as_uuid=False),
+            sa.ForeignKey("users.id", ondelete="RESTRICT"),
+            nullable=False,
+        ),
         sa.Column("reason", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
+        sa.Column(
+            "updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
         sa.Column("revoked_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("revoked_by_id", sa.Uuid(as_uuid=False), sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
+        sa.Column(
+            "revoked_by_id",
+            sa.Uuid(as_uuid=False),
+            sa.ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
         sa.Column("revoke_reason", sa.Text(), nullable=True),
     )
     op.create_index(
@@ -45,14 +73,37 @@ def upgrade() -> None:
     op.create_table(
         "audit_events",
         sa.Column("id", sa.Uuid(as_uuid=False), primary_key=True),
-        sa.Column("workspace_id", sa.Uuid(as_uuid=False), sa.ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True),
-        sa.Column("occurred_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False, index=True),
-        sa.Column("actor_user_id", sa.Uuid(as_uuid=False), sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True),
+        sa.Column(
+            "workspace_id",
+            sa.Uuid(as_uuid=False),
+            sa.ForeignKey("workspaces.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
+        sa.Column(
+            "occurred_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.now(),
+            nullable=False,
+            index=True,
+        ),
+        sa.Column(
+            "actor_user_id",
+            sa.Uuid(as_uuid=False),
+            sa.ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+            index=True,
+        ),
         sa.Column("actor_type", sa.String(30), nullable=False),
         sa.Column("action", sa.String(100), nullable=False, index=True),
         sa.Column("entity_type", sa.String(50), nullable=False),
         sa.Column("entity_id", sa.String(100), nullable=False),
-        sa.Column("target_user_id", sa.Uuid(as_uuid=False), sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
+        sa.Column(
+            "target_user_id",
+            sa.Uuid(as_uuid=False),
+            sa.ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
         sa.Column("request_id", sa.String(100), nullable=True, index=True),
         sa.Column("before", sa.JSON(), nullable=True),
         sa.Column("after", sa.JSON(), nullable=True),

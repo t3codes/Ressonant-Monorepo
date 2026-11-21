@@ -17,8 +17,20 @@ def upgrade() -> None:
     op.create_table(
         "cards",
         sa.Column("id", sa.Uuid(as_uuid=False), primary_key=True),
-        sa.Column("board_id", sa.Uuid(as_uuid=False), sa.ForeignKey("boards.id"), nullable=False, index=True),
-        sa.Column("column_id", sa.Uuid(as_uuid=False), sa.ForeignKey("board_columns.id"), nullable=True, index=True),
+        sa.Column(
+            "board_id",
+            sa.Uuid(as_uuid=False),
+            sa.ForeignKey("boards.id"),
+            nullable=False,
+            index=True,
+        ),
+        sa.Column(
+            "column_id",
+            sa.Uuid(as_uuid=False),
+            sa.ForeignKey("board_columns.id"),
+            nullable=True,
+            index=True,
+        ),
         sa.Column("team_id", sa.Uuid(as_uuid=False), nullable=False, index=True),
         sa.Column("title", sa.String(200), nullable=False),
         sa.Column("description", sa.Text(), nullable=True),
@@ -52,7 +64,13 @@ def upgrade() -> None:
     op.create_table(
         "card_subtasks",
         sa.Column("id", sa.Uuid(as_uuid=False), primary_key=True),
-        sa.Column("card_id", sa.Uuid(as_uuid=False), sa.ForeignKey("cards.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column(
+            "card_id",
+            sa.Uuid(as_uuid=False),
+            sa.ForeignKey("cards.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("key", sa.String(50), nullable=False),
         sa.Column("title", sa.String(200), nullable=False),
         sa.Column("status", sa.String(50), nullable=False, server_default="todo"),
@@ -71,7 +89,13 @@ def upgrade() -> None:
     op.create_table(
         "card_checklist",
         sa.Column("id", sa.Uuid(as_uuid=False), primary_key=True),
-        sa.Column("card_id", sa.Uuid(as_uuid=False), sa.ForeignKey("cards.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column(
+            "card_id",
+            sa.Uuid(as_uuid=False),
+            sa.ForeignKey("cards.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("title", sa.String(200), nullable=False),
         sa.Column("is_completed", sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.Column("position", sa.Integer(), nullable=False, server_default="0"),
@@ -86,7 +110,13 @@ def upgrade() -> None:
     op.create_table(
         "card_comments",
         sa.Column("id", sa.Uuid(as_uuid=False), primary_key=True),
-        sa.Column("card_id", sa.Uuid(as_uuid=False), sa.ForeignKey("cards.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column(
+            "card_id",
+            sa.Uuid(as_uuid=False),
+            sa.ForeignKey("cards.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("author_id", sa.Uuid(as_uuid=False), nullable=False, index=True),
         sa.Column("body", sa.Text(), nullable=False),
         sa.Column(
@@ -100,7 +130,13 @@ def upgrade() -> None:
     op.create_table(
         "card_history",
         sa.Column("id", sa.Uuid(as_uuid=False), primary_key=True),
-        sa.Column("card_id", sa.Uuid(as_uuid=False), sa.ForeignKey("cards.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column(
+            "card_id",
+            sa.Uuid(as_uuid=False),
+            sa.ForeignKey("cards.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("event_type", sa.String(50), nullable=False),
         sa.Column("field_name", sa.String(100), nullable=True),
         sa.Column("old_value", sa.Text(), nullable=True),
@@ -117,7 +153,13 @@ def upgrade() -> None:
     op.create_table(
         "card_worklogs",
         sa.Column("id", sa.Uuid(as_uuid=False), primary_key=True),
-        sa.Column("card_id", sa.Uuid(as_uuid=False), sa.ForeignKey("cards.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column(
+            "card_id",
+            sa.Uuid(as_uuid=False),
+            sa.ForeignKey("cards.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("author_id", sa.Uuid(as_uuid=False), nullable=False),
         sa.Column("time_spent_minutes", sa.Integer(), nullable=False),
         sa.Column("comment", sa.Text(), nullable=True),
@@ -132,7 +174,13 @@ def upgrade() -> None:
     op.create_table(
         "card_links",
         sa.Column("id", sa.Uuid(as_uuid=False), primary_key=True),
-        sa.Column("card_id", sa.Uuid(as_uuid=False), sa.ForeignKey("cards.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column(
+            "card_id",
+            sa.Uuid(as_uuid=False),
+            sa.ForeignKey("cards.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("url", sa.String(500), nullable=False),
         sa.Column("title", sa.String(200), nullable=True),
         sa.Column(
@@ -146,7 +194,13 @@ def upgrade() -> None:
     op.create_table(
         "card_watchers",
         sa.Column("id", sa.Uuid(as_uuid=False), primary_key=True),
-        sa.Column("card_id", sa.Uuid(as_uuid=False), sa.ForeignKey("cards.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column(
+            "card_id",
+            sa.Uuid(as_uuid=False),
+            sa.ForeignKey("cards.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("user_id", sa.Uuid(as_uuid=False), nullable=False, index=True),
         sa.Column(
             "criado_em",
@@ -159,7 +213,13 @@ def upgrade() -> None:
     op.create_table(
         "card_custom_fields",
         sa.Column("id", sa.Uuid(as_uuid=False), primary_key=True),
-        sa.Column("card_id", sa.Uuid(as_uuid=False), sa.ForeignKey("cards.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column(
+            "card_id",
+            sa.Uuid(as_uuid=False),
+            sa.ForeignKey("cards.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("field_key", sa.String(100), nullable=False),
         sa.Column("field_value", sa.Text(), nullable=False),
         sa.Column(

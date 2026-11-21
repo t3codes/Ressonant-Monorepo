@@ -122,8 +122,12 @@ def reorder_board_columns(
     service: Service,
 ) -> BoardColumnList:
     """Reordena colunas do board (sequência completa)."""
-    columns = service.reorder_columns(board_id, payload.ordered_column_ids, user.id, user.interno_adm)
-    return BoardColumnList(items=[BoardColumnResponse.model_validate(c) for c in columns], total=len(columns))
+    columns = service.reorder_columns(
+        board_id, payload.ordered_column_ids, user.id, user.interno_adm
+    )
+    return BoardColumnList(
+        items=[BoardColumnResponse.model_validate(c) for c in columns], total=len(columns)
+    )
 
 
 @router.patch("/{board_id}/columns/{column_id}", response_model=BoardColumnResponse)

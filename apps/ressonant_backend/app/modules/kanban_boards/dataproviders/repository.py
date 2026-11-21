@@ -103,7 +103,9 @@ class BoardColumnRepository:
         from app.modules.kanban_cards.domain.models import Card
 
         return (
-            self._db.scalar(select(func.count()).select_from(Card).where(Card.column_id == column_id))
+            self._db.scalar(
+                select(func.count()).select_from(Card).where(Card.column_id == column_id)
+            )
             or 0
         )
 

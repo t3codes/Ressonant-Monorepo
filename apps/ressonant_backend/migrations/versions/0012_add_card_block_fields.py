@@ -14,7 +14,9 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("cards", sa.Column("is_blocked", sa.Boolean(), nullable=False, server_default=sa.false()))
+    op.add_column(
+        "cards", sa.Column("is_blocked", sa.Boolean(), nullable=False, server_default=sa.false())
+    )
     op.add_column("cards", sa.Column("block_reason", sa.Text(), nullable=True))
     op.add_column("cards", sa.Column("blocked_by", sa.Uuid(as_uuid=False), nullable=True))
     op.add_column("cards", sa.Column("blocked_at", sa.DateTime(timezone=True), nullable=True))

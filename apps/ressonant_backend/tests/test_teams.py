@@ -6,7 +6,9 @@ def _headers(client: TestClient, email: str) -> dict[str, str]:
     return login(client, email)
 
 
-def _create_workspace(client: TestClient, session_factory, email: str, name: str, slug: str) -> dict:
+def _create_workspace(
+    client: TestClient, session_factory, email: str, name: str, slug: str
+) -> dict:
     make_user(session_factory, email=email, cpf="52998224725")
     headers = _headers(client, email)
     response = client.post(
@@ -21,7 +23,11 @@ def _create_workspace(client: TestClient, session_factory, email: str, name: str
 def test_create_team_requires_auth(client: TestClient) -> None:
     response = client.post(
         "/teams",
-        json={"name": "Time A", "slug": "time-a", "workspace_id": "00000000-0000-0000-0000-000000000000"},
+        json={
+            "name": "Time A",
+            "slug": "time-a",
+            "workspace_id": "00000000-0000-0000-0000-000000000000",
+        },
     )
     assert response.status_code == 401
 
@@ -114,9 +120,7 @@ def test_list_teams_empty(client: TestClient, session_factory) -> None:
     )
     headers = _headers(client, "ana@ressonant.dev")
 
-    response = client.get(
-        f"/teams?workspace_id={workspace['id']}", headers=headers
-    )
+    response = client.get(f"/teams?workspace_id={workspace['id']}", headers=headers)
     assert response.status_code == 200, response.text
     body = response.json()
     assert body["total"] == 0
@@ -172,9 +176,7 @@ def test_get_team_member(client: TestClient, session_factory) -> None:
 
 
 def test_get_team_not_found(client: TestClient, session_factory) -> None:
-    workspace = _create_workspace(
-        client, session_factory, "ana@ressonant.dev", "Plataforma", "plataforma"
-    )
+    _create_workspace(client, session_factory, "ana@ressonant.dev", "Plataforma", "plataforma")
     headers = _headers(client, "ana@ressonant.dev")
 
     response = client.get("/teams/00000000-0000-0000-0000-000000000000", headers=headers)
@@ -182,9 +184,7 @@ def test_get_team_not_found(client: TestClient, session_factory) -> None:
 
 
 def test_get_team_invalid_id(client: TestClient, session_factory) -> None:
-    workspace = _create_workspace(
-        client, session_factory, "ana@ressonant.dev", "Plataforma", "plataforma"
-    )
+    _create_workspace(client, session_factory, "ana@ressonant.dev", "Plataforma", "plataforma")
     headers = _headers(client, "ana@ressonant.dev")
 
     response = client.get("/teams/nao-e-um-uuid", headers=headers)

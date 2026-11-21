@@ -14,7 +14,9 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("teams", sa.Column("is_deleted", sa.Boolean(), nullable=False, server_default=sa.false()))
+    op.add_column(
+        "teams", sa.Column("is_deleted", sa.Boolean(), nullable=False, server_default=sa.false())
+    )
     op.add_column("teams", sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True))
     op.add_column("teams", sa.Column("deleted_by", sa.Uuid(as_uuid=False), nullable=True))
     op.create_index("ix_teams_is_deleted", "teams", ["is_deleted"])

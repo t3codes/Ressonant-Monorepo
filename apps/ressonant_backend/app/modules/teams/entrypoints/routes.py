@@ -59,7 +59,12 @@ def list_deleted_teams(
 ) -> TeamList:
     """Lista equipes deletadas (soft delete) do workspace. Apenas owner/interno_adm."""
     items = service.list_deleted(workspace_id, user.id, user.interno_adm)
-    return TeamList(items=[TeamResponse.model_validate(i) for i in items], total=len(items), skip=0, limit=len(items))
+    return TeamList(
+        items=[TeamResponse.model_validate(i) for i in items],
+        total=len(items),
+        skip=0,
+        limit=len(items),
+    )
 
 
 @router.get("/{team_id}", response_model=TeamResponse)
@@ -122,7 +127,7 @@ def add_team_member(
     user: CurrentUser,
     service: Service,
 ) -> TeamMemberResponse:
-    """Adiciona membro à equipe por e-mail exato ou user_id (owner/admin do workspace, admin do time ou interno_adm)."""
+    """Adiciona membro à equipe por e-mail exato ou user_id (owner/admin do workspace, admin do time ou interno_adm)."""  # noqa: E501 - text is part of the published OpenAPI description
     return TeamMemberResponse.model_validate(
         service.add_member(team_id, payload, user.id, user.interno_adm)
     )
@@ -153,7 +158,9 @@ def soft_delete_team(
     service: Service,
 ) -> TeamResponse:
     """Soft delete de equipe com reatribuição obrigatória de membros. Apenas owner/interno_adm."""
-    return TeamResponse.model_validate(service.soft_delete(team_id, payload, user.id, user.interno_adm))
+    return TeamResponse.model_validate(
+        service.soft_delete(team_id, payload, user.id, user.interno_adm)
+    )
 
 
 @router.delete("/{team_id}/permanent", status_code=status.HTTP_204_NO_CONTENT)

@@ -48,7 +48,9 @@ class WorkspaceService:
             raise _not_found()
         return workspace
 
-    def _is_workspace_admin_or_owner(self, workspace: Workspace, actor_id: str, actor_is_admin: bool) -> bool:
+    def _is_workspace_admin_or_owner(
+        self, workspace: Workspace, actor_id: str, actor_is_admin: bool
+    ) -> bool:
         if actor_is_admin or workspace.owner_id == actor_id:
             return True
         member = self._repo.is_member(workspace.id, actor_id)
@@ -61,7 +63,11 @@ class WorkspaceService:
                 raise _user_not_found()
             return user.id
         # busca por e-mail exato, sem listar usuários
-        user = self._get_user_repo().get_by_email(str(payload.email).lower()) if payload.email else None
+        user = (
+            self._get_user_repo().get_by_email(str(payload.email).lower())
+            if payload.email
+            else None
+        )
         if user is None:
             raise _user_not_found()
         return user.id
@@ -134,13 +140,17 @@ class WorkspaceService:
         return workspace
 
     def list_members(self, workspace_id: str, actor_id: str) -> list[WorkspaceMember]:
-        workspace = self._require_workspace(workspace_id)
+        self._require_workspace(workspace_id)
         if not self._repo.is_member(workspace_id, actor_id):
             raise _forbidden("Você não é membro deste workspace")
         return self._repo.list_members(workspace_id)
 
     def add_member(
-        self, workspace_id: str, payload: WorkspaceMemberAdd, actor_id: str, actor_is_admin: bool = False
+        self,
+        workspace_id: str,
+        payload: WorkspaceMemberAdd,
+        actor_id: str,
+        actor_is_admin: bool = False,
     ) -> WorkspaceMember:
         """Adiciona membro ao workspace (owner/admin do workspace ou interno_adm)."""
         workspace = self._require_workspace(workspace_id)
@@ -149,10 +159,14 @@ class WorkspaceService:
         target_id = self._resolve_target_user_id(payload)
         if self._repo.is_member(workspace_id, target_id):
             raise _conflict("Usuário já é membro deste workspace", "WORKSPACE_MEMBER_EXISTS")
-        new_member = WorkspaceMember(workspace_id=workspace_id, user_id=target_id, role=payload.role)
+        new_member = WorkspaceMember(
+            workspace_id=workspace_id, user_id=target_id, role=payload.role
+        )
         try:
             self._repo.add_member(new_member)
-            workspace.management_permission_version = int(getattr(workspace, "management_permission_version", 1) or 1) + 1
+            workspace.management_permission_version = (
+                int(getattr(workspace, "management_permission_version", 1) or 1) + 1
+            )
             self._repo.commit()
         except Exception:
             self._repo.rollback()
@@ -185,7 +199,9 @@ class WorkspaceService:
             raise _forbidden("O owner deve permanecer com acesso administrativo")
         member.role = payload.role
         try:
-            workspace.management_permission_version = int(getattr(workspace, "management_permission_version", 1) or 1) + 1
+            workspace.management_permission_version = (
+                int(getattr(workspace, "management_permission_version", 1) or 1) + 1
+            )
             self._repo.commit()
         except Exception:
             self._repo.rollback()
@@ -211,7 +227,9 @@ class WorkspaceService:
             old_member = self._repo.get_member(workspace_id, old_owner_id)
             if old_member is not None and old_member.role != "admin":
                 old_member.role = "admin"
-            workspace.management_permission_version = int(getattr(workspace, "management_permission_version", 1) or 1) + 1
+            workspace.management_permission_version = (
+                int(getattr(workspace, "management_permission_version", 1) or 1) + 1
+            )
             self._repo.commit()
         except Exception:
             self._repo.rollback()

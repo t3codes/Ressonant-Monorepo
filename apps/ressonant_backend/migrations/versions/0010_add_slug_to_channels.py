@@ -16,7 +16,9 @@ depends_on = None
 def upgrade() -> None:
     op.add_column(
         "channels",
-        sa.Column("slug", sa.String(100), nullable=False, unique=True, index=True, server_default=""),
+        sa.Column(
+            "slug", sa.String(100), nullable=False, unique=True, index=True, server_default=""
+        ),
     )
 
 

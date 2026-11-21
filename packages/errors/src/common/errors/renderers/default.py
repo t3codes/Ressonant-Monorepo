@@ -2,7 +2,11 @@ from typing import Any
 
 from common.errors.common_codes import CommonErrorCode
 from common.errors.exceptions import ApplicationException
-from common.errors.renderers.helpers import build_trace_reference_detail, get_error_code, get_trace_id
+from common.errors.renderers.helpers import (
+    build_trace_reference_detail,
+    get_error_code,
+    get_trace_id,
+)
 from common.errors.renderers.schemas import ErrorSchema
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError

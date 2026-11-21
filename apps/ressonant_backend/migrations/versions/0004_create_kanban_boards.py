@@ -17,8 +17,16 @@ def upgrade() -> None:
     op.create_table(
         "boards",
         sa.Column("id", sa.Uuid(as_uuid=False), primary_key=True),
-        sa.Column("workspace_id", sa.Uuid(as_uuid=False), sa.ForeignKey("workspaces.id"), nullable=False, index=True),
-        sa.Column("team_id", sa.Uuid(as_uuid=False), sa.ForeignKey("teams.id"), nullable=False, index=True),
+        sa.Column(
+            "workspace_id",
+            sa.Uuid(as_uuid=False),
+            sa.ForeignKey("workspaces.id"),
+            nullable=False,
+            index=True,
+        ),
+        sa.Column(
+            "team_id", sa.Uuid(as_uuid=False), sa.ForeignKey("teams.id"), nullable=False, index=True
+        ),
         sa.Column("name", sa.String(100), nullable=False),
         sa.Column("slug", sa.String(100), nullable=False, unique=True, index=True),
         sa.Column("description", sa.String(500), nullable=True),
@@ -40,7 +48,13 @@ def upgrade() -> None:
     op.create_table(
         "board_columns",
         sa.Column("id", sa.Uuid(as_uuid=False), primary_key=True),
-        sa.Column("board_id", sa.Uuid(as_uuid=False), sa.ForeignKey("boards.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column(
+            "board_id",
+            sa.Uuid(as_uuid=False),
+            sa.ForeignKey("boards.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("name", sa.String(100), nullable=False),
         sa.Column("slug", sa.String(100), nullable=False),
         sa.Column("position", sa.Integer(), nullable=False, server_default="0"),

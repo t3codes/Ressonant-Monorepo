@@ -174,7 +174,9 @@ class BoardService:
             col.position = idx
         return cols
 
-    def create_column(self, board_id: str, payload: BoardColumnCreate, user_id: str, actor_is_admin: bool = False) -> BoardColumn:
+    def create_column(
+        self, board_id: str, payload: BoardColumnCreate, user_id: str, actor_is_admin: bool = False
+    ) -> BoardColumn:
         """Cria coluna. Shift em posições >= position; renumera sequencialmente."""
         board = self.get(board_id, user_id)
         if not self._can_manage_columns(board, user_id, actor_is_admin):
@@ -202,7 +204,9 @@ class BoardService:
             raise
         return self._column_repo.get_by_id(column.id) or column
 
-    def update_column(self, board_id: str, column_id: str, payload, user_id: str, actor_is_admin: bool = False) -> BoardColumn:
+    def update_column(
+        self, board_id: str, column_id: str, payload, user_id: str, actor_is_admin: bool = False
+    ) -> BoardColumn:
         board = self.get(board_id, user_id)
         if not self._can_manage_columns(board, user_id, actor_is_admin):
             raise _forbidden("Sem permissão para gerenciar colunas")
@@ -222,7 +226,9 @@ class BoardService:
             raise
         return column
 
-    def delete_column(self, board_id: str, column_id: str, user_id: str, actor_is_admin: bool = False) -> None:
+    def delete_column(
+        self, board_id: str, column_id: str, user_id: str, actor_is_admin: bool = False
+    ) -> None:
         board = self.get(board_id, user_id)
         if not self._can_manage_columns(board, user_id, actor_is_admin):
             raise _forbidden("Sem permissão para gerenciar colunas")
@@ -231,7 +237,10 @@ class BoardService:
             raise _not_found()
         cards_count = self._column_repo.count_cards(column_id)
         if cards_count > 0:
-            raise _conflict("Não é possível excluir coluna com cards. Mova os cards antes.", "BOARD_COLUMN_NOT_EMPTY")
+            raise _conflict(
+                "Não é possível excluir coluna com cards. Mova os cards antes.",
+                "BOARD_COLUMN_NOT_EMPTY",
+            )
         try:
             self._column_repo.delete(column)
             self._normalize_column_positions(board_id)
@@ -240,14 +249,24 @@ class BoardService:
             self._column_repo.rollback()
             raise
 
-    def reorder_columns(self, board_id: str, ordered_column_ids: list[str], user_id: str, actor_is_admin: bool = False) -> list[BoardColumn]:
+    def reorder_columns(
+        self,
+        board_id: str,
+        ordered_column_ids: list[str],
+        user_id: str,
+        actor_is_admin: bool = False,
+    ) -> list[BoardColumn]:
         board = self.get(board_id, user_id)
         if not self._can_manage_columns(board, user_id, actor_is_admin):
             raise _forbidden("Sem permissão para gerenciar colunas")
         cols = self._column_repo.list_by_board(board_id)
         current_ids = [c.id for c in cols]
-        if len(ordered_column_ids) != len(current_ids) or set(ordered_column_ids) != set(current_ids):
-            raise _conflict("Reordenação deve incluir todas as colunas do board", "BOARD_COLUMN_REORDER_INVALID")
+        if len(ordered_column_ids) != len(current_ids) or set(ordered_column_ids) != set(
+            current_ids
+        ):
+            raise _conflict(
+                "Reordenação deve incluir todas as colunas do board", "BOARD_COLUMN_REORDER_INVALID"
+            )
         by_id = {c.id: c for c in cols}
         try:
             for idx, cid in enumerate(ordered_column_ids):

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Annotated, Any, List, Optional
+from typing import Annotated, Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class ChannelBase(BaseModel):
     workspace_id: str
     name: Annotated[str, Field(min_length=3, max_length=100)]
-    topic: Optional[str] = Field(max_length=500, default=None)
+    topic: str | None = Field(max_length=500, default=None)
     visibility: Annotated[str, Field(pattern="^(public|private)$", default="public")] = "public"
     member_ids: Any | None = None
 
@@ -15,7 +15,7 @@ class ChannelBase(BaseModel):
 class ChannelCreate(BaseModel):
     workspace_id: str
     name: Annotated[str, Field(min_length=3, max_length=100)]
-    topic: Optional[str] = Field(max_length=500, default=None)
+    topic: str | None = Field(max_length=500, default=None)
     visibility: Annotated[str, Field(pattern="^(public|private)$", default="public")] = "public"
     member_ids: Any | None = None
 

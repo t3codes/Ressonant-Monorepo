@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.common.exceptions import ConflictException
 from app.modules.teams.dataproviders.repository import TeamRepository
@@ -174,7 +174,9 @@ class TeamService:
             self._repo.add_member(new_member)
             ws = self._ws_repo().get_by_id(team.workspace_id)
             if ws is not None:
-                ws.management_permission_version = int(getattr(ws, "management_permission_version", 1) or 1) + 1
+                ws.management_permission_version = (
+                    int(getattr(ws, "management_permission_version", 1) or 1) + 1
+                )
             self._repo.commit()
         except Exception:
             self._repo.rollback()
@@ -205,7 +207,9 @@ class TeamService:
         try:
             ws = self._ws_repo().get_by_id(team.workspace_id)
             if ws is not None:
-                ws.management_permission_version = int(getattr(ws, "management_permission_version", 1) or 1) + 1
+                ws.management_permission_version = (
+                    int(getattr(ws, "management_permission_version", 1) or 1) + 1
+                )
             self._repo.commit()
         except Exception:
             self._repo.rollback()
@@ -217,14 +221,22 @@ class TeamService:
         self.get(team_id, user_id)
         return self._repo.list_members(team_id)
 
-    def _require_workspace_owner_or_interno_adm(self, team: Team, actor_id: str, actor_is_interno_adm: bool) -> None:
+    def _require_workspace_owner_or_interno_adm(
+        self, team: Team, actor_id: str, actor_is_interno_adm: bool
+    ) -> None:
         if actor_is_interno_adm:
             return
         ws = self._ws_repo().get_by_id(team.workspace_id)
         if ws is None or ws.owner_id != actor_id:
             raise _forbidden("Apenas owner do workspace ou interno_adm pode executar esta ação")
 
-    def soft_delete(self, team_id: str, payload: TeamSoftDeleteInput, actor_id: str, actor_is_interno_adm: bool = False) -> Team:
+    def soft_delete(
+        self,
+        team_id: str,
+        payload: TeamSoftDeleteInput,
+        actor_id: str,
+        actor_is_interno_adm: bool = False,
+    ) -> Team:
         team = self._repo.get_by_id(team_id)
         if team is None:
             raise _not_found()
@@ -253,21 +265,27 @@ class TeamService:
             if target_team is None or target_team.workspace_id != team.workspace_id:
                 raise _conflict("Equipe de destino inválida", "TEAM_MEMBER_REASSIGNMENT_INVALID")
             if target_team.is_deleted or not target_team.status_ativo:
-                raise _conflict("Equipe de destino deve estar ativa", "TEAM_MEMBER_REASSIGNMENT_INVALID")
+                raise _conflict(
+                    "Equipe de destino deve estar ativa", "TEAM_MEMBER_REASSIGNMENT_INVALID"
+                )
             if self._ws_repo().is_member(team.workspace_id, m.user_id) is None:
-                raise _conflict("Usuário deve ser membro do workspace", "TEAM_MEMBER_REASSIGNMENT_INVALID")
+                raise _conflict(
+                    "Usuário deve ser membro do workspace", "TEAM_MEMBER_REASSIGNMENT_INVALID"
+                )
             existing = self._repo.is_member(target_team_id, m.user_id)
             if existing is None:
-                self._repo.add_member(TeamMember(
-                    team_id=target_team_id,
-                    user_id=m.user_id,
-                    role=m.role,
-                    can_retrocede=m.can_retrocede,
-                ))
+                self._repo.add_member(
+                    TeamMember(
+                        team_id=target_team_id,
+                        user_id=m.user_id,
+                        role=m.role,
+                        can_retrocede=m.can_retrocede,
+                    )
+                )
             self._repo.remove_member(m)
 
         team.is_deleted = True
-        team.deleted_at = datetime.now(timezone.utc)
+        team.deleted_at = datetime.now(UTC)
         team.deleted_by = actor_id
         team.status_ativo = False
         try:
@@ -277,7 +295,9 @@ class TeamService:
             raise
         return team
 
-    def list_deleted(self, workspace_id: str, actor_id: str, actor_is_interno_adm: bool = False) -> list[Team]:
+    def list_deleted(
+        self, workspace_id: str, actor_id: str, actor_is_interno_adm: bool = False
+    ) -> list[Team]:
         ws = self._ws_repo().get_by_id(workspace_id)
         if ws is None:
             raise NotFoundException(
@@ -288,18 +308,29 @@ class TeamService:
             raise _forbidden("Apenas owner do workspace ou interno_adm pode ver equipes deletadas")
         return self._repo.list_deleted_for_workspace(workspace_id)
 
-    def permanent_delete(self, team_id: str, actor_id: str, actor_is_interno_adm: bool = False) -> None:
+    def permanent_delete(
+        self, team_id: str, actor_id: str, actor_is_interno_adm: bool = False
+    ) -> None:
         team = self._repo.get_by_id(team_id)
         if team is None:
             raise _not_found()
         self._require_workspace_owner_or_interno_adm(team, actor_id, actor_is_interno_adm)
         if not team.is_deleted:
-            raise _conflict("Equipe deve estar na lixeira antes da exclusão definitiva", "TEAM_NOT_SOFT_DELETED")
+            raise _conflict(
+                "Equipe deve estar na lixeira antes da exclusão definitiva", "TEAM_NOT_SOFT_DELETED"
+            )
         # block if boards still exist (safe default)
         from app.modules.kanban_boards.domain.models import Board
-        has_board = self._repo._db.query(Board.id).filter(Board.team_id == team_id).first() is not None
+
+        has_board = (
+            self._repo._db.query(Board.id).filter(Board.team_id == team_id).first() is not None
+        )
         if has_board:
-            raise _conflict("Equipe possui boards vinculados. Remova dependências antes da exclusão definitiva.", "TEAM_HAS_DEPENDENCIES")
+            raise _conflict(
+                "Equipe possui boards vinculados. "
+                "Remova dependências antes da exclusão definitiva.",
+                "TEAM_HAS_DEPENDENCIES",
+            )
         try:
             # remove leftover members just in case
             for m in self._repo.list_members(team_id):

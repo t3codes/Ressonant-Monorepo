@@ -1,12 +1,8 @@
 """Rotas de upload de imagem."""
 
-from typing import Annotated
-
 from app.modules.auth.deps import CurrentUser
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
-
 from app.modules.image_upload.usecases.services import ImageUploadService
-
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
 router = APIRouter(prefix="/upload", tags=["upload"])
 

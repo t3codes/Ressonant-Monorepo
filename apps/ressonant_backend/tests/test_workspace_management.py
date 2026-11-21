@@ -1,9 +1,8 @@
 from __future__ import annotations
 
+from app.modules.workspace_management.domain.models import AuditEvent
 from fastapi.testclient import TestClient
 from sqlalchemy import select
-
-from app.modules.workspace_management.domain.models import AuditEvent
 from tests.conftest import VALID_CPFS, login, make_user
 
 
@@ -11,13 +10,17 @@ def _auth(client: TestClient, email: str) -> dict[str, str]:
     return login(client, email)
 
 
-def _create_workspace(client: TestClient, headers: dict[str, str], slug: str, name: str = "Workspace") -> dict:
+def _create_workspace(
+    client: TestClient, headers: dict[str, str], slug: str, name: str = "Workspace"
+) -> dict:
     resp = client.post("/workspaces", json={"name": name, "slug": slug}, headers=headers)
     assert resp.status_code == 201, resp.text
     return resp.json()
 
 
-def _add_member(client: TestClient, headers: dict[str, str], workspace_id: str, user_id: str) -> dict:
+def _add_member(
+    client: TestClient, headers: dict[str, str], workspace_id: str, user_id: str
+) -> dict:
     resp = client.post(
         f"/workspaces/{workspace_id}/members",
         json={"user_id": user_id},
@@ -38,7 +41,9 @@ def _grant(
     payload = {"user_id": user_id, "level": level}
     if reason is not None:
         payload["reason"] = reason
-    return client.post(f"/workspaces/{workspace_id}/management/grants", json=payload, headers=headers)
+    return client.post(
+        f"/workspaces/{workspace_id}/management/grants", json=payload, headers=headers
+    )
 
 
 class TestAccessMe:
@@ -145,7 +150,9 @@ class TestAccessMe:
 
 
 class TestGrantsRead:
-    def test_list_grants_denied_without_management_read(self, client: TestClient, session_factory) -> None:
+    def test_list_grants_denied_without_management_read(
+        self, client: TestClient, session_factory
+    ) -> None:
         make_user(session_factory, email="owner@r.dev", cpf=VALID_CPFS[0])
         member = make_user(session_factory, email="member@r.dev", cpf=VALID_CPFS[1])
         owner_h = _auth(client, "owner@r.dev")
@@ -162,7 +169,9 @@ class TestGrantsRead:
 
 
 class TestGrantsWriteR9:
-    def test_member_grant_can_grant_read_and_modify(self, client: TestClient, session_factory) -> None:
+    def test_member_grant_can_grant_read_and_modify(
+        self, client: TestClient, session_factory
+    ) -> None:
         make_user(session_factory, email="owner@r.dev", cpf=VALID_CPFS[0])
         granter = make_user(session_factory, email="granter@r.dev", cpf=VALID_CPFS[1])
         target = make_user(session_factory, email="target@r.dev", cpf=VALID_CPFS[2])
@@ -182,7 +191,9 @@ class TestGrantsWriteR9:
         assert r2.status_code == 201, r2.text
         assert r2.json()["level"] == "modify"
 
-    def test_member_grant_cannot_grant_grant_level(self, client: TestClient, session_factory) -> None:
+    def test_member_grant_cannot_grant_grant_level(
+        self, client: TestClient, session_factory
+    ) -> None:
         make_user(session_factory, email="owner@r.dev", cpf=VALID_CPFS[0])
         granter = make_user(session_factory, email="granter@r.dev", cpf=VALID_CPFS[1])
         target = make_user(session_factory, email="target@r.dev", cpf=VALID_CPFS[2])
@@ -212,7 +223,9 @@ class TestGrantsWriteR9:
 
 
 class TestRevokeR9AndEffect:
-    def test_member_grant_cannot_revoke_grant_level(self, client: TestClient, session_factory) -> None:
+    def test_member_grant_cannot_revoke_grant_level(
+        self, client: TestClient, session_factory
+    ) -> None:
         make_user(session_factory, email="owner@r.dev", cpf=VALID_CPFS[0])
         granter = make_user(session_factory, email="granter@r.dev", cpf=VALID_CPFS[1])
         target = make_user(session_factory, email="target@r.dev", cpf=VALID_CPFS[2])
@@ -278,7 +291,9 @@ class TestInternoAdmBreakGlass:
         assert body["error_code"] == "BREAK_GLASS_REASON_REQUIRED"
         assert body["error_layer"] == "management"
 
-    def test_break_glass_with_reason_succeeds_and_audits(self, client: TestClient, session_factory) -> None:
+    def test_break_glass_with_reason_succeeds_and_audits(
+        self, client: TestClient, session_factory
+    ) -> None:
         make_user(session_factory, email="owner@r.dev", cpf=VALID_CPFS[0])
         target = make_user(session_factory, email="target@r.dev", cpf=VALID_CPFS[1])
         adm = make_user(session_factory, email="adm@r.dev", cpf=VALID_CPFS[2], admin=True)

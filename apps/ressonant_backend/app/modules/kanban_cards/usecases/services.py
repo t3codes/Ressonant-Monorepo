@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.common.exceptions import ConflictException
 from app.modules.kanban_boards.dataproviders.repository import BoardRepository
@@ -175,7 +175,13 @@ class CardService:
             return True
         return False
 
-    def move(self, card_id: str, input_data: CardMoveInput, user_id: str, actor_is_interno_adm: bool = False) -> Card:
+    def move(
+        self,
+        card_id: str,
+        input_data: CardMoveInput,
+        user_id: str,
+        actor_is_interno_adm: bool = False,
+    ) -> Card:
         """Move card entre colunas (expectedVersion para optimistic locking)."""
         card = self.get(card_id, user_id)
         self._require_editor(card.team_id, user_id)
@@ -255,7 +261,9 @@ class CardService:
             raise
         return cloned
 
-    def _is_privileged_unblocker(self, card: Card, actor_id: str, actor_is_interno_adm: bool) -> bool:
+    def _is_privileged_unblocker(
+        self, card: Card, actor_id: str, actor_is_interno_adm: bool
+    ) -> bool:
         if actor_is_interno_adm:
             return True
         board = self._board_repo.get_by_id(card.board_id)
@@ -267,11 +275,20 @@ class CardService:
         ws = ws_repo.get_by_id(board.workspace_id)
         return ws is not None and ws.owner_id == actor_id
 
-    def block(self, card_id: str, payload: CardBlockInput, user_id: str, actor_is_interno_adm: bool = False) -> Card:
+    def block(
+        self,
+        card_id: str,
+        payload: CardBlockInput,
+        user_id: str,
+        actor_is_interno_adm: bool = False,
+    ) -> Card:
         card = self.get(card_id, user_id)
         self._require_editor(card.team_id, user_id)
         if card.version != payload.expected_version:
-            raise _conflict("Versão desatualizada. O card foi modificado por outro usuário.", "CARD_VERSION_CONFLICT")
+            raise _conflict(
+                "Versão desatualizada. O card foi modificado por outro usuário.",
+                "CARD_VERSION_CONFLICT",
+            )
         if card.is_blocked:
             raise _conflict("Card já está bloqueado", "CARD_ALREADY_BLOCKED")
         reason = payload.reason.strip()
@@ -280,12 +297,18 @@ class CardService:
         card.is_blocked = True
         card.block_reason = reason
         card.blocked_by = user_id
-        card.blocked_at = datetime.now(timezone.utc)
+        card.blocked_at = datetime.now(UTC)
         card.version += 1
-        self._card_repo.add_history(CardHistory(
-            card_id=card.id, event_type="blocked", field_name="is_blocked",
-            old_value="false", new_value=reason, author_id=user_id,
-        ))
+        self._card_repo.add_history(
+            CardHistory(
+                card_id=card.id,
+                event_type="blocked",
+                field_name="is_blocked",
+                old_value="false",
+                new_value=reason,
+                author_id=user_id,
+            )
+        )
         try:
             self._card_repo.commit()
         except Exception:
@@ -293,11 +316,20 @@ class CardService:
             raise
         return card
 
-    def unblock(self, card_id: str, payload: CardUnblockInput, user_id: str, actor_is_interno_adm: bool = False) -> Card:
+    def unblock(
+        self,
+        card_id: str,
+        payload: CardUnblockInput,
+        user_id: str,
+        actor_is_interno_adm: bool = False,
+    ) -> Card:
         card = self.get(card_id, user_id)
         self._require_editor(card.team_id, user_id)
         if card.version != payload.expected_version:
-            raise _conflict("Versão desatualizada. O card foi modificado por outro usuário.", "CARD_VERSION_CONFLICT")
+            raise _conflict(
+                "Versão desatualizada. O card foi modificado por outro usuário.",
+                "CARD_VERSION_CONFLICT",
+            )
         if not card.is_blocked:
             raise _conflict("Card não está bloqueado", "CARD_NOT_BLOCKED")
         is_blocker = card.blocked_by == user_id
@@ -306,17 +338,26 @@ class CardService:
         if not is_blocker and not is_privileged:
             raise _forbidden("Somente quem bloqueou o card ou owner/interno_adm pode desbloquear")
         if is_privileged and not is_blocker and len(justification) < 3:
-            raise _conflict("Justificativa obrigatória para desbloqueio por owner/interno_adm", "CARD_UNBLOCK_JUSTIFICATION_REQUIRED")
+            raise _conflict(
+                "Justificativa obrigatória para desbloqueio por owner/interno_adm",
+                "CARD_UNBLOCK_JUSTIFICATION_REQUIRED",
+            )
         old_reason = card.block_reason
         card.is_blocked = False
         card.block_reason = None
         card.blocked_by = None
         card.blocked_at = None
         card.version += 1
-        self._card_repo.add_history(CardHistory(
-            card_id=card.id, event_type="unblocked", field_name="is_blocked",
-            old_value=old_reason, new_value=justification or f"unblocked_by:{user_id}", author_id=user_id,
-        ))
+        self._card_repo.add_history(
+            CardHistory(
+                card_id=card.id,
+                event_type="unblocked",
+                field_name="is_blocked",
+                old_value=old_reason,
+                new_value=justification or f"unblocked_by:{user_id}",
+                author_id=user_id,
+            )
+        )
         try:
             self._card_repo.commit()
         except Exception:

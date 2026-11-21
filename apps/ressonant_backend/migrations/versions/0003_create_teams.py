@@ -28,9 +28,7 @@ def upgrade() -> None:
         ),
         sa.Column("owner_id", sa.Uuid(as_uuid=False), nullable=False, index=True),
         sa.Column("description", sa.String(500), nullable=True),
-        sa.Column(
-            "status_ativo", sa.Boolean(), nullable=False, server_default=sa.true()
-        ),
+        sa.Column("status_ativo", sa.Boolean(), nullable=False, server_default=sa.true()),
         sa.Column(
             "criado_em",
             sa.DateTime(timezone=True),
@@ -56,9 +54,7 @@ def upgrade() -> None:
             index=True,
         ),
         sa.Column("user_id", sa.Uuid(as_uuid=False), nullable=False, index=True),
-        sa.Column(
-            "role", sa.String(20), nullable=False, server_default="member"
-        ),
+        sa.Column("role", sa.String(20), nullable=False, server_default="member"),
         sa.Column(
             "criado_em",
             sa.DateTime(timezone=True),

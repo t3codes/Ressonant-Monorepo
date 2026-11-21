@@ -57,12 +57,12 @@ from app.modules.user.entrypoints import routes as user_routes
 from app.modules.workspace.domain.models import (
     Workspace,  # noqa: F401  (registra as tabelas no metadata)
 )
+from app.modules.workspace.entrypoints import routes as workspace_routes
 from app.modules.workspace_management.domain.models import (  # noqa: F401
     AuditEvent,
     WorkspaceManagementGrant,
 )
 from app.modules.workspace_management.entrypoints import routes as workspace_management_routes
-from app.modules.workspace.entrypoints import routes as workspace_routes
 
 
 class HealthResponse(BaseModel):

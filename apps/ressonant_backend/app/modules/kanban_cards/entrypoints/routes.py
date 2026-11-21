@@ -80,8 +80,6 @@ def move_card(
     return CardResponse.model_validate(service.move(card_id, input_data, user.id, user.interno_adm))
 
 
-
-
 @router.post("/{card_id}/block", response_model=CardResponse)
 def block_card(
     card_id: str,
