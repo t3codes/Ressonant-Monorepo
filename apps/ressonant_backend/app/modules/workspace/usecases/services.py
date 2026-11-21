@@ -152,6 +152,7 @@ class WorkspaceService:
         new_member = WorkspaceMember(workspace_id=workspace_id, user_id=target_id, role=payload.role)
         try:
             self._repo.add_member(new_member)
+            workspace.management_permission_version = int(getattr(workspace, "management_permission_version", 1) or 1) + 1
             self._repo.commit()
         except Exception:
             self._repo.rollback()
@@ -184,6 +185,7 @@ class WorkspaceService:
             raise _forbidden("O owner deve permanecer com acesso administrativo")
         member.role = payload.role
         try:
+            workspace.management_permission_version = int(getattr(workspace, "management_permission_version", 1) or 1) + 1
             self._repo.commit()
         except Exception:
             self._repo.rollback()
@@ -209,6 +211,7 @@ class WorkspaceService:
             old_member = self._repo.get_member(workspace_id, old_owner_id)
             if old_member is not None and old_member.role != "admin":
                 old_member.role = "admin"
+            workspace.management_permission_version = int(getattr(workspace, "management_permission_version", 1) or 1) + 1
             self._repo.commit()
         except Exception:
             self._repo.rollback()
