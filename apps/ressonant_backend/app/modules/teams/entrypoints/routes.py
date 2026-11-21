@@ -10,6 +10,7 @@ from app.modules.teams.schemas.dto import (
     TeamMemberResponse,
     TeamMemberUpdate,
     TeamResponse,
+    TeamSoftDeleteInput,
     TeamStatusUpdate,
     TeamUpdate,
 )
@@ -48,6 +49,17 @@ def list_teams(
         skip=skip,
         limit=limit,
     )
+
+
+@router.get("/deleted", response_model=TeamList)
+def list_deleted_teams(
+    user: CurrentUser,
+    service: Service,
+    workspace_id: str,
+) -> TeamList:
+    """Lista equipes deletadas (soft delete) do workspace. Apenas owner/interno_adm."""
+    items = service.list_deleted(workspace_id, user.id, user.interno_adm)
+    return TeamList(items=[TeamResponse.model_validate(i) for i in items], total=len(items), skip=0, limit=len(items))
 
 
 @router.get("/{team_id}", response_model=TeamResponse)
@@ -131,3 +143,24 @@ def update_team_member(
     return TeamMemberResponse.model_validate(
         service.update_member(team_id, user_id, payload, user.id, user.interno_adm)
     )
+
+
+@router.post("/{team_id}/soft-delete", response_model=TeamResponse)
+def soft_delete_team(
+    team_id: str,
+    payload: TeamSoftDeleteInput,
+    user: CurrentUser,
+    service: Service,
+) -> TeamResponse:
+    """Soft delete de equipe com reatribuição obrigatória de membros. Apenas owner/interno_adm."""
+    return TeamResponse.model_validate(service.soft_delete(team_id, payload, user.id, user.interno_adm))
+
+
+@router.delete("/{team_id}/permanent", status_code=status.HTTP_204_NO_CONTENT)
+def permanent_delete_team(
+    team_id: str,
+    user: CurrentUser,
+    service: Service,
+) -> None:
+    """Exclusão definitiva de equipe já deletada. Apenas owner/interno_adm."""
+    service.permanent_delete(team_id, user.id, user.interno_adm)

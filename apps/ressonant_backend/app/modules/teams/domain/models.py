@@ -22,6 +22,9 @@ class Team(Base):
     owner_id: Mapped[str] = mapped_column(Uuid(as_uuid=False), nullable=False, index=True)
     description: Mapped[str | None] = mapped_column(String(500), nullable=True)
     status_ativo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    deleted_by: Mapped[str | None] = mapped_column(Uuid(as_uuid=False), nullable=True)
     criado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

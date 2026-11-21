@@ -1116,6 +1116,54 @@
         }
       }
     },
+    "/teams/deleted": {
+      "get": {
+        "tags": [
+          "teams"
+        ],
+        "summary": "List Deleted Teams",
+        "description": "Lista equipes deletadas (soft delete) do workspace. Apenas owner/interno_adm.",
+        "operationId": "list_deleted_teams_teams_deleted_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/teams/{team_id}": {
       "get": {
         "tags": [
@@ -1435,6 +1483,105 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teams/{team_id}/soft-delete": {
+      "post": {
+        "tags": [
+          "teams"
+        ],
+        "summary": "Soft Delete Team",
+        "description": "Soft delete de equipe com reatribuição obrigatória de membros. Apenas owner/interno_adm.",
+        "operationId": "soft_delete_team_teams__team_id__soft_delete_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "team_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Team Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamSoftDeleteInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teams/{team_id}/permanent": {
+      "delete": {
+        "tags": [
+          "teams"
+        ],
+        "summary": "Permanent Delete Team",
+        "description": "Exclusão definitiva de equipe já deletada. Apenas owner/interno_adm.",
+        "operationId": "permanent_delete_team_teams__team_id__permanent_delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "team_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Team Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
           },
           "422": {
             "description": "Validation Error",
@@ -6103,6 +6250,24 @@
         ],
         "title": "TeamMemberList"
       },
+      "TeamMemberReassignment": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "target_team_id": {
+            "type": "string",
+            "title": "Target Team Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "target_team_id"
+        ],
+        "title": "TeamMemberReassignment"
+      },
       "TeamMemberResponse": {
         "properties": {
           "id": {
@@ -6208,6 +6373,34 @@
             "type": "boolean",
             "title": "Status Ativo"
           },
+          "is_deleted": {
+            "type": "boolean",
+            "title": "Is Deleted",
+            "default": false
+          },
+          "deleted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted At"
+          },
+          "deleted_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted By"
+          },
           "criado_em": {
             "type": "string",
             "format": "date-time",
@@ -6232,6 +6425,19 @@
           "atualizado_em"
         ],
         "title": "TeamResponse"
+      },
+      "TeamSoftDeleteInput": {
+        "properties": {
+          "member_reassignments": {
+            "items": {
+              "$ref": "#/components/schemas/TeamMemberReassignment"
+            },
+            "type": "array",
+            "title": "Member Reassignments"
+          }
+        },
+        "type": "object",
+        "title": "TeamSoftDeleteInput"
       },
       "TeamStatusUpdate": {
         "properties": {
