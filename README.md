@@ -4,7 +4,7 @@ Monorepo (UV workspace Python) do ecossistema **Ressonant**: bibliotecas compart
 
 # Propósito
 
-Cópia exata de um clone do Slack com capacidades agênticas: canais e threads, mensagens e execução autônoma de fluxos por agentes de IA. Hoje o backend cobre **autenticação e CRUD de usuários**.
+Plataforma de comunicação e colaboração (categoria Slack). Hoje o backend cobre **autenticação, usuários, workspaces, equipes, Kanban, chat, mail, notificações, reações, read states, upload de imagens e gestão de workspace (RBAC/auditoria)**. Execução de fluxos por agentes de IA e RAG são **Planejado — Fase 4** no Plano Mestre Unificado.
 
 # Arquitetura
 
@@ -57,13 +57,14 @@ API em <http://localhost:8000>, Swagger em <http://localhost:8000/docs>. `make h
 
 # Estado atual: o que está implementado
 
-- **Backend implementado** (`apps/ressonant_backend`): health/readiness, autenticação com bloqueio de tentativas no processo e revogação de access token, CRUD de usuários e domínios de workspace/equipes, canais/conversas/mensagens, boards/cards, mail, notificações, reações, read states e upload de imagens. Mensagens de sala também podem ser enviadas e difundidas por WebSocket autenticado, com persistência no banco.
+- **Backend implementado** (`apps/ressonant_backend`): health/readiness; autenticação JWT com bloqueio de tentativas no processo e revogação de access token (blacklist em memória, com Redis quando `REDIS_URL` está configurado); CRUD de usuários; workspaces e membros; equipes (com soft-delete); boards/colunas e cards (criar, listar, atualizar, mover, clonar, bloquear, desbloquear); canais, conversas e mensagens por HTTP e WebSocket autenticado; mail; notificações; reações; read states; upload de imagens; e as oito rotas de gestão de workspace com níveis `none|read|modify|grant`, R9/R10 e auditoria.
 - **Integrações compartilhadas**: armazenamento compatível com S3 (endpoint configurável e fallback local quando não habilitado) e inicialização opcional de Datadog por `DD_TRACE_ENABLED`.
-- **Ainda não implementado neste backend**: presença, busca avançada, preferências, execução de fluxos por agentes de IA e RAG. O refresh de tokens depende de Redis configurado.
+- **Ainda não implementado neste backend**: presença, busca avançada, preferências, refresh token (há método interno, mas nenhuma rota pública) e execução de fluxos por agentes de IA/RAG (**Planejado — Fase 4**).
+- **Planejado — Fase 0/1 (não implementado)**: `GET /me/context` (D7; bootstrap canônico — hoje existe apenas `GET /auth/me`), `organizations`/`organization_members`/`invitations`, `plans`/`subscriptions` e os papéis de Dono da Empresa e Billing Owner. `/auth/bootstrap` **não será criado** (D7). `VITE_API_BASE_URL` (D1) também é **Planejado — Fase 0/1**, no frontend.
 
-A spec OpenAPI versionada em `apps/ressonant_backend/openapi.json` cobre as rotas HTTP. O endpoint WebSocket é `/ws/channel/{room_id}` ou `/ws/conversation/{room_id}`; autentique enviando `Sec-WebSocket-Protocol: bearer, <access_token>`.
+A spec OpenAPI versionada em `apps/ressonant_backend/openapi.json` cobre as rotas HTTP. O endpoint WebSocket é `/ws/{room_kind}/{room_id}` (por exemplo `/ws/channel/{room_id}` e `/ws/conversation/{room_id}`); autentique enviando `Sec-WebSocket-Protocol: bearer, <access_token>`.
 
-A tabela abaixo destaca as rotas de saúde/autenticação/usuários; o catálogo completo de requests e payloads está na collection Postman em `apps/rs_collections/postman/import-json/`:
+A tabela abaixo destaca rotas de saúde, autenticação, usuários e gestão; o catálogo completo de requests e payloads está em `apps/ressonant_backend/openapi.json`. Há também uma collection Postman em `apps/rs_collections/postman/import-json/`:
 
 | Método | Rota | Descrição |
 | --- | --- | --- |
@@ -71,15 +72,27 @@ A tabela abaixo destaca as rotas de saúde/autenticação/usuários; o catálogo
 | GET | `/health/ready` | Readiness (checa o banco) |
 | POST | `/auth/register` | Cadastro público |
 | POST | `/auth/login` | Login (retorna access token JWT) |
+| POST | `/auth/logout` | Revoga o access token |
 | GET | `/auth/me` | Dados do usuário autenticado |
 | POST | `/users` | Cria usuário (admin) |
 | GET | `/users` | Lista usuários (paginação/filtro, admin) |
 | GET | `/users/{user_id}` | Busca (admin ou o próprio usuário) |
 | PUT | `/users/{user_id}` | Atualiza (admin ou o próprio usuário) |
 | PATCH | `/users/{user_id}/status` | Ativa/desativa (admin) |
+| PATCH | `/users/{user_id}/admin` | Alterna `interno_adm` (admin) |
 | DELETE | `/users/{user_id}` | Soft delete (admin) |
+| GET | `/workspaces/{workspace_id}/management/access/me` | Nível efetivo, owner/`interno_adm` e capabilities |
+| GET | `/workspaces/{workspace_id}/management/grants` | Lista grants ativos (leitura de gestão) |
+| POST | `/workspaces/{workspace_id}/management/grants` | Cria/atualiza grant (`read\|modify\|grant`; R9) |
+| DELETE | `/workspaces/{workspace_id}/management/grants/{target_user_id}` | Revoga grant (R9/R10) |
+| GET | `/workspaces/{workspace_id}/management/people` | Membros do workspace |
+| GET | `/workspaces/{workspace_id}/management/teams` | Equipes do workspace |
+| GET | `/workspaces/{workspace_id}/management/blocked-cards` | Cards bloqueados |
+| GET | `/workspaces/{workspace_id}/management/audit-events` | Eventos de auditoria (paginação) |
 
-> O frontend (Ressonant) ainda não consome esse backend: a camada de dados de chat, kanban, mail, notificações e tempo real permanece em mock (`localStorage`) por trás dos contratos em `src/repositories/contracts.ts` do frontend.
+> Não confundir com o **Planejado — Fase 0/1**: não existe `GET /me/context`, nem rotas `/organizations` ou `/plans` neste backend. A matriz completa de atores está em [`apps/ressonant_backend/docs/management-actor-action-matrix.md`](apps/ressonant_backend/docs/management-actor-action-matrix.md).
+
+> O frontend (Ressonant) ainda não consome esse backend como fonte única: a camada de dados de chat, kanban, mail, notificações e tempo real permanece em mock (`localStorage`) por trás dos contratos em `src/repositories/contracts.ts` do frontend. A unificação em `VITE_API_BASE_URL` é **Planejado — Fase 0/1** (D1).
 
 ## Como iniciar o backend (local, sem Docker)
 
@@ -100,7 +113,9 @@ Ou via Docker Compose: `docker compose up -d backend` (o compose sobe migrate + 
 | Arquivo | Conteúdo |
 | --- | --- |
 | [`.env.example`](.env.example) | `POSTGRES_*`, portas, credenciais do Grafana |
-| [`apps/ressonant_backend/.env.example`](apps/ressonant_backend/.env.example) | `AUTH_SECRET`, CORS, `OTEL_*`, admin inicial |
+| [`apps/ressonant_backend/.env.example`](apps/ressonant_backend/.env.example) | `DATABASE_URL`, `AUTH_SECRET`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `CORS_ORIGINS`, `ENVIRONMENT`, `PORT`, `LOG_LEVEL`, `REDIS_URL`, `OTEL_*`, `AWS_S3_*`, `DD_*`, admin inicial |
+
+**Planejado — Fase 0/1 (não implementado):** a configuração do frontend passará a usar `VITE_API_BASE_URL` (D1, única variável de URL) e `VITE_DATA_MODE` (`mock|http`). Essas variáveis **não existem** neste monorepo; as atuais `VITE_DATA_API`, `VITE_AUTH_API`, `VITE_KANBAN_API`, `VITE_MANAGEMENT_API` e `VITE_MANAGEMENT_URL` vivem no repositório do frontend, fora daqui.
 
 ## Comandos do dia a dia
 
