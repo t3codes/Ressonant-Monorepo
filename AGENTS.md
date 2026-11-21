@@ -2,7 +2,7 @@
 
 Fonte **única e universal** de instruções para qualquer agente de IA neste monorepo (Claude Code, OpenCode, Codex, Gemini CLI, Hermes e outros). Padrões abertos: `AGENTS.md` e Agent Skills (`.agents/skills/<nome>/SKILL.md`, [agentskills.io](https://agentskills.io/specification)). Nenhuma regra mora em arquivo de fornecedor: o `CLAUDE.md` apenas importa este arquivo.
 
-Legenda de estado usada abaixo: **Implementado** · **Parcial** · **Planejado** · **Não implementado**.
+Legenda de estado usada abaixo: **Entregue — Fase 0** · **Implementado** · **Parcial** · **Planejado — Fase N (gate)** · **Não implementado**.
 
 ## 1. Produto
 
@@ -14,8 +14,11 @@ O Ressonant é o backend de uma plataforma de comunicação e colaboração em t
 | API FastAPI síncrona sobre PostgreSQL com migrations Alembic | **Implementado** |
 | Telemetria (traces e métricas OTLP → Tempo/Prometheus → Grafana) | **Implementado** em dev local |
 | Logs estruturados JSON com `trace_id` (stdout) | **Implementado**; exportação de logs via OTLP **não implementada** |
-| Canais, threads, mensagens | **Planejado** (sem código) |
-| Tempo real (WebSockets), Redis, mensageria, escalabilidade horizontal | **Planejado** (sem código, sem dependências) |
+| Canais, conversas e mensagens | **Implementado** no backend: `/channels`, `/conversations`, `/messages` (com `parent_id` para encadeamento) no `openapi.json`, com persistência e reações/read-states/notificações. O vínculo Chat↔card é **Planejado — Fase 4 (P4-2)**; ranqueamento de threads e paridade total de campos seguem **Planejado — Fase 4** (sem gate próprio) |
+| Tempo real (WebSocket) | **Implementado** no backend: router `/ws/{room_kind}/{room_id}` registrado em `app/main.py` e implementado em `app/modules/chat/entrypoints/websocket.py`, com autenticação por subprotocolo Bearer, persistência da mensagem e difusão por sala **no processo**. Rotas WebSocket não aparecem no OpenAPI |
+| Redis, mensageria, escalabilidade horizontal | **Planejado — Fase 4** (sem gate próprio no Plano Mestre; P4-2 cobre o vínculo Chat↔card): sem Redis, sem broker e sem difusão entre processos — a difusão atual não atravessa réplicas |
+| Hierarquia organizacional, bootstrap e billing stub | **Entregue — Fase 0** (P0-4/P0-6): tabelas `organizations`/`organization_members`/`invitations`/`plans`/`subscriptions`, `GET /me/context` e os 4 endpoints de billing (`provider=stub`, `simulation=true`, sem cobrança real). Convites por e-mail são **Planejado — Fase 1 (P1-5)** |
+| RBAC de cinco eixos e auditoria append-only | **Entregue — Fase 0** (P0-4/P0-5): grants com R9/R10 e `audit_events` com `REVOKE UPDATE, DELETE` + trigger no Postgres (migration `0017`) |
 | Execução de fluxos por agentes de IA | **Planejado** |
 | RAG conectado ao cofre Obsidian | **Planejado**; decisões de vector store, embeddings e sincronização **em aberto** |
 | Refresh token, rate limit de login | **Não implementado** (pendências conhecidas) |
@@ -27,7 +30,7 @@ Princípios: correção e segurança primeiro; simplicidade antes de abstração
 ## 2. Mapa do monorepo
 
 ```
-apps/ressonant_backend/   API FastAPI (módulos app/auth, app/user; migrations/, tests/, openapi.json)
+apps/ressonant_backend/   API FastAPI (app/modules/: auth, user, workspace, workspace_management, organization, context, billing, chat, kanban, mail etc.; migrations/, tests/, openapi.json)
 packages/                 libs sob o namespace common: errors, logs, telemetry (só deps), common-http, check-structure
 infra/                    compose do Postgres e da observabilidade (OTel Collector, Tempo, Prometheus, Grafana)
 docker-compose.yml        índice (include:) dos composes de infra/ e de cada app; não define serviços
