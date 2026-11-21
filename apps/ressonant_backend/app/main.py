@@ -61,6 +61,7 @@ from app.modules.workspace_management.domain.models import (  # noqa: F401
     AuditEvent,
     WorkspaceManagementGrant,
 )
+from app.modules.workspace_management.entrypoints import routes as workspace_management_routes
 from app.modules.workspace.entrypoints import routes as workspace_routes
 
 
@@ -94,6 +95,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_routes.router)
     app.include_router(user_routes.router)
     app.include_router(workspace_routes.router)
+    app.include_router(workspace_management_routes.router)
     app.include_router(teams_routes.router)
     app.include_router(kanban_boards_routes.router)
     app.include_router(kanban_cards_routes.router)
