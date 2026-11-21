@@ -74,6 +74,19 @@ class WorkspaceManagementService:
             return True
         return self._repo.get_workspace_member(workspace.id, user.id) is not None
 
+    @staticmethod
+    def _redact(payload: dict | None) -> dict | None:
+        if payload is None:
+            return None
+        sensitive = {"password", "senha", "token", "secret", "cpf", "telefone", "email", "authorization"}
+        out = {}
+        for k, v in payload.items():
+            if k.lower() in sensitive:
+                out[k] = "[REDACTED]"
+            else:
+                out[k] = v
+        return out
+
     def _audit(
         self,
         *,
@@ -103,9 +116,9 @@ class WorkspaceManagementService:
             entity_id=entity_id,
             target_user_id=target_user_id,
             request_id=request_id,
-            before=before,
-            after=after,
-            metadata_=metadata,
+            before=self._redact(before),
+            after=self._redact(after),
+            metadata_=self._redact(metadata),
             result=result,
         )
         self._repo.add_audit_event(event)
