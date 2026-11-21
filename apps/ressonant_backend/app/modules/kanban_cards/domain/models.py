@@ -34,6 +34,10 @@ class Card(Base):
     budget_project: Mapped[str | None] = mapped_column(String(200), nullable=True)
     parent_id: Mapped[str | None] = mapped_column(Uuid(as_uuid=False), nullable=True, index=True)
     version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    is_blocked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    block_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    blocked_by: Mapped[str | None] = mapped_column(Uuid(as_uuid=False), nullable=True, index=True)
+    blocked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     status_ativo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     criado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

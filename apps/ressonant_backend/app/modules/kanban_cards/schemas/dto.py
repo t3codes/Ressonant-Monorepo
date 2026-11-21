@@ -77,6 +77,10 @@ class CardResponse(BaseModel):
     budget_project: str | None
     parent_id: str | None
     version: int
+    is_blocked: bool
+    block_reason: str | None = None
+    blocked_by: str | None = None
+    blocked_at: datetime | None = None
     status_ativo: bool
     criado_em: datetime
     atualizado_em: datetime
@@ -91,6 +95,16 @@ class CardList(BaseModel):
 
 class CardMoveInput(BaseModel):
     column_id: str
+    expected_version: int
+
+
+class CardBlockInput(BaseModel):
+    reason: str = Field(min_length=3, max_length=2000)
+    expected_version: int
+
+
+class CardUnblockInput(BaseModel):
+    justification: str | None = Field(default=None, max_length=2000)
     expected_version: int
 
 

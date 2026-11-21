@@ -34,6 +34,7 @@ class TeamMemberAdd(BaseModel):
     user_id: str | None = None
     email: EmailStr | None = None
     role: str = Field(default="member", pattern="^(admin|member|viewer)$")
+    can_retrocede: bool = False
 
     @model_validator(mode="after")
     def _require_identifier(self) -> "TeamMemberAdd":
@@ -43,7 +44,8 @@ class TeamMemberAdd(BaseModel):
 
 
 class TeamMemberUpdate(BaseModel):
-    role: str = Field(pattern="^(admin|member|viewer)$")
+    role: str | None = Field(default=None, pattern="^(admin|member|viewer)$")
+    can_retrocede: bool | None = None
 
 
 class TeamMemberResponse(BaseModel):
@@ -53,6 +55,7 @@ class TeamMemberResponse(BaseModel):
     team_id: str
     user_id: str
     role: str
+    can_retrocede: bool
     criado_em: datetime
 
 
