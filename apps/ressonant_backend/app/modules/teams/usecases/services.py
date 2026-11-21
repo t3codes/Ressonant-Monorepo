@@ -161,7 +161,12 @@ class TeamService:
             raise _forbidden("Usuário deve ser membro do workspace para entrar na equipe")
         if self._repo.is_member(team_id, target_id):
             raise _conflict("Usuário já é membro deste team", "TEAM_MEMBER_EXISTS")
-        new_member = TeamMember(team_id=team_id, user_id=target_id, role=payload.role)
+        new_member = TeamMember(
+            team_id=team_id,
+            user_id=target_id,
+            role=payload.role,
+            can_retrocede=payload.can_retrocede,
+        )
         try:
             self._repo.add_member(new_member)
             self._repo.commit()
@@ -187,7 +192,10 @@ class TeamService:
         member = self._repo.get_member(team_id, target_user_id)
         if member is None:
             raise _not_found()
-        member.role = payload.role
+        if payload.role is not None:
+            member.role = payload.role
+        if payload.can_retrocede is not None:
+            member.can_retrocede = payload.can_retrocede
         try:
             self._repo.commit()
         except Exception:

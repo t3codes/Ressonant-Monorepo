@@ -54,6 +54,7 @@ class TeamMember(Base):
     role: Mapped[str] = mapped_column(
         String(20), default="member", nullable=False
     )  # admin | member | viewer
+    can_retrocede: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     criado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

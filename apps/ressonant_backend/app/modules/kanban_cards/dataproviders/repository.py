@@ -1,6 +1,6 @@
 import uuid
 
-from app.modules.kanban_cards.domain.models import Card
+from app.modules.kanban_cards.domain.models import Card, CardHistory
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -41,6 +41,11 @@ class CardRepository:
         self._db.add(card)
         self._db.flush()
         return card
+
+    def add_history(self, history: CardHistory) -> CardHistory:
+        self._db.add(history)
+        self._db.flush()
+        return history
 
     def commit(self) -> None:
         self._db.commit()

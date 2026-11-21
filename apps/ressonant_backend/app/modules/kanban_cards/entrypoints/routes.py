@@ -3,10 +3,12 @@ from typing import Annotated
 from app.modules.auth.deps import CurrentUser
 from app.modules.kanban_cards.deps import get_card_service
 from app.modules.kanban_cards.schemas.dto import (
+    CardBlockInput,
     CardCreate,
     CardList,
     CardMoveInput,
     CardResponse,
+    CardUnblockInput,
     CardUpdate,
 )
 from app.modules.kanban_cards.usecases.services import CardService
@@ -76,6 +78,30 @@ def move_card(
 ) -> CardResponse:
     """Move card entre colunas com otimistic locking."""
     return CardResponse.model_validate(service.move(card_id, input_data, user.id))
+
+
+
+
+@router.post("/{card_id}/block", response_model=CardResponse)
+def block_card(
+    card_id: str,
+    payload: CardBlockInput,
+    user: CurrentUser,
+    service: Service,
+) -> CardResponse:
+    """Bloqueia card (não pode ser movido até desbloqueio)."""
+    return CardResponse.model_validate(service.block(card_id, payload, user.id, user.interno_adm))
+
+
+@router.post("/{card_id}/unblock", response_model=CardResponse)
+def unblock_card(
+    card_id: str,
+    payload: CardUnblockInput,
+    user: CurrentUser,
+    service: Service,
+) -> CardResponse:
+    """Desbloqueia card. Quem bloqueou ou owner/interno_adm (com justificativa auditada)."""
+    return CardResponse.model_validate(service.unblock(card_id, payload, user.id, user.interno_adm))
 
 
 @router.post(

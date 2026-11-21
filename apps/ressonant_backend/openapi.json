@@ -2141,6 +2141,122 @@
         }
       }
     },
+    "/cards/{card_id}/block": {
+      "post": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "Block Card",
+        "description": "Bloqueia card (não pode ser movido até desbloqueio).",
+        "operationId": "block_card_cards__card_id__block_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "card_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Card Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CardBlockInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cards/{card_id}/unblock": {
+      "post": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "Unblock Card",
+        "description": "Desbloqueia card. Quem bloqueou ou owner/interno_adm (com justificativa auditada).",
+        "operationId": "unblock_card_cards__card_id__unblock_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "card_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Card Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CardUnblockInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/cards/{card_id}/clone": {
       "post": {
         "tags": [
@@ -3786,6 +3902,26 @@
         ],
         "title": "Body_upload_image_upload_image_post"
       },
+      "CardBlockInput": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 3,
+            "title": "Reason"
+          },
+          "expected_version": {
+            "type": "integer",
+            "title": "Expected Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reason",
+          "expected_version"
+        ],
+        "title": "CardBlockInput"
+      },
       "CardCreate": {
         "properties": {
           "title": {
@@ -4237,6 +4373,44 @@
             "type": "integer",
             "title": "Version"
           },
+          "is_blocked": {
+            "type": "boolean",
+            "title": "Is Blocked"
+          },
+          "block_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Block Reason"
+          },
+          "blocked_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blocked By"
+          },
+          "blocked_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blocked At"
+          },
           "status_ativo": {
             "type": "boolean",
             "title": "Status Ativo"
@@ -4272,11 +4446,37 @@
           "budget_project",
           "parent_id",
           "version",
+          "is_blocked",
           "status_ativo",
           "criado_em",
           "atualizado_em"
         ],
         "title": "CardResponse"
+      },
+      "CardUnblockInput": {
+        "properties": {
+          "justification": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Justification"
+          },
+          "expected_version": {
+            "type": "integer",
+            "title": "Expected Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "expected_version"
+        ],
+        "title": "CardUnblockInput"
       },
       "CardUpdate": {
         "properties": {
@@ -5637,6 +5837,11 @@
             "pattern": "^(admin|member|viewer)$",
             "title": "Role",
             "default": "member"
+          },
+          "can_retrocede": {
+            "type": "boolean",
+            "title": "Can Retrocede",
+            "default": false
           }
         },
         "type": "object",
@@ -5682,6 +5887,10 @@
             "type": "string",
             "title": "Role"
           },
+          "can_retrocede": {
+            "type": "boolean",
+            "title": "Can Retrocede"
+          },
           "criado_em": {
             "type": "string",
             "format": "date-time",
@@ -5694,6 +5903,7 @@
           "team_id",
           "user_id",
           "role",
+          "can_retrocede",
           "criado_em"
         ],
         "title": "TeamMemberResponse"
@@ -5701,15 +5911,30 @@
       "TeamMemberUpdate": {
         "properties": {
           "role": {
-            "type": "string",
-            "pattern": "^(admin|member|viewer)$",
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(admin|member|viewer)$"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Role"
+          },
+          "can_retrocede": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Can Retrocede"
           }
         },
         "type": "object",
-        "required": [
-          "role"
-        ],
         "title": "TeamMemberUpdate"
       },
       "TeamResponse": {
