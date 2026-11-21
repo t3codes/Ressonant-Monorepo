@@ -303,3 +303,36 @@ class WorkspaceManagementService:
         except Exception:
             self._repo.rollback()
             raise
+
+
+    def list_people(self, workspace_id: str, actor: User):
+        self.require_read(workspace_id, actor)
+        members = self._repo.list_workspace_members(workspace_id)
+        return [{"user_id": m.user_id, "role": m.role, "criado_em": m.criado_em} for m in members]
+
+    def list_teams(self, workspace_id: str, actor: User, include_deleted: bool = False):
+        self.require_read(workspace_id, actor)
+        teams = self._repo.list_teams(workspace_id, include_deleted=include_deleted)
+        return [{
+            "id": t.id, "workspace_id": t.workspace_id, "name": t.name, "slug": t.slug,
+            "description": t.description, "status_ativo": t.status_ativo, "is_deleted": t.is_deleted,
+            "deleted_at": t.deleted_at, "members_count": self._repo.count_team_members(t.id),
+        } for t in teams]
+
+    def list_audit(self, workspace_id: str, actor: User, skip: int = 0, limit: int = 50):
+        self.require_read(workspace_id, actor)
+        events = self._repo.list_audit_events(workspace_id, skip=skip, limit=limit)
+        return [{
+            "id": e.id, "workspace_id": e.workspace_id, "occurred_at": e.occurred_at,
+            "actor_user_id": e.actor_user_id, "actor_type": e.actor_type, "action": e.action,
+            "entity_type": e.entity_type, "entity_id": e.entity_id, "target_user_id": e.target_user_id,
+            "request_id": e.request_id, "before": e.before, "after": e.after, "metadata": e.metadata_, "result": e.result,
+        } for e in events]
+
+    def list_blocked_cards(self, workspace_id: str, actor: User):
+        self.require_read(workspace_id, actor)
+        cards = self._repo.list_blocked_cards(workspace_id)
+        return [{
+            "id": c.id, "title": c.title, "team_id": c.team_id, "board_id": c.board_id, "column_id": c.column_id,
+            "block_reason": c.block_reason, "blocked_by": c.blocked_by, "blocked_at": c.blocked_at,
+        } for c in cards]

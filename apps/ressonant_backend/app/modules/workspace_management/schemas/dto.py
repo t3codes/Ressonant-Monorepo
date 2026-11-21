@@ -66,3 +66,53 @@ class ManagementGrantResponse(BaseModel):
     revoked_at: datetime | None = None
     revoked_by_id: str | None = None
     revoke_reason: str | None = None
+
+
+class WorkspacePersonResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    user_id: str
+    role: str
+    criado_em: datetime | None = None
+
+
+class AdminTeamResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id: str
+    workspace_id: str
+    name: str
+    slug: str
+    description: str | None = None
+    status_ativo: bool
+    is_deleted: bool = False
+    deleted_at: datetime | None = None
+    members_count: int = 0
+
+
+class AuditEventResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    workspace_id: str
+    occurred_at: datetime
+    actor_user_id: str | None = None
+    actor_type: str
+    action: str
+    entity_type: str
+    entity_id: str
+    target_user_id: str | None = None
+    request_id: str | None = None
+    before: dict | None = None
+    after: dict | None = None
+    metadata: dict | None = None
+    result: str | None = None
+
+
+class BlockedCardResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id: str
+    title: str
+    team_id: str | None = None
+    board_id: str | None = None
+    column_id: str | None = None
+    block_reason: str | None = None
+    blocked_by: str | None = None
+    blocked_at: datetime | None = None
