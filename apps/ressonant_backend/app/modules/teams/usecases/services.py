@@ -1,3 +1,4 @@
+import re
 from datetime import UTC, datetime
 
 from app.common.exceptions import ConflictException
@@ -13,6 +14,11 @@ from app.modules.teams.schemas.dto import (
 from app.modules.user.dataproviders.repository import UserRepository
 from app.modules.workspace.dataproviders.repository import WorkspaceRepository
 from common.errors import ExceptionData, ForbiddenException, NotFoundException
+
+
+def derive_key_prefix(slug: str) -> str:
+    """Mesma base da migration 0015: alfanumérico, uppercase, até 20 chars."""
+    return re.sub(r"[^A-Za-z0-9]", "", slug).upper()[:20] or "TEAM"
 
 
 def _not_found() -> NotFoundException:
@@ -88,6 +94,7 @@ class TeamService:
             description=payload.description,
             workspace_id=payload.workspace_id,
             owner_id=owner_id,
+            key_prefix=derive_key_prefix(payload.slug),
         )
         try:
             self._repo.add(team)

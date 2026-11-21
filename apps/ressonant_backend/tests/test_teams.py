@@ -1,5 +1,9 @@
 from app.modules.organization.domain.models import Organization, OrganizationMember
+from app.modules.teams.dataproviders.repository import TeamRepository
+from app.modules.teams.domain.models import Team
+from app.modules.teams.usecases.services import derive_key_prefix
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 from tests.conftest import login
 from tests.conftest import make_user as _plain_make_user
 
@@ -310,3 +314,53 @@ def test_add_team_member_only_owner_or_admin(client: TestClient, session_factory
         headers=headers_bia,
     )
     assert response.status_code == 403, response.text
+
+
+def test_derive_key_prefix_normalizes_slug_with_hyphen() -> None:
+    assert derive_key_prefix("time-de-plataforma") == "TIMEDEPLATAFORMA"
+
+
+def test_derive_key_prefix_falls_back_for_special_characters() -> None:
+    assert derive_key_prefix("###") == "TEAM"
+
+
+def test_derive_key_prefix_truncates_to_20_chars() -> None:
+    derived = derive_key_prefix("abcdefghijklmnopqrstuvwxyz")
+    assert derived == "ABCDEFGHIJKLMNOPQRST"
+    assert len(derived) == 20
+
+
+def test_create_team_persists_derived_key_prefix(
+    client: TestClient, session_factory, monkeypatch
+) -> None:
+    workspace = _create_workspace(
+        client, session_factory, "ana@ressonant.dev", "Plataforma", "plataforma"
+    )
+    headers = _headers(client, "ana@ressonant.dev")
+
+    seen_at_add: list[str | None] = []
+    original_add = TeamRepository.add
+
+    def capture_key_prefix(repository: TeamRepository, team: Team) -> Team:
+        # Antes do flush: prova que o service preencheu, não o listener do conftest.
+        seen_at_add.append(team.key_prefix)
+        return original_add(repository, team)
+
+    monkeypatch.setattr(TeamRepository, "add", capture_key_prefix)
+
+    response = client.post(
+        "/teams",
+        json={
+            "name": "Time Frontend",
+            "slug": "frontend-plataforma",
+            "workspace_id": workspace["id"],
+        },
+        headers=headers,
+    )
+    assert response.status_code == 201, response.text
+    team_id = response.json()["id"]
+    assert seen_at_add == ["FRONTENDPLATAFORMA"]
+
+    with session_factory() as db:
+        persisted = db.scalar(select(Team.key_prefix).where(Team.id == team_id))
+    assert persisted == "FRONTENDPLATAFORMA"
