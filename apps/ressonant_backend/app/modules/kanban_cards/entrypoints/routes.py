@@ -77,7 +77,7 @@ def move_card(
     service: Service,
 ) -> CardResponse:
     """Move card entre colunas com otimistic locking."""
-    return CardResponse.model_validate(service.move(card_id, input_data, user.id))
+    return CardResponse.model_validate(service.move(card_id, input_data, user.id, user.interno_adm))
 
 
 

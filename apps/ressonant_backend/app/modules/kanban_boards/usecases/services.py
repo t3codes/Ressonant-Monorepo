@@ -159,7 +159,8 @@ class BoardService:
         team_repo = TeamRepository(self._repo._db)
         ws_repo = WorkspaceRepository(self._repo._db)
         ws = ws_repo.get_by_id(board.workspace_id)
-        if ws and (ws.owner_id == user_id or ws_repo.is_admin(board.workspace_id, user_id)):
+        ws_member = ws_repo.is_member(board.workspace_id, user_id) if ws else None
+        if ws and (ws.owner_id == user_id or (ws_member and ws_member.role == "admin")):
             return True
         team = team_repo.get_by_id(board.team_id)
         member = team_repo.is_member(board.team_id, user_id)

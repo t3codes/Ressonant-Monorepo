@@ -148,7 +148,34 @@ class CardService:
             raise
         return card
 
-    def move(self, card_id: str, input_data: CardMoveInput, user_id: str) -> Card:
+    def _can_retrocede(self, card: Card, actor_id: str, actor_is_interno_adm: bool) -> bool:
+        if actor_is_interno_adm:
+            return True
+        board = self._board_repo.get_by_id(card.board_id)
+        if board is None:
+            return False
+        from app.modules.teams.dataproviders.repository import TeamRepository
+        from app.modules.workspace.dataproviders.repository import WorkspaceRepository
+
+        ws_repo = WorkspaceRepository(self._card_repo._db)
+        team_repo = TeamRepository(self._card_repo._db)
+        ws = ws_repo.get_by_id(board.workspace_id)
+        if ws and ws.owner_id == actor_id:
+            return True
+        ws_member = ws_repo.is_member(board.workspace_id, actor_id)
+        if ws_member and ws_member.role == "admin":
+            return True  # gestor/admin workspace
+        team = team_repo.get_by_id(card.team_id)
+        member = team_repo.is_member(card.team_id, actor_id)
+        if team and team.owner_id == actor_id:
+            return True
+        if member and member.role == "admin":
+            return True
+        if member and member.can_retrocede and card.assignee_id == actor_id:
+            return True
+        return False
+
+    def move(self, card_id: str, input_data: CardMoveInput, user_id: str, actor_is_interno_adm: bool = False) -> Card:
         """Move card entre colunas (expectedVersion para optimistic locking)."""
         card = self.get(card_id, user_id)
         self._require_editor(card.team_id, user_id)
@@ -159,13 +186,26 @@ class CardService:
                 "Versão desatualizada. O card foi modificado por outro usuário.",
                 "CARD_VERSION_CONFLICT",
             )
+        from app.modules.kanban_boards.dataproviders.repository import BoardColumnRepository
+
+        col_repo = BoardColumnRepository(self._card_repo._db)
+        origin_col = col_repo.get_by_id(card.column_id) if card.column_id else None
+        dest_col = col_repo.get_by_id(input_data.column_id)
+        if dest_col is None or dest_col.board_id != card.board_id:
+            raise _conflict("Coluna de destino inválida", "BOARD_COLUMN_INVALID")
+        origin_pos = origin_col.position if origin_col else -1
+        dest_pos = dest_col.position
+        is_backward = dest_pos < origin_pos
+        if is_backward and not self._can_retrocede(card, user_id, actor_is_interno_adm):
+            raise _forbidden("Você não tem permissão para retroceder este card")
+
         old_column = card.column_id
         card.column_id = input_data.column_id
         card.version += 1
         self._card_repo.add_history(
             CardHistory(
                 card_id=card.id,
-                event_type="moved",
+                event_type="moved_backward" if is_backward else "moved",
                 field_name="column_id",
                 old_value=str(old_column) if old_column else None,
                 new_value=str(input_data.column_id),
