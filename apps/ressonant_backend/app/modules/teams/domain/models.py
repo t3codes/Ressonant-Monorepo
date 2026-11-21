@@ -20,6 +20,7 @@ class Team(Base):
         Uuid(as_uuid=False), ForeignKey("workspaces.id"), nullable=False, index=True
     )
     owner_id: Mapped[str] = mapped_column(Uuid(as_uuid=False), nullable=False, index=True)
+    key_prefix: Mapped[str] = mapped_column(String(20), nullable=False)
     description: Mapped[str | None] = mapped_column(String(500), nullable=True)
     status_ativo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
@@ -39,6 +40,10 @@ class Team(Base):
         "TeamMember", back_populates="team", cascade="all, delete-orphan"
     )
     workspace: Mapped["Workspace"] = relationship("Workspace")
+
+    __table_args__ = (
+        sa.UniqueConstraint("workspace_id", "key_prefix", name="uq_teams_workspace_key_prefix"),
+    )
 
 
 class TeamMember(Base):

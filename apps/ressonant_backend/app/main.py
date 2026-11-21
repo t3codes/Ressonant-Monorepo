@@ -42,6 +42,11 @@ from app.modules.notifications.domain.models import (
     AppNotification,  # noqa: F401  (registra as tabelas no metadata)
 )
 from app.modules.notifications.entrypoints import routes as notifications_routes  # noqa: F401
+from app.modules.organization.domain.models import (  # noqa: F401
+    Invitation,
+    Organization,
+    OrganizationMember,
+)
 from app.modules.reactions.domain.models import (
     MessageReaction,  # noqa: F401  (registra as tabelas no metadata)
 )

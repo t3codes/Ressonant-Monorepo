@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
 
+import sqlalchemy as sa
 from app.database.engine import Base
 from app.modules.kanban_boards.domain.models import Board
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, Uuid, func
@@ -13,6 +14,7 @@ class Card(Base):
     id: Mapped[str] = mapped_column(
         Uuid(as_uuid=False), primary_key=True, default=lambda: str(uuid.uuid4())
     )
+    key: Mapped[str] = mapped_column(String(50), nullable=False)
     board_id: Mapped[str] = mapped_column(
         Uuid(as_uuid=False), ForeignKey("boards.id"), nullable=False, index=True
     )
@@ -74,6 +76,8 @@ class Card(Base):
     custom_fields: Mapped[list["CardCustomField"]] = relationship(
         "CardCustomField", back_populates="card", cascade="all, delete-orphan"
     )
+
+    __table_args__ = (sa.UniqueConstraint("team_id", "key", name="uq_cards_team_key"),)
 
 
 class CardSubtask(Base):

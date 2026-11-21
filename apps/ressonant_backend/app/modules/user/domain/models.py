@@ -20,6 +20,11 @@ class User(Base):
     telefone: Mapped[str] = mapped_column(String(11))
     status_ativo: Mapped[bool] = mapped_column(Boolean, default=True)
     interno_adm: Mapped[bool] = mapped_column(Boolean, default=False)
+    name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    title: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    profile_completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     avatar_content_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
     avatar_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)

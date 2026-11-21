@@ -3,6 +3,8 @@ import os
 os.environ["DATABASE_URL"] = "sqlite://"
 os.environ["AUTH_SECRET"] = "test-secret-with-at-least-32-characters!!"
 
+import re  # noqa: E402
+import uuid  # noqa: E402
 from collections.abc import Iterator  # noqa: E402
 
 import pytest  # noqa: E402
@@ -10,13 +12,64 @@ from app.common.security import hash_password  # noqa: E402
 from app.database.engine import Base, get_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.modules.auth.usecases.services import _rate_limit  # noqa: E402
+from app.modules.kanban_cards.domain.models import Card  # noqa: E402
+from app.modules.organization.domain.models import (  # noqa: E402
+    Organization,
+    OrganizationMember,
+)
+from app.modules.teams.domain.models import Team  # noqa: E402
+from app.modules.workspace.domain.models import Workspace  # noqa: E402
 from app.user.models import User  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
-from sqlalchemy import create_engine  # noqa: E402
+from sqlalchemy import create_engine, event, select  # noqa: E402
 from sqlalchemy.orm import Session, sessionmaker  # noqa: E402
 from sqlalchemy.pool import StaticPool  # noqa: E402
 
 VALID_CPFS = ["52998224725", "11144477735", "39053344705", "16899535009"]
+
+
+@event.listens_for(Session, "before_flush")
+def _fill_0015_required_columns(
+    session: Session, _flush_context: object, _instances: object
+) -> None:
+    """Test scaffolding: rotas pré-0015 não recebem organization_id/key_prefix/key."""
+    new_objects = list(session.new)
+
+    for obj in new_objects:
+        if isinstance(obj, Workspace) and obj.organization_id is None:
+            organization = Organization(
+                id=str(uuid.uuid4()),
+                name=obj.name,
+                slug=obj.slug[:100],
+            )
+            session.add(organization)
+            obj.organization_id = organization.id
+            session.add(
+                OrganizationMember(
+                    organization_id=organization.id,
+                    user_id=obj.owner_id,
+                    role="owner",
+                    status="active",
+                )
+            )
+
+    for obj in new_objects:
+        if isinstance(obj, Team) and obj.key_prefix is None:
+            obj.key_prefix = re.sub(r"[^A-Za-z0-9]", "", obj.slug).upper()[:20] or "TEAM"
+
+    prefixes = {row[0]: row[1] for row in session.execute(select(Team.id, Team.key_prefix))}
+    prefixes.update({obj.id: obj.key_prefix for obj in new_objects if isinstance(obj, Team)})
+    sequences: dict[str, int] = {}
+    for obj in new_objects:
+        if isinstance(obj, Card) and obj.key is None:
+            count = sequences.get(obj.team_id)
+            if count is None:
+                count = len(
+                    session.execute(select(Card.id).where(Card.team_id == obj.team_id)).all()
+                )
+            count += 1
+            sequences[obj.team_id] = count
+            obj.key = f"{prefixes.get(obj.team_id, 'TEAM')}-{count}"[:50]
 
 
 @pytest.fixture(autouse=True)

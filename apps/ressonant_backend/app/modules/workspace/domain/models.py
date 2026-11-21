@@ -18,6 +18,12 @@ class Workspace(Base):
     owner_id: Mapped[str] = mapped_column(
         Uuid(as_uuid=False), ForeignKey("users.id"), nullable=False, index=True
     )
+    organization_id: Mapped[str] = mapped_column(
+        Uuid(as_uuid=False),
+        ForeignKey("organizations.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
     description: Mapped[str | None] = mapped_column(String(500), nullable=True)
     status_ativo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     logo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
