@@ -16,3 +16,15 @@ class ErrorSchema:
     error_messages: list[dict] | None = Field(
         default=None, description="A list of specific field validation errors"
     )
+    error_layer: str | None = Field(
+        default=None,
+        description="Authorization/policy layer that denied the request: management, domain, or null",
+    )
+    required_capability: str | None = Field(
+        default=None,
+        description="Capability or policy required to perform the action, when applicable",
+    )
+    correlation_id: str | None = Field(
+        default=None,
+        description="Trace/correlation identifier for debugging and observability",
+    )
