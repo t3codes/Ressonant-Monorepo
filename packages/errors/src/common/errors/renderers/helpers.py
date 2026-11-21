@@ -3,12 +3,16 @@ from http import HTTPStatus
 from opentelemetry import trace
 
 
-def build_trace_reference_detail() -> str:
+def get_trace_id() -> str | None:
     current_span = trace.get_current_span()
     span_context = current_span.get_span_context()
-    trace_reference_id = (
-        format(span_context.trace_id, "032x") if span_context.is_valid else "no-trace-id"
-    )
+    if span_context.is_valid:
+        return format(span_context.trace_id, "032x")
+    return None
+
+
+def build_trace_reference_detail() -> str:
+    trace_reference_id = get_trace_id() or "no-trace-id"
     return f"Error reference ID: {trace_reference_id}"
 
 

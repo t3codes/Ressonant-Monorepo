@@ -9,3 +9,6 @@ class ExceptionData:
     debug_message: str | None = None
     original_errors: list[dict] | None = None
     error_messages: list[dict] | None = None
+    error_layer: str | None = None  # "management" | "domain" | None
+    required_capability: str | None = None
+    correlation_id: str | None = None
