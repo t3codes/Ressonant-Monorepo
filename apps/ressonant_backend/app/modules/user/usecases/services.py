@@ -80,3 +80,9 @@ class UserService:
         user.status_ativo = status_ativo
         self._repo.commit()
         return user
+
+    def set_admin(self, user_id: str, interno_adm: bool) -> User:
+        user = self.get(user_id)
+        user.interno_adm = interno_adm
+        self._repo.commit()
+        return user

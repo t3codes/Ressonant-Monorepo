@@ -1,7 +1,8 @@
 import uuid
 
 from app.modules.kanban_boards.domain.models import Board, BoardColumn
-from sqlalchemy import func, select
+from app.modules.teams.domain.models import Team, TeamMember
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 
@@ -36,7 +37,14 @@ class BoardRepository:
             uuid.UUID(user_id)
         except ValueError:
             return [], 0
-        stmt = select(Board).where(Board.workspace_id == workspace_id)
+        stmt = (
+            select(Board)
+            .join(Team, Team.id == Board.team_id)
+            .join(TeamMember, TeamMember.team_id == Team.id, isouter=True)
+            .where(Board.workspace_id == workspace_id)
+            .where(or_(Team.owner_id == user_id, TeamMember.user_id == user_id))
+            .distinct()
+        )
         if status_ativo is not None:
             stmt = stmt.where(Board.status_ativo == status_ativo)
         total = self._db.scalar(select(func.count()).select_from(stmt.subquery())) or 0

@@ -38,14 +38,23 @@ class BoardService:
         self._repo = repository
         self._column_repo = column_repository
 
-    def create(self, payload: BoardCreate, owner_id: str) -> Board:
-        """Cria board. workspace_id e team_id vêm do payload; owner_id do JWT."""
-        # Valida que o usuário é membro do time
+    def _get_team_member(self, team_id: str, user_id: str):
         from app.modules.teams.dataproviders.repository import TeamRepository
 
         team_repo = TeamRepository(self._repo._db)
-        if team_repo.is_member(payload.team_id, owner_id) is None:
+        return team_repo, team_repo.is_member(team_id, user_id)
+
+    def _require_board_editor(self, team_id: str, user_id: str) -> None:
+        _, member = self._get_team_member(team_id, user_id)
+        if member is None:
             raise _forbidden("Você não é membro deste time")
+        if member.role == "viewer":
+            raise _forbidden("Usuário com papel viewer não pode editar boards")
+
+    def create(self, payload: BoardCreate, owner_id: str) -> Board:
+        """Cria board. workspace_id e team_id vêm do payload; owner_id do JWT."""
+        # Valida que o usuário é membro do time e não é viewer
+        self._require_board_editor(payload.team_id, owner_id)
 
         if self._repo.exists_by_slug(payload.slug):
             raise _conflict("Já existe um board com este slug", "BOARD_ALREADY_EXISTS")
@@ -98,6 +107,7 @@ class BoardService:
 
     def update(self, board_id: str, payload: BoardUpdate, user_id: str) -> Board:
         board = self.get(board_id, user_id)
+        self._require_board_editor(board.team_id, user_id)
         if payload.name is not None:
             board.name = payload.name
         if payload.description is not None:
@@ -112,18 +122,21 @@ class BoardService:
         return board
 
     def set_status(self, board_id: str, status_ativo: bool, user_id: str) -> Board:
-        """Ativa/desativa board (só o owner do time)."""
+        """Ativa/desativa board (owner do time ou admin do time)."""
         board = self._repo.get_by_id(board_id)
         if board is None:
             raise _not_found()
         from app.modules.teams.dataproviders.repository import TeamRepository
 
         team_repo = TeamRepository(self._repo._db)
+        team = team_repo.get_by_id(board.team_id)
         member = team_repo.is_member(board.team_id, user_id)
-        if board.team_id and member is None:
+        if member is None and (team is None or team.owner_id != user_id):
             raise _forbidden("Somente membros do time podem modificar o board")
-        if member and member.role not in ("admin", "owner"):
-            raise _forbidden("Somente admin do time pode ativar/desativar o board")
+        is_team_owner = team is not None and team.owner_id == user_id
+        is_team_admin = member is not None and member.role == "admin"
+        if not (is_team_owner or is_team_admin):
+            raise _forbidden("Somente owner ou admin do time pode ativar/desativar o board")
         board.status_ativo = status_ativo
         try:
             self._repo.commit()
@@ -138,14 +151,17 @@ class BoardService:
         return self._column_repo.list_by_board(board_id)
 
     def create_column(self, board_id: str, payload: BoardColumnCreate, user_id: str) -> BoardColumn:
-        """Cria uma coluna no board (só admin do time)."""
+        """Cria uma coluna no board (owner ou admin do time)."""
         board = self.get(board_id, user_id)
         from app.modules.teams.dataproviders.repository import TeamRepository
 
         team_repo = TeamRepository(self._repo._db)
+        team = team_repo.get_by_id(board.team_id)
         member = team_repo.is_member(board.team_id, user_id)
-        if member is None or member.role != "admin":
-            raise _forbidden("Somente admin do time pode criar colunas")
+        is_team_owner = team is not None and team.owner_id == user_id
+        is_team_admin = member is not None and member.role == "admin"
+        if not (is_team_owner or is_team_admin):
+            raise _forbidden("Somente owner ou admin do time pode criar colunas")
         column = BoardColumn(
             board_id=board_id,
             name=payload.name,

@@ -6,7 +6,9 @@ from app.modules.workspace.schemas.dto import (
     WorkspaceCreate,
     WorkspaceList,
     WorkspaceMemberAdd,
+    WorkspaceMemberList,
     WorkspaceMemberResponse,
+    WorkspaceMemberUpdate,
     WorkspaceResponse,
     WorkspaceStatusUpdate,
     WorkspaceUpdate,
@@ -81,6 +83,23 @@ def set_workspace_status(
     )
 
 
+@router.get(
+    "/{workspace_id}/members",
+    response_model=WorkspaceMemberList,
+)
+def list_workspace_members(
+    workspace_id: str,
+    user: CurrentUser,
+    service: Service,
+) -> WorkspaceMemberList:
+    """Lista membros do workspace (só se o usuário é membro)."""
+    members = service.list_members(workspace_id, user.id)
+    return WorkspaceMemberList(
+        items=[WorkspaceMemberResponse.model_validate(m) for m in members],
+        total=len(members),
+    )
+
+
 @router.post(
     "/{workspace_id}/members",
     response_model=WorkspaceMemberResponse,
@@ -92,7 +111,24 @@ def add_workspace_member(
     user: CurrentUser,
     service: Service,
 ) -> WorkspaceMemberResponse:
-    """Adiciona membro ao workspace (só owner ou admin do workspace)."""
+    """Adiciona membro ao workspace por e-mail exato ou user_id (owner/admin do workspace ou interno_adm)."""
     return WorkspaceMemberResponse.model_validate(
-        service.add_member(workspace_id, payload, user.id)
+        service.add_member(workspace_id, payload, user.id, user.interno_adm)
+    )
+
+
+@router.patch(
+    "/{workspace_id}/members/{user_id}",
+    response_model=WorkspaceMemberResponse,
+)
+def update_workspace_member(
+    workspace_id: str,
+    user_id: str,
+    payload: WorkspaceMemberUpdate,
+    user: CurrentUser,
+    service: Service,
+) -> WorkspaceMemberResponse:
+    """Altera papel do membro (só owner do workspace ou interno_adm). role=owner transfere a propriedade."""
+    return WorkspaceMemberResponse.model_validate(
+        service.update_member(workspace_id, user_id, payload, user.id, user.interno_adm)
     )

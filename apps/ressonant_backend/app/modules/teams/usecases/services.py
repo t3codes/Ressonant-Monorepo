@@ -4,14 +4,24 @@ from app.modules.teams.domain.models import Team, TeamMember
 from app.modules.teams.schemas.dto import (
     TeamCreate,
     TeamMemberAdd,
+    TeamMemberUpdate,
     TeamUpdate,
 )
+from app.modules.user.dataproviders.repository import UserRepository
+from app.modules.workspace.dataproviders.repository import WorkspaceRepository
 from common.errors import ExceptionData, ForbiddenException, NotFoundException
 
 
 def _not_found() -> NotFoundException:
     return NotFoundException(
         ExceptionData(message="Team não encontrado", error_code="TEAM_NOT_FOUND"),
+        is_expected=True,
+    )
+
+
+def _user_not_found() -> NotFoundException:
+    return NotFoundException(
+        ExceptionData(message="Usuário não encontrado", error_code="USER_NOT_FOUND"),
         is_expected=True,
     )
 
@@ -30,12 +40,40 @@ class TeamService:
     def __init__(self, repository: TeamRepository) -> None:
         self._repo = repository
 
+    def _user_repo(self) -> UserRepository:
+        return UserRepository(self._repo._db)
+
+    def _ws_repo(self) -> WorkspaceRepository:
+        return WorkspaceRepository(self._repo._db)
+
+    def _can_manage_team(self, team: Team, actor_id: str, actor_is_admin: bool) -> bool:
+        if actor_is_admin or team.owner_id == actor_id:
+            return True
+        member = self._repo.is_member(team.id, actor_id)
+        if member is not None and member.role == "admin":
+            return True
+        ws = self._ws_repo().get_by_id(team.workspace_id)
+        if ws is None:
+            return False
+        if ws.owner_id == actor_id:
+            return True
+        ws_member = self._ws_repo().is_member(team.workspace_id, actor_id)
+        return ws_member is not None and ws_member.role == "admin"
+
+    def _resolve_target_user_id(self, payload: TeamMemberAdd) -> str:
+        if payload.user_id:
+            user = self._user_repo().get_by_id(payload.user_id)
+            if user is None:
+                raise _user_not_found()
+            return user.id
+        user = self._user_repo().get_by_email(str(payload.email).lower()) if payload.email else None
+        if user is None:
+            raise _user_not_found()
+        return user.id
+
     def create(self, payload: TeamCreate, owner_id: str) -> Team:
         """Cria team. workspace_id vem do payload; owner_id vem do JWT."""
-        # Valida que o usuário é membro do workspace
-        from app.modules.workspace.dataproviders.repository import WorkspaceRepository
-
-        ws_repo = WorkspaceRepository(self._repo._db)
+        ws_repo = self._ws_repo()
         if not ws_repo.is_member(payload.workspace_id, owner_id):
             raise _forbidden("Você não é membro deste workspace")
 
@@ -108,17 +146,22 @@ class TeamService:
             raise
         return team
 
-    def add_member(self, team_id: str, payload: TeamMemberAdd, user_id: str) -> TeamMember:
-        """Adiciona membro ao team (só owner ou admin)."""
+    def add_member(
+        self, team_id: str, payload: TeamMemberAdd, actor_id: str, actor_is_admin: bool = False
+    ) -> TeamMember:
+        """Adiciona membro ao team (owner/admin do workspace, admin do time, ou interno_adm)."""
         team = self._repo.get_by_id(team_id)
         if team is None:
             raise _not_found()
-        member = self._repo.is_member(team_id, user_id)
-        if team.owner_id != user_id and (member is None or member.role != "admin"):
-            raise _forbidden("Somente o owner ou admin pode adicionar membros")
-        if self._repo.is_member(team_id, payload.user_id):
-            raise _forbidden("Usuário já é membro deste team")
-        new_member = TeamMember(team_id=team_id, user_id=payload.user_id, role=payload.role)
+        if not self._can_manage_team(team, actor_id, actor_is_admin):
+            raise _forbidden("Sem permissão para gerenciar membros da equipe")
+        target_id = self._resolve_target_user_id(payload)
+        # alvo deve ser membro do workspace
+        if self._ws_repo().is_member(team.workspace_id, target_id) is None:
+            raise _forbidden("Usuário deve ser membro do workspace para entrar na equipe")
+        if self._repo.is_member(team_id, target_id):
+            raise _conflict("Usuário já é membro deste team", "TEAM_MEMBER_EXISTS")
+        new_member = TeamMember(team_id=team_id, user_id=target_id, role=payload.role)
         try:
             self._repo.add_member(new_member)
             self._repo.commit()
@@ -126,3 +169,33 @@ class TeamService:
             self._repo.rollback()
             raise
         return new_member
+
+    def update_member(
+        self,
+        team_id: str,
+        target_user_id: str,
+        payload: TeamMemberUpdate,
+        actor_id: str,
+        actor_is_admin: bool = False,
+    ) -> TeamMember:
+        """Altera papel do membro na equipe."""
+        team = self._repo.get_by_id(team_id)
+        if team is None:
+            raise _not_found()
+        if not self._can_manage_team(team, actor_id, actor_is_admin):
+            raise _forbidden("Sem permissão para gerenciar membros da equipe")
+        member = self._repo.get_member(team_id, target_user_id)
+        if member is None:
+            raise _not_found()
+        member.role = payload.role
+        try:
+            self._repo.commit()
+        except Exception:
+            self._repo.rollback()
+            raise
+        return member
+
+    def list_members(self, team_id: str, user_id: str) -> list[TeamMember]:
+        """Lista membros do team (só se o usuário é membro)."""
+        self.get(team_id, user_id)
+        return self._repo.list_members(team_id)

@@ -6,7 +6,9 @@ from app.modules.teams.schemas.dto import (
     TeamCreate,
     TeamList,
     TeamMemberAdd,
+    TeamMemberList,
     TeamMemberResponse,
+    TeamMemberUpdate,
     TeamResponse,
     TeamStatusUpdate,
     TeamUpdate,
@@ -38,7 +40,7 @@ def list_teams(
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     status_ativo: bool | None = None,
 ) -> TeamList:
-    """Lista teams de um workspace. O usuário deve ser membro do workspace."""
+    """Lista teams de um workspace onde o usuário é membro do time."""
     items, total = service.list_for_workspace(workspace_id, user.id, skip, limit, status_ativo)
     return TeamList(
         items=[TeamResponse.model_validate(i) for i in items],
@@ -80,6 +82,23 @@ def set_team_status(
     return TeamResponse.model_validate(service.set_status(team_id, payload.status_ativo, user.id))
 
 
+@router.get(
+    "/{team_id}/members",
+    response_model=TeamMemberList,
+)
+def list_team_members(
+    team_id: str,
+    user: CurrentUser,
+    service: Service,
+) -> TeamMemberList:
+    """Lista membros do team (só se o usuário é membro)."""
+    members = service.list_members(team_id, user.id)
+    return TeamMemberList(
+        items=[TeamMemberResponse.model_validate(m) for m in members],
+        total=len(members),
+    )
+
+
 @router.post(
     "/{team_id}/members",
     response_model=TeamMemberResponse,
@@ -91,5 +110,24 @@ def add_team_member(
     user: CurrentUser,
     service: Service,
 ) -> TeamMemberResponse:
-    """Adiciona membro ao team (só owner ou admin do team)."""
-    return TeamMemberResponse.model_validate(service.add_member(team_id, payload, user.id))
+    """Adiciona membro à equipe por e-mail exato ou user_id (owner/admin do workspace, admin do time ou interno_adm)."""
+    return TeamMemberResponse.model_validate(
+        service.add_member(team_id, payload, user.id, user.interno_adm)
+    )
+
+
+@router.patch(
+    "/{team_id}/members/{user_id}",
+    response_model=TeamMemberResponse,
+)
+def update_team_member(
+    team_id: str,
+    user_id: str,
+    payload: TeamMemberUpdate,
+    user: CurrentUser,
+    service: Service,
+) -> TeamMemberResponse:
+    """Altera papel do membro na equipe (owner/admin do workspace, admin do time ou interno_adm)."""
+    return TeamMemberResponse.model_validate(
+        service.update_member(team_id, user_id, payload, user.id, user.interno_adm)
+    )

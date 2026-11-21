@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 Slug = Annotated[str, Field(min_length=3, max_length=100)]
 Name = Annotated[str, Field(min_length=3, max_length=100)]
@@ -27,8 +27,22 @@ class WorkspaceUpdate(BaseModel):
 
 
 class WorkspaceMemberAdd(BaseModel):
-    user_id: str
-    role: str = Field(default="member", pattern="^(admin|member|viewer)$")
+    """Adiciona membro por e-mail exato (preferencial) ou user_id."""
+
+    user_id: str | None = None
+    email: EmailStr | None = None
+    role: str = Field(default="member", pattern="^(admin|member)$")
+
+    @model_validator(mode="after")
+    def _require_identifier(self) -> "WorkspaceMemberAdd":
+        if not self.user_id and not self.email:
+            raise ValueError("Informe user_id ou email")
+        return self
+
+
+class WorkspaceMemberUpdate(BaseModel):
+    # "owner" transfere a propriedade do workspace para o membro alvo.
+    role: str = Field(pattern="^(owner|admin|member)$")
 
 
 class WorkspaceMemberResponse(BaseModel):
@@ -39,6 +53,11 @@ class WorkspaceMemberResponse(BaseModel):
     user_id: str
     role: str
     criado_em: datetime
+
+
+class WorkspaceMemberList(BaseModel):
+    items: list[WorkspaceMemberResponse]
+    total: int
 
 
 class WorkspaceResponse(BaseModel):
