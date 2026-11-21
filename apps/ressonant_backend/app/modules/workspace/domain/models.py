@@ -32,6 +32,9 @@ class Workspace(Base):
         onupdate=func.now(),
         nullable=False,
     )
+    management_permission_version: Mapped[int] = mapped_column(
+        Integer, default=1, server_default="1", nullable=False
+    )
 
     members: Mapped[list["WorkspaceMember"]] = relationship(
         "WorkspaceMember", back_populates="workspace", cascade="all, delete-orphan"
