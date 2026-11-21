@@ -172,6 +172,9 @@ class TeamService:
         )
         try:
             self._repo.add_member(new_member)
+            ws = self._ws_repo().get_by_id(team.workspace_id)
+            if ws is not None:
+                ws.management_permission_version = int(getattr(ws, "management_permission_version", 1) or 1) + 1
             self._repo.commit()
         except Exception:
             self._repo.rollback()
@@ -200,6 +203,9 @@ class TeamService:
         if payload.can_retrocede is not None:
             member.can_retrocede = payload.can_retrocede
         try:
+            ws = self._ws_repo().get_by_id(team.workspace_id)
+            if ws is not None:
+                ws.management_permission_version = int(getattr(ws, "management_permission_version", 1) or 1) + 1
             self._repo.commit()
         except Exception:
             self._repo.rollback()
