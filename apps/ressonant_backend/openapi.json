@@ -984,6 +984,225 @@
         }
       }
     },
+    "/workspaces/{workspace_id}/management/access/me": {
+      "get": {
+        "tags": [
+          "workspace-management"
+        ],
+        "summary": "Get Management Access",
+        "operationId": "get_management_access_workspaces__workspace_id__management_access_me_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagementAccessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace_id}/management/grants": {
+      "get": {
+        "tags": [
+          "workspace-management"
+        ],
+        "summary": "List Management Grants",
+        "operationId": "list_management_grants_workspaces__workspace_id__management_grants_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ManagementGrantResponse"
+                  },
+                  "title": "Response List Management Grants Workspaces  Workspace Id  Management Grants Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "workspace-management"
+        ],
+        "summary": "Upsert Management Grant",
+        "operationId": "upsert_management_grant_workspaces__workspace_id__management_grants_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GrantCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagementGrantResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace_id}/management/grants/{target_user_id}": {
+      "delete": {
+        "tags": [
+          "workspace-management"
+        ],
+        "summary": "Revoke Management Grant",
+        "operationId": "revoke_management_grant_workspaces__workspace_id__management_grants__target_user_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workspace Id"
+            }
+          },
+          {
+            "name": "target_user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Target User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/GrantRevokeRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/teams": {
       "post": {
         "tags": [
@@ -5543,6 +5762,62 @@
         ],
         "title": "EmailResponse"
       },
+      "GrantCreateRequest": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "User Id"
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "read",
+              "modify",
+              "grant"
+            ],
+            "title": "Level"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "user_id",
+          "level"
+        ],
+        "title": "GrantCreateRequest"
+      },
+      "GrantRevokeRequest": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "GrantRevokeRequest"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -5631,6 +5906,227 @@
         },
         "type": "object",
         "title": "MailUserChange"
+      },
+      "ManagementAccessResponse": {
+        "properties": {
+          "workspace_id": {
+            "type": "string",
+            "title": "Workspace Id"
+          },
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "is_owner": {
+            "type": "boolean",
+            "title": "Is Owner"
+          },
+          "interno_adm": {
+            "type": "boolean",
+            "title": "Interno Adm"
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "none",
+              "read",
+              "modify",
+              "grant"
+            ],
+            "title": "Level"
+          },
+          "permission_version": {
+            "type": "integer",
+            "title": "Permission Version"
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/ManagementCapabilities"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "workspace_id",
+          "user_id",
+          "is_owner",
+          "interno_adm",
+          "level",
+          "permission_version",
+          "capabilities"
+        ],
+        "title": "ManagementAccessResponse"
+      },
+      "ManagementCapabilities": {
+        "properties": {
+          "management_read": {
+            "type": "boolean",
+            "title": "Management Read",
+            "default": false
+          },
+          "management_modify": {
+            "type": "boolean",
+            "title": "Management Modify",
+            "default": false
+          },
+          "management_grant": {
+            "type": "boolean",
+            "title": "Management Grant",
+            "default": false
+          },
+          "teams_create": {
+            "type": "boolean",
+            "title": "Teams Create",
+            "default": false
+          },
+          "teams_update": {
+            "type": "boolean",
+            "title": "Teams Update",
+            "default": false
+          },
+          "teams_soft_delete": {
+            "type": "boolean",
+            "title": "Teams Soft Delete",
+            "default": false
+          },
+          "teams_hard_delete": {
+            "type": "boolean",
+            "title": "Teams Hard Delete",
+            "default": false
+          },
+          "members_manage": {
+            "type": "boolean",
+            "title": "Members Manage",
+            "default": false
+          },
+          "columns_manage": {
+            "type": "boolean",
+            "title": "Columns Manage",
+            "default": false
+          },
+          "blocked_cards_read": {
+            "type": "boolean",
+            "title": "Blocked Cards Read",
+            "default": false
+          },
+          "blocked_cards_unblock": {
+            "type": "boolean",
+            "title": "Blocked Cards Unblock",
+            "default": false
+          },
+          "audit_read": {
+            "type": "boolean",
+            "title": "Audit Read",
+            "default": false
+          },
+          "settings_manage": {
+            "type": "boolean",
+            "title": "Settings Manage",
+            "default": false
+          },
+          "grants_manage": {
+            "type": "boolean",
+            "title": "Grants Manage",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ManagementCapabilities"
+      },
+      "ManagementGrantResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "workspace_id": {
+            "type": "string",
+            "title": "Workspace Id"
+          },
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "read",
+              "modify",
+              "grant"
+            ],
+            "title": "Level"
+          },
+          "granted_by_id": {
+            "type": "string",
+            "title": "Granted By Id"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "revoked_by_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked By Id"
+          },
+          "revoke_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoke Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "workspace_id",
+          "user_id",
+          "level",
+          "granted_by_id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ManagementGrantResponse"
       },
       "MessageCreate": {
         "properties": {
