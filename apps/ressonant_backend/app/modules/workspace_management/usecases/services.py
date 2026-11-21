@@ -26,6 +26,8 @@ class ManagementAccess:
     is_owner: bool
     is_interno_adm: bool
     permission_version: int
+    # Papel organizacional vem do repositório, nunca de `interno_adm`.
+    organization_role: str | None = None
 
     @property
     def can_read(self) -> bool:
@@ -38,6 +40,11 @@ class ManagementAccess:
     @property
     def can_grant(self) -> bool:
         return LEVEL_RANK[self.level] >= LEVEL_RANK["grant"]
+
+    @property
+    def can_grant_grant_level(self) -> bool:
+        """R9: só Dono da Empresa (por membership) ou interno_adm escalam para grant."""
+        return self.is_interno_adm or self.organization_role == "owner"
 
 
 class WorkspaceManagementService:
@@ -175,16 +182,33 @@ class WorkspaceManagementService:
         }
 
     def resolve_access(self, workspace_id: str, user: User) -> ManagementAccess:
+        """Combina os cinco eixos; papel vem de membership, nunca de `interno_adm`.
+
+        `level == "grant"` autoriza gerenciar grants até `modify`; a escalada para
+        nível `grant` é verificada à parte por `can_grant_grant_level` (R9).
+        """
         workspace = self._require_workspace(workspace_id)
         is_owner = workspace.owner_id == user.id
         is_interno_adm = bool(user.interno_adm)
+        organization_role = self._repo.get_organization_role(workspace.organization_id, user.id)
+        member = self._repo.get_workspace_member(workspace_id, user.id)
         level: ManagementLevel = "none"
-        if is_owner or is_interno_adm:
+        if is_interno_adm or organization_role == "owner":
+            level = "grant"
+        elif (
+            is_owner
+            or organization_role == "admin"
+            or (member is not None and member.role == "admin")
+        ):
+            # Dono/Admin de workspace e Admin da org concedem até modify (matriz §6).
             level = "grant"
         else:
             grant = self._repo.get_active_grant(workspace_id, user.id)
             if grant and grant.level in LEVEL_RANK:
                 level = grant.level  # type: ignore[assignment]
+        # Separação de poderes: Billing Owner não administra gestão de workspace.
+        if organization_role == "billing_owner" and not is_interno_adm:
+            level = "read" if level != "none" else "none"
         return ManagementAccess(
             workspace=workspace,
             user=user,
@@ -192,11 +216,12 @@ class WorkspaceManagementService:
             is_owner=is_owner,
             is_interno_adm=is_interno_adm,
             permission_version=int(getattr(workspace, "management_permission_version", 1) or 1),
+            organization_role=organization_role,
         )
 
     def build_capabilities(self, access: ManagementAccess) -> ManagementCapabilities:
         r, m, g = access.can_read, access.can_modify, access.can_grant
-        is_owner_or_internal = access.is_owner or access.is_interno_adm
+        is_owner_or_internal = access.can_grant_grant_level
         return ManagementCapabilities(
             management_read=r,
             management_modify=m,
@@ -272,7 +297,7 @@ class WorkspaceManagementService:
         if level not in ("read", "modify", "grant"):
             raise self._conflict("Nível de grant inválido", "MANAGEMENT_GRANT_INVALID_LEVEL")
         # R9: only owner/interno_adm can grant 'grant'
-        if level == "grant" and not (access.is_owner or access.is_interno_adm):
+        if level == "grant" and not access.can_grant_grant_level:
             raise self._forbidden(
                 "Apenas owner ou interno_adm podem conceder nível grant.",
                 error_code="MANAGEMENT_GRANT_ESCALATION_DENIED",
@@ -335,6 +360,7 @@ class WorkspaceManagementService:
                 after={"level": level},
                 metadata=break_glass,
                 request_id=request_id,
+                actor_role=access.organization_role,
             )
             self._repo.commit()
             return grant
@@ -358,7 +384,7 @@ class WorkspaceManagementService:
         if not grant:
             raise self._not_found("Grant de gestão não encontrado", "MANAGEMENT_GRANT_NOT_FOUND")
         # R9: revoking grant-level grant requires owner/interno_adm
-        if grant.level == "grant" and not (access.is_owner or access.is_interno_adm):
+        if grant.level == "grant" and not access.can_grant_grant_level:
             raise self._forbidden(
                 "Apenas owner ou interno_adm podem revogar nível grant.",
                 error_code="MANAGEMENT_GRANT_ESCALATION_DENIED",
@@ -379,6 +405,7 @@ class WorkspaceManagementService:
                 after={"revoked": True},
                 metadata=break_glass,
                 request_id=request_id,
+                actor_role=access.organization_role,
             )
             self._repo.commit()
         except Exception:

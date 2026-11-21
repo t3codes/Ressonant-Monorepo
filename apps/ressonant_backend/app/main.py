@@ -22,6 +22,7 @@ from app.modules.billing.domain.models import (  # noqa: F401  (registra as tabe
     Plan,
     Subscription,
 )
+from app.modules.billing.entrypoints import routes as billing_routes
 from app.modules.chat.domain.models import (  # noqa: F401  (registra as tabelas no metadata)
     Channel,
     Conversation,
@@ -103,6 +104,7 @@ def create_app() -> FastAPI:
     )
     setup_exception_handlers(app)
     app.include_router(auth_routes.router)
+    app.include_router(billing_routes.router)
     app.include_router(context_routes.router)
     app.include_router(user_routes.router)
     app.include_router(workspace_routes.router)

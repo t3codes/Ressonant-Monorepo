@@ -287,7 +287,13 @@ def test_members_see_real_workspace_links_and_no_fabricated_teams(
     else:
         assert len(db_teams) == 1
         assert (db_teams[0][2], db_teams[0][3], db_teams[0][4]) == expected_team
-    assert not any(capabilities for capabilities in workspace["capabilities"].values())
+    if email == EMAILS[1]:
+        # Matriz §6 do Plano Mestre Unificado: admin da org e do workspace tem
+        # gestão até modify; R9 bloqueia apenas a escalada a nível grant.
+        assert workspace["capabilities"]["management_read"] is True
+        assert workspace["capabilities"]["management_modify"] is True
+    else:
+        assert not any(capabilities for capabilities in workspace["capabilities"].values())
     assert body["capabilities"]["management"] == workspace["capabilities"]
     assert body["capabilities"]["billing"] == {"view": True, "manage": False}
     assert body["capabilities"]["domain"] == {"cards_write": True}
@@ -374,23 +380,25 @@ def test_team_membership_alone_enables_card_writes_without_leaking_workspace(
 def test_management_capabilities_are_union_and_permission_version_is_max(
     client: TestClient, session_factory: sessionmaker[Session], seeded: dict[str, object]
 ) -> None:
-    gestor_id = seeded["users"][EMAILS[1]].id
+    # Usa um membro sem papel na org e sem admin de workspace para que o grant
+    # `read` seja o único determinante das capabilities (matriz §6).
+    member_id = seeded["users"][EMAILS[4]].id
     with session_factory() as db:
         db.add(
             WorkspaceManagementGrant(
                 workspace_id=seeded["main_id"],
-                user_id=gestor_id,
+                user_id=member_id,
                 level="read",
                 granted_by_id=seeded["users"][EMAILS[0]].id,
             )
         )
-        db.add(WorkspaceMember(workspace_id=seeded["other_id"], user_id=gestor_id, role="member"))
+        db.add(WorkspaceMember(workspace_id=seeded["other_id"], user_id=member_id, role="member"))
         other = db.get(Workspace, seeded["other_id"])
         assert other is not None
         other.management_permission_version = 7
         db.commit()
 
-    body, _ = _get_context(client, login(client, EMAILS[1]))
+    body, _ = _get_context(client, login(client, EMAILS[4]))
 
     assert len(body["workspaces"]) == 2
     read_only = next(

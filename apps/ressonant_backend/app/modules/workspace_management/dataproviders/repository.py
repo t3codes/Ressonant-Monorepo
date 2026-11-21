@@ -2,6 +2,7 @@ import uuid
 from datetime import UTC, datetime
 
 from app.modules.kanban_cards.domain.models import Card
+from app.modules.organization.domain.models import OrganizationMember
 from app.modules.teams.domain.models import Team, TeamMember
 from app.modules.workspace.domain.models import Workspace, WorkspaceMember
 from app.modules.workspace_management.domain.models import AuditEvent, WorkspaceManagementGrant
@@ -33,6 +34,18 @@ class WorkspaceManagementRepository:
             select(WorkspaceMember).where(
                 WorkspaceMember.workspace_id == workspace_id,
                 WorkspaceMember.user_id == user_id,
+            )
+        )
+
+    def get_organization_role(self, organization_id: str, user_id: str) -> str | None:
+        """Papel ativo na organização, injetado no serviço de gestão (não vem de interno_adm)."""
+        if not self._is_uuid(organization_id) or not self._is_uuid(user_id):
+            return None
+        return self._db.scalar(
+            select(OrganizationMember.role).where(
+                OrganizationMember.organization_id == organization_id,
+                OrganizationMember.user_id == user_id,
+                OrganizationMember.status == "active",
             )
         )
 
