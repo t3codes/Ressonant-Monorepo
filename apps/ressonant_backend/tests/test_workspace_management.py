@@ -1,9 +1,30 @@
 from __future__ import annotations
 
+from app.modules.organization.domain.models import Organization, OrganizationMember
 from app.modules.workspace_management.domain.models import AuditEvent
 from fastapi.testclient import TestClient
 from sqlalchemy import select
-from tests.conftest import VALID_CPFS, login, make_user
+from tests.conftest import VALID_CPFS, login
+from tests.conftest import make_user as _plain_make_user
+
+
+def make_user(session_factory, **kwargs):
+    """Usuário de teste com organização elegível (regra real de criação de workspace)."""
+    user = _plain_make_user(session_factory, **kwargs)
+    with session_factory() as db:
+        organization = Organization(name=f"Org {user.id}", slug=f"org-{user.id}")
+        db.add(organization)
+        db.flush()
+        db.add(
+            OrganizationMember(
+                organization_id=organization.id,
+                user_id=user.id,
+                role="owner",
+                status="active",
+            )
+        )
+        db.commit()
+    return user
 
 
 def _auth(client: TestClient, email: str) -> dict[str, str]:

@@ -9,6 +9,7 @@ from app.modules.workspace.schemas.dto import (
     WorkspaceUpdate,
 )
 from common.errors import ExceptionData, ForbiddenException, NotFoundException
+from sqlalchemy.exc import IntegrityError
 
 
 def _not_found() -> NotFoundException:
@@ -29,9 +30,17 @@ def _conflict(message: str, code: str) -> ConflictException:
     return ConflictException(ExceptionData(message=message, error_code=code), is_expected=True)
 
 
-def _forbidden(message: str) -> ForbiddenException:
-    return ForbiddenException(
-        ExceptionData(message=message, error_code="FORBIDDEN"), is_expected=True
+def _forbidden(message: str, code: str = "FORBIDDEN") -> ForbiddenException:
+    return ForbiddenException(ExceptionData(message=message, error_code=code), is_expected=True)
+
+
+def _organization_not_found() -> NotFoundException:
+    return NotFoundException(
+        ExceptionData(
+            message="Nenhuma organização elegível para criar o workspace",
+            error_code="ORGANIZATION_NOT_FOUND",
+        ),
+        is_expected=True,
     )
 
 
@@ -72,8 +81,28 @@ class WorkspaceService:
             raise _user_not_found()
         return user.id
 
+    def _resolve_organization_id(self, requested: str | None, actor_id: str) -> str:
+        """Resolve a organização do workspace a partir de memberships persistidos."""
+        eligible = self._repo.list_eligible_organization_ids(actor_id)
+        if requested is not None:
+            if requested not in eligible:
+                raise _forbidden(
+                    "Sem membership ativo de owner/admin nesta organização",
+                    "ORGANIZATION_FORBIDDEN",
+                )
+            return requested
+        if not eligible:
+            raise _organization_not_found()
+        if len(eligible) > 1:
+            raise _conflict(
+                "Mais de uma organização elegível; informe organization_id",
+                "ORGANIZATION_AMBIGUOUS",
+            )
+        return eligible[0]
+
     def create(self, payload: WorkspaceCreate, owner_id: str) -> Workspace:
-        """Cria workspace. owner_id vem do JWT, nunca do payload."""
+        """Cria workspace. owner_id vem do JWT; a organização é validada no servidor."""
+        organization_id = self._resolve_organization_id(payload.organization_id, owner_id)
         if self._repo.exists_by_slug(payload.slug):
             raise _conflict("Já existe um workspace com este slug", "WORKSPACE_ALREADY_EXISTS")
         workspace = Workspace(
@@ -81,6 +110,7 @@ class WorkspaceService:
             slug=payload.slug,
             description=payload.description,
             owner_id=owner_id,
+            organization_id=organization_id,
         )
         try:
             self._repo.add(workspace)
@@ -88,6 +118,11 @@ class WorkspaceService:
                 WorkspaceMember(workspace_id=workspace.id, user_id=owner_id, role="admin")
             )
             self._repo.commit()
+        except IntegrityError as exc:
+            self._repo.rollback()
+            raise _conflict(
+                "Já existe um workspace com este slug", "WORKSPACE_ALREADY_EXISTS"
+            ) from exc
         except Exception:
             self._repo.rollback()
             raise

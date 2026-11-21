@@ -8788,6 +8788,17 @@
               }
             ],
             "title": "Description"
+          },
+          "organization_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organization Id"
           }
         },
         "type": "object",
@@ -8796,7 +8807,7 @@
           "slug"
         ],
         "title": "WorkspaceCreate",
-        "description": "Payload para criar um workspace. owner_id é extraído do JWT, nunca do body."
+        "description": "Payload para criar um workspace. owner_id é extraído do JWT, nunca do body.\n\norganization_id é opcional: quando omisso, o service resolve a única\norganização elegível do ator. Quando informado, é validado no servidor."
       },
       "WorkspaceList": {
         "properties": {

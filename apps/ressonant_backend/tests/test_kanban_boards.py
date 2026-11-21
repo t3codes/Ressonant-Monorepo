@@ -1,4 +1,25 @@
-from tests.conftest import login, make_user
+from app.modules.organization.domain.models import Organization, OrganizationMember
+from tests.conftest import login
+from tests.conftest import make_user as _plain_make_user
+
+
+def make_user(session_factory, **kwargs):
+    """Usuário de teste com organização elegível (regra real de criação de workspace)."""
+    user = _plain_make_user(session_factory, **kwargs)
+    with session_factory() as db:
+        organization = Organization(name=f"Org {user.id}", slug=f"org-{user.id}")
+        db.add(organization)
+        db.flush()
+        db.add(
+            OrganizationMember(
+                organization_id=organization.id,
+                user_id=user.id,
+                role="owner",
+                status="active",
+            )
+        )
+        db.commit()
+    return user
 
 
 def _create_workspace_and_team(

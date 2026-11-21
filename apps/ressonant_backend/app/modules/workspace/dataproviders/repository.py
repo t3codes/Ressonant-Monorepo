@@ -1,5 +1,6 @@
 import uuid
 
+from app.modules.organization.domain.models import OrganizationMember
 from app.modules.workspace.domain.models import Workspace, WorkspaceMember
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
@@ -22,6 +23,21 @@ class WorkspaceRepository:
     def exists_by_slug(self, slug: str) -> bool:
         return (
             self._db.scalar(select(Workspace.id).where(Workspace.slug == slug).limit(1)) is not None
+        )
+
+    def list_eligible_organization_ids(self, user_id: str) -> list[str]:
+        """Ids das organizações com membership ativa do ator como owner/admin."""
+        return list(
+            self._db.scalars(
+                select(OrganizationMember.organization_id)
+                .where(
+                    OrganizationMember.user_id == user_id,
+                    OrganizationMember.status == "active",
+                    OrganizationMember.role.in_(("owner", "admin")),
+                )
+                .distinct()
+                .order_by(OrganizationMember.organization_id)
+            )
         )
 
     def list_for_user(

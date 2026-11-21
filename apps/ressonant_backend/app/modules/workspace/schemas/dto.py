@@ -15,7 +15,13 @@ class WorkspaceBase(BaseModel):
 
 
 class WorkspaceCreate(WorkspaceBase):
-    """Payload para criar um workspace. owner_id é extraído do JWT, nunca do body."""
+    """Payload para criar um workspace. owner_id é extraído do JWT, nunca do body.
+
+    organization_id é opcional: quando omisso, o service resolve a única
+    organização elegível do ator. Quando informado, é validado no servidor.
+    """
+
+    organization_id: str | None = None
 
 
 class WorkspaceUpdate(BaseModel):
