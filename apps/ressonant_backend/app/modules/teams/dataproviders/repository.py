@@ -44,6 +44,7 @@ class TeamRepository:
                 isouter=True,
             )
             .where(Team.workspace_id == workspace_id)
+            .where(Team.is_deleted.is_(False))
             .where(or_(Team.owner_id == user_id, TeamMember.user_id == user_id))
             .distinct()
         )
@@ -95,6 +96,23 @@ class TeamRepository:
 
     def remove_member(self, member: TeamMember) -> None:
         self._db.delete(member)
+        self._db.flush()
+
+    def list_deleted_for_workspace(self, workspace_id: str) -> list[Team]:
+        try:
+            uuid.UUID(workspace_id)
+        except ValueError:
+            return []
+        return list(
+            self._db.scalars(
+                select(Team)
+                .where(Team.workspace_id == workspace_id, Team.is_deleted.is_(True))
+                .order_by(Team.deleted_at.desc(), Team.criado_em.desc())
+            ).all()
+        )
+
+    def delete_team(self, team: Team) -> None:
+        self._db.delete(team)
         self._db.flush()
 
     def commit(self) -> None:

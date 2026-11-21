@@ -74,6 +74,9 @@ class TeamResponse(BaseModel):
     owner_id: str
     description: str | None
     status_ativo: bool
+    is_deleted: bool = False
+    deleted_at: datetime | None = None
+    deleted_by: str | None = None
     criado_em: datetime
     atualizado_em: datetime
 
@@ -83,6 +86,15 @@ class TeamList(BaseModel):
     total: int
     skip: int
     limit: int
+
+
+class TeamMemberReassignment(BaseModel):
+    user_id: str
+    target_team_id: str
+
+
+class TeamSoftDeleteInput(BaseModel):
+    member_reassignments: list[TeamMemberReassignment] = Field(default_factory=list)
 
 
 class TeamStatusUpdate(BaseModel):
