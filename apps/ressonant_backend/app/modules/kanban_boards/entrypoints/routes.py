@@ -5,7 +5,9 @@ from app.modules.kanban_boards.deps import get_board_service
 from app.modules.kanban_boards.schemas.dto import (
     BoardColumnCreate,
     BoardColumnList,
+    BoardColumnReorderInput,
     BoardColumnResponse,
+    BoardColumnUpdate,
     BoardCreate,
     BoardList,
     BoardResponse,
@@ -106,5 +108,44 @@ def create_board_column(
     user: CurrentUser,
     service: Service,
 ) -> BoardColumnResponse:
-    """Cria uma coluna no board (só admin do time)."""
-    return BoardColumnResponse.model_validate(service.create_column(board_id, payload, user.id))
+    """Cria uma coluna no board."""
+    return BoardColumnResponse.model_validate(
+        service.create_column(board_id, payload, user.id, user.interno_adm)
+    )
+
+
+@router.patch("/{board_id}/columns/reorder", response_model=BoardColumnList)
+def reorder_board_columns(
+    board_id: str,
+    payload: BoardColumnReorderInput,
+    user: CurrentUser,
+    service: Service,
+) -> BoardColumnList:
+    """Reordena colunas do board (sequência completa)."""
+    columns = service.reorder_columns(board_id, payload.ordered_column_ids, user.id, user.interno_adm)
+    return BoardColumnList(items=[BoardColumnResponse.model_validate(c) for c in columns], total=len(columns))
+
+
+@router.patch("/{board_id}/columns/{column_id}", response_model=BoardColumnResponse)
+def update_board_column(
+    board_id: str,
+    column_id: str,
+    payload: BoardColumnUpdate,
+    user: CurrentUser,
+    service: Service,
+) -> BoardColumnResponse:
+    """Atualiza uma coluna do board."""
+    return BoardColumnResponse.model_validate(
+        service.update_column(board_id, column_id, payload, user.id, user.interno_adm)
+    )
+
+
+@router.delete("/{board_id}/columns/{column_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_board_column(
+    board_id: str,
+    column_id: str,
+    user: CurrentUser,
+    service: Service,
+) -> None:
+    """Exclui coluna (somente se não houver cards)."""
+    service.delete_column(board_id, column_id, user.id, user.interno_adm)

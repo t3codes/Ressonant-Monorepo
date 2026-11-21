@@ -150,29 +150,109 @@ class BoardService:
         self.get(board_id, user_id)
         return self._column_repo.list_by_board(board_id)
 
-    def create_column(self, board_id: str, payload: BoardColumnCreate, user_id: str) -> BoardColumn:
-        """Cria uma coluna no board (owner ou admin do time)."""
-        board = self.get(board_id, user_id)
+    def _can_manage_columns(self, board: Board, user_id: str, actor_is_admin: bool) -> bool:
+        if actor_is_admin:
+            return True
         from app.modules.teams.dataproviders.repository import TeamRepository
+        from app.modules.workspace.dataproviders.repository import WorkspaceRepository
 
         team_repo = TeamRepository(self._repo._db)
+        ws_repo = WorkspaceRepository(self._repo._db)
+        ws = ws_repo.get_by_id(board.workspace_id)
+        if ws and (ws.owner_id == user_id or ws_repo.is_admin(board.workspace_id, user_id)):
+            return True
         team = team_repo.get_by_id(board.team_id)
         member = team_repo.is_member(board.team_id, user_id)
         is_team_owner = team is not None and team.owner_id == user_id
         is_team_admin = member is not None and member.role == "admin"
-        if not (is_team_owner or is_team_admin):
-            raise _forbidden("Somente owner ou admin do time pode criar colunas")
+        return is_team_owner or is_team_admin
+
+    def _normalize_column_positions(self, board_id: str) -> list[BoardColumn]:
+        cols = self._column_repo.list_by_board(board_id)
+        for idx, col in enumerate(cols):
+            col.position = idx
+        return cols
+
+    def create_column(self, board_id: str, payload: BoardColumnCreate, user_id: str, actor_is_admin: bool = False) -> BoardColumn:
+        """Cria coluna. Shift em posições >= position; renumera sequencialmente."""
+        board = self.get(board_id, user_id)
+        if not self._can_manage_columns(board, user_id, actor_is_admin):
+            raise _forbidden("Sem permissão para gerenciar colunas")
+        cols = self._column_repo.list_by_board(board_id)
+        pos = max(0, min(payload.position, len(cols)))
+        for col in cols:
+            if col.position >= pos:
+                col.position += 1
         column = BoardColumn(
             board_id=board_id,
             name=payload.name,
             slug=payload.slug,
-            position=payload.position,
+            position=pos,
             wip_limit=payload.wip_limit,
         )
         try:
             self._column_repo.add(column)
             self._column_repo.commit()
+            # normalize to contiguous sequence
+            self._normalize_column_positions(board_id)
+            self._column_repo.commit()
+        except Exception:
+            self._column_repo.rollback()
+            raise
+        return self._column_repo.get_by_id(column.id) or column
+
+    def update_column(self, board_id: str, column_id: str, payload, user_id: str, actor_is_admin: bool = False) -> BoardColumn:
+        board = self.get(board_id, user_id)
+        if not self._can_manage_columns(board, user_id, actor_is_admin):
+            raise _forbidden("Sem permissão para gerenciar colunas")
+        column = self._column_repo.get_by_id(column_id)
+        if column is None or column.board_id != board_id:
+            raise _not_found()
+        if payload.name is not None:
+            column.name = payload.name
+        if payload.slug is not None:
+            column.slug = payload.slug
+        if payload.wip_limit is not None:
+            column.wip_limit = payload.wip_limit
+        try:
+            self._column_repo.commit()
         except Exception:
             self._column_repo.rollback()
             raise
         return column
+
+    def delete_column(self, board_id: str, column_id: str, user_id: str, actor_is_admin: bool = False) -> None:
+        board = self.get(board_id, user_id)
+        if not self._can_manage_columns(board, user_id, actor_is_admin):
+            raise _forbidden("Sem permissão para gerenciar colunas")
+        column = self._column_repo.get_by_id(column_id)
+        if column is None or column.board_id != board_id:
+            raise _not_found()
+        cards_count = self._column_repo.count_cards(column_id)
+        if cards_count > 0:
+            raise _conflict("Não é possível excluir coluna com cards. Mova os cards antes.", "BOARD_COLUMN_NOT_EMPTY")
+        try:
+            self._column_repo.delete(column)
+            self._normalize_column_positions(board_id)
+            self._column_repo.commit()
+        except Exception:
+            self._column_repo.rollback()
+            raise
+
+    def reorder_columns(self, board_id: str, ordered_column_ids: list[str], user_id: str, actor_is_admin: bool = False) -> list[BoardColumn]:
+        board = self.get(board_id, user_id)
+        if not self._can_manage_columns(board, user_id, actor_is_admin):
+            raise _forbidden("Sem permissão para gerenciar colunas")
+        cols = self._column_repo.list_by_board(board_id)
+        current_ids = [c.id for c in cols]
+        if len(ordered_column_ids) != len(current_ids) or set(ordered_column_ids) != set(current_ids):
+            raise _conflict("Reordenação deve incluir todas as colunas do board", "BOARD_COLUMN_REORDER_INVALID")
+        by_id = {c.id: c for c in cols}
+        try:
+            for idx, cid in enumerate(ordered_column_ids):
+                by_id[cid].position = idx
+            self._column_repo.commit()
+        except Exception:
+            self._column_repo.rollback()
+            raise
+        return self._column_repo.list_by_board(board_id)

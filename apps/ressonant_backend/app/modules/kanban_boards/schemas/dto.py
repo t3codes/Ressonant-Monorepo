@@ -65,6 +65,16 @@ class BoardColumnCreate(BoardColumnBase):
     pass
 
 
+class BoardColumnUpdate(BaseModel):
+    name: Name | None = None
+    slug: Slug | None = None
+    wip_limit: Annotated[int | None, Field(ge=1)] = None
+
+
+class BoardColumnReorderInput(BaseModel):
+    ordered_column_ids: list[str] = Field(min_length=1)
+
+
 class BoardColumnResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
