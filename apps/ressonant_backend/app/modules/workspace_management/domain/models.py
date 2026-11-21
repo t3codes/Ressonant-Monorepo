@@ -3,7 +3,17 @@ from datetime import datetime
 
 import sqlalchemy as sa
 from app.database.engine import Base
-from sqlalchemy import DateTime, ForeignKey, Index, String, Text, Uuid, func
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    Uuid,
+    func,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import JSON
@@ -59,11 +69,20 @@ class AuditEvent(Base):
     id: Mapped[str] = mapped_column(
         Uuid(as_uuid=False), primary_key=True, default=lambda: str(uuid.uuid4())
     )
-    workspace_id: Mapped[str] = mapped_column(
+    workspace_id: Mapped[str | None] = mapped_column(
         Uuid(as_uuid=False),
         ForeignKey("workspaces.id", ondelete="CASCADE"),
         index=True,
-        nullable=False,
+        nullable=True,
+    )
+    organization_id: Mapped[str | None] = mapped_column(
+        Uuid(as_uuid=False),
+        ForeignKey("organizations.id", ondelete="RESTRICT"),
+        index=True,
+        nullable=True,
+    )
+    scope: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="workspace", server_default="workspace"
     )
     occurred_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
@@ -74,6 +93,8 @@ class AuditEvent(Base):
     actor_type: Mapped[str] = mapped_column(
         String(30), nullable=False
     )  # user|system|internal_admin
+    actor_role: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    permission_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
     action: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     entity_type: Mapped[str] = mapped_column(String(50), nullable=False)
     entity_id: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -91,3 +112,9 @@ class AuditEvent(Base):
         "metadata", JSON().with_variant(JSONB, "postgresql"), nullable=True
     )
     result: Mapped[str | None] = mapped_column(String(20), nullable=True)  # success|denied|failed
+
+    __table_args__ = (
+        CheckConstraint(
+            "scope IN ('organization', 'workspace', 'card')", name="ck_audit_events_scope"
+        ),
+    )

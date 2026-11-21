@@ -110,27 +110,37 @@ class WorkspaceManagementService:
     def _audit(
         self,
         *,
-        workspace_id: str,
         actor: User | None,
         action: str,
         entity_type: str,
         entity_id: str,
+        workspace_id: str | None = None,
+        organization_id: str | None = None,
         target_user_id: str | None = None,
         before: dict | None = None,
         after: dict | None = None,
         metadata: dict | None = None,
         result: str = "success",
         request_id: str | None = None,
+        actor_role: str | None = None,
+        permission_version: int | None = None,
+        scope: Literal["organization", "workspace", "card"] = "workspace",
     ) -> None:
         actor_type = "system"
         actor_user_id = None
         if actor is not None:
             actor_user_id = actor.id
             actor_type = "internal_admin" if actor.interno_adm else "user"
+        # Actor and role come from the authenticated caller, never from a request body.
+        resolved_actor_role = actor_role if actor_role is not None else actor_type
         event = AuditEvent(
             workspace_id=workspace_id,
+            organization_id=organization_id,
+            scope=scope,
             actor_user_id=actor_user_id,
             actor_type=actor_type,
+            actor_role=resolved_actor_role,
+            permission_version=permission_version,
             action=action,
             entity_type=entity_type,
             entity_id=entity_id,
@@ -405,9 +415,13 @@ class WorkspaceManagementService:
             {
                 "id": e.id,
                 "workspace_id": e.workspace_id,
+                "organization_id": e.organization_id,
+                "scope": e.scope,
                 "occurred_at": e.occurred_at,
                 "actor_user_id": e.actor_user_id,
                 "actor_type": e.actor_type,
+                "actor_role": e.actor_role,
+                "permission_version": e.permission_version,
                 "action": e.action,
                 "entity_type": e.entity_type,
                 "entity_id": e.entity_id,

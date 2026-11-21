@@ -4429,8 +4429,36 @@
             "title": "Id"
           },
           "workspace_id": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Workspace Id"
+          },
+          "organization_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organization Id"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "organization",
+              "workspace",
+              "card"
+            ],
+            "title": "Scope",
+            "default": "workspace"
           },
           "occurred_at": {
             "type": "string",
@@ -4451,6 +4479,28 @@
           "actor_type": {
             "type": "string",
             "title": "Actor Type"
+          },
+          "actor_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Role"
+          },
+          "permission_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Permission Version"
           },
           "action": {
             "type": "string",
@@ -4537,7 +4587,6 @@
         "type": "object",
         "required": [
           "id",
-          "workspace_id",
           "occurred_at",
           "actor_type",
           "action",

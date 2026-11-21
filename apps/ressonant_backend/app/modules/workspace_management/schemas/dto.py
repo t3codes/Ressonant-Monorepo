@@ -90,10 +90,14 @@ class AdminTeamResponse(BaseModel):
 class AuditEventResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: str
-    workspace_id: str
+    workspace_id: str | None = None
+    organization_id: str | None = None
+    scope: Literal["organization", "workspace", "card"] = "workspace"
     occurred_at: datetime
     actor_user_id: str | None = None
     actor_type: str
+    actor_role: str | None = None
+    permission_version: int | None = None
     action: str
     entity_type: str
     entity_id: str
