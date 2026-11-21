@@ -18,6 +18,10 @@ from sqlalchemy.orm import Session
 from app.config.settings import get_settings
 from app.database.engine import get_db
 from app.modules.auth.entrypoints import routes as auth_routes
+from app.modules.billing.domain.models import (  # noqa: F401  (registra as tabelas no metadata)
+    Plan,
+    Subscription,
+)
 from app.modules.chat.domain.models import (  # noqa: F401  (registra as tabelas no metadata)
     Channel,
     Conversation,
