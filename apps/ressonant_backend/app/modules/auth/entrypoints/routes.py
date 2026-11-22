@@ -1,11 +1,15 @@
 from typing import Annotated
 
-from app.modules.auth.deps import CurrentUser, get_auth_service
-from app.modules.auth.schemas.dto import LoginRequest, TokenResponse
+from app.modules.auth.deps import CurrentUser, get_auth_service, get_registration_service
+from app.modules.auth.schemas.dto import (
+    LoginRequest,
+    RegistrationCreate,
+    RegistrationResponse,
+    TokenResponse,
+)
+from app.modules.auth.usecases.registration import RegistrationService
 from app.modules.auth.usecases.services import AuthService
-from app.modules.user.deps import get_user_service
-from app.modules.user.schemas import UserRegister, UserResponse
-from app.modules.user.usecases.services import UserService
+from app.modules.user.schemas import UserResponse
 from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import JSONResponse
 
@@ -14,15 +18,15 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post(
     "/register",
-    response_model=UserResponse,
+    response_model=RegistrationResponse,
     status_code=status.HTTP_201_CREATED,
 )
 def register(
-    payload: UserRegister,
-    service: Annotated[UserService, Depends(get_user_service)],
-) -> UserResponse:
-    """Cadastro público de usuário comum."""
-    return UserResponse.model_validate(service.register(payload))
+    payload: RegistrationCreate,
+    service: Annotated[RegistrationService, Depends(get_registration_service)],
+) -> RegistrationResponse:
+    """Cadastro público atômico: usuário, organização, billing e workspace."""
+    return service.register(payload)
 
 
 @router.post("/login", response_model=TokenResponse)

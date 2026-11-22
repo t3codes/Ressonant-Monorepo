@@ -10,7 +10,7 @@ def test_register_creates_regular_active_user(client: TestClient) -> None:
     response = client.post("/auth/register", json=register_payload())
 
     assert response.status_code == 201
-    body = response.json()
+    body = response.json()["user"]
     assert body["cpf"] == "52998224725"
     assert body["telefone"] == "11987654321"
     assert body["interno_adm"] is False
@@ -18,14 +18,14 @@ def test_register_creates_regular_active_user(client: TestClient) -> None:
     assert "senha" not in body and "senha_hash" not in body
 
 
-def test_register_ignores_admin_flags(client: TestClient) -> None:
+def test_register_rejects_admin_flags(client: TestClient) -> None:
     response = client.post(
         "/auth/register", json=register_payload(interno_adm=True, status_ativo=False)
     )
 
-    assert response.status_code == 201
-    assert response.json()["interno_adm"] is False
-    assert response.json()["status_ativo"] is True
+    assert response.status_code == 422
+    fields = {str(message["loc"][-1]) for message in response.json()["error_messages"]}
+    assert {"interno_adm", "status_ativo"} <= fields
 
 
 def test_register_rejects_duplicate_email_or_cpf(client: TestClient) -> None:
@@ -113,7 +113,7 @@ def test_expired_and_wrong_type_tokens_are_rejected(client: TestClient, session_
 def test_deactivated_user_loses_access_with_existing_token(
     client: TestClient, session_factory, admin_headers
 ) -> None:
-    created = client.post("/auth/register", json=register_payload()).json()
+    created = client.post("/auth/register", json=register_payload()).json()["user"]
     headers = login(client, "ana@ressonant.dev")
 
     client.patch(

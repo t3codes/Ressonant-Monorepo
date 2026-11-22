@@ -12,13 +12,13 @@
           "auth"
         ],
         "summary": "Register",
-        "description": "Cadastro público de usuário comum.",
+        "description": "Cadastro público atômico: usuário, organização, billing e workspace.",
         "operationId": "register_auth_register_post",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UserRegister"
+                "$ref": "#/components/schemas/RegistrationCreate"
               }
             }
           },
@@ -30,7 +30,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UserResponse"
+                  "$ref": "#/components/schemas/RegistrationResponse"
                 }
               }
             }
@@ -6436,6 +6436,42 @@
         ],
         "title": "ConversationResponse"
       },
+      "ConvidadoInput": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "member",
+              "viewer"
+            ],
+            "title": "Role",
+            "default": "member"
+          },
+          "nome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "ConvidadoInput"
+      },
       "DomainCapabilities": {
         "properties": {
           "cards_write": {
@@ -7484,6 +7520,58 @@
         ],
         "title": "NotificationResponse"
       },
+      "OrganizacaoInput": {
+        "properties": {
+          "nome": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 2,
+            "title": "Nome"
+          },
+          "slug": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 3,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "title": "Slug"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "nome",
+          "slug"
+        ],
+        "title": "OrganizacaoInput"
+      },
+      "OrganizacaoResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role",
+            "default": "owner"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "slug"
+        ],
+        "title": "OrganizacaoResponse"
+      },
       "OrganizationContextResponse": {
         "properties": {
           "id": {
@@ -7708,6 +7796,189 @@
           "last_read_at"
         ],
         "title": "ReadStateResponse"
+      },
+      "RegistrationCreate": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "cpf": {
+            "type": "string",
+            "title": "Cpf",
+            "description": "CPF com ou sem máscara; armazenado só com dígitos"
+          },
+          "telefone": {
+            "type": "string",
+            "title": "Telefone",
+            "description": "Telefone com DDD (10 ou 11 dígitos)"
+          },
+          "senha": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Senha"
+          },
+          "idade": {
+            "type": "integer",
+            "maximum": 120.0,
+            "minimum": 18.0,
+            "title": "Idade"
+          },
+          "termos_contrato": {
+            "type": "boolean",
+            "title": "Termos Contrato"
+          },
+          "nome_completo": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 2,
+            "title": "Nome Completo"
+          },
+          "cargo": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 2,
+            "title": "Cargo"
+          },
+          "organizacao": {
+            "$ref": "#/components/schemas/OrganizacaoInput"
+          },
+          "plano_id": {
+            "type": "string",
+            "enum": [
+              "inicial",
+              "equipe",
+              "empresa"
+            ],
+            "title": "Plano Id"
+          },
+          "trial": {
+            "type": "boolean",
+            "const": true,
+            "title": "Trial",
+            "default": true
+          },
+          "workspace_nome": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 3,
+            "title": "Workspace Nome"
+          },
+          "equipe_inicial_nome": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 3,
+            "title": "Equipe Inicial Nome"
+          },
+          "convidados": {
+            "items": {
+              "$ref": "#/components/schemas/ConvidadoInput"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "title": "Convidados"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "email",
+          "cpf",
+          "telefone",
+          "senha",
+          "idade",
+          "termos_contrato",
+          "nome_completo",
+          "cargo",
+          "organizacao",
+          "plano_id",
+          "workspace_nome",
+          "equipe_inicial_nome"
+        ],
+        "title": "RegistrationCreate",
+        "description": "Payload aditivo do cadastro atômico (§5.1 do plano)."
+      },
+      "RegistrationResponse": {
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/UserResponse"
+          },
+          "organizacao": {
+            "$ref": "#/components/schemas/OrganizacaoResponse"
+          },
+          "assinatura": {
+            "$ref": "#/components/schemas/SubscriptionResponse"
+          },
+          "workspace_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Workspace Ids"
+          },
+          "workspace_inicial_id": {
+            "type": "string",
+            "title": "Workspace Inicial Id"
+          },
+          "equipe_inicial_id": {
+            "type": "string",
+            "title": "Equipe Inicial Id"
+          },
+          "seats": {
+            "$ref": "#/components/schemas/SeatsResponse"
+          },
+          "member_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Member Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user",
+          "organizacao",
+          "assinatura",
+          "workspace_ids",
+          "workspace_inicial_id",
+          "equipe_inicial_id",
+          "seats",
+          "member_ids"
+        ],
+        "title": "RegistrationResponse"
+      },
+      "SeatsResponse": {
+        "properties": {
+          "plan_code": {
+            "type": "string",
+            "title": "Plan Code"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit"
+          },
+          "used": {
+            "type": "integer",
+            "title": "Used"
+          }
+        },
+        "type": "object",
+        "required": [
+          "plan_code",
+          "limit",
+          "used"
+        ],
+        "title": "SeatsResponse"
       },
       "SubscriptionContextResponse": {
         "properties": {
@@ -8451,52 +8722,6 @@
           "limit"
         ],
         "title": "UserList"
-      },
-      "UserRegister": {
-        "properties": {
-          "email": {
-            "type": "string",
-            "format": "email",
-            "title": "Email"
-          },
-          "cpf": {
-            "type": "string",
-            "title": "Cpf",
-            "description": "CPF com ou sem máscara; armazenado só com dígitos"
-          },
-          "telefone": {
-            "type": "string",
-            "title": "Telefone",
-            "description": "Telefone com DDD (10 ou 11 dígitos)"
-          },
-          "senha": {
-            "type": "string",
-            "maxLength": 128,
-            "minLength": 8,
-            "title": "Senha"
-          },
-          "idade": {
-            "type": "integer",
-            "maximum": 120.0,
-            "minimum": 18.0,
-            "title": "Idade"
-          },
-          "termos_contrato": {
-            "type": "boolean",
-            "title": "Termos Contrato"
-          }
-        },
-        "type": "object",
-        "required": [
-          "email",
-          "cpf",
-          "telefone",
-          "senha",
-          "idade",
-          "termos_contrato"
-        ],
-        "title": "UserRegister",
-        "description": "Cadastro público: nunca define flags administrativas."
       },
       "UserResponse": {
         "properties": {

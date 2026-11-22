@@ -12,6 +12,7 @@ from app.common.security import hash_password  # noqa: E402
 from app.database.engine import Base, get_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.modules.auth.usecases.services import _rate_limit  # noqa: E402
+from app.modules.billing.domain.models import Plan  # noqa: E402
 from app.modules.kanban_cards.domain.models import Card  # noqa: E402
 from app.modules.organization.domain.models import (  # noqa: E402
     Organization,
@@ -79,20 +80,64 @@ def reset_rate_limit_state() -> Iterator[None]:
     yield
 
 
+def seed_billing_plans(session: Session) -> None:
+    existing = {code for (code,) in session.execute(select(Plan.code)).all()}
+    defaults = [
+        Plan(
+            code="inicial",
+            name="Inicial",
+            price_cents=0,
+            currency="BRL",
+            seat_limit=3,
+            trial_days=7,
+            active=True,
+        ),
+        Plan(
+            code="equipe",
+            name="Equipe",
+            price_cents=4900,
+            currency="BRL",
+            seat_limit=15,
+            trial_days=14,
+            active=True,
+        ),
+        Plan(
+            code="empresa",
+            name="Empresa",
+            price_cents=7900,
+            currency="BRL",
+            seat_limit=None,
+            trial_days=14,
+            active=True,
+        ),
+    ]
+    pending = [plan for plan in defaults if plan.code not in existing]
+    if pending:
+        session.add_all(pending)
+        session.commit()
+
+
 @pytest.fixture
 def session_factory() -> Iterator[sessionmaker[Session]]:
     engine = create_engine(
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
     Base.metadata.create_all(engine)
-    yield sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+    factory = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+    yield factory
     engine.dispose()
 
 
 @pytest.fixture
 def client(session_factory: sessionmaker[Session]) -> Iterator[TestClient]:
+    plans_seeded = False
+
     def override_db() -> Iterator[Session]:
+        nonlocal plans_seeded
         with session_factory() as session:
+            if not plans_seeded:
+                seed_billing_plans(session)
+                plans_seeded = True
             yield session
 
     app.dependency_overrides[get_db] = override_db
@@ -140,12 +185,19 @@ def admin_headers(client: TestClient, session_factory: sessionmaker[Session]) ->
 
 def register_payload(**overrides: object) -> dict[str, object]:
     payload: dict[str, object] = {
+        "nome_completo": "Ana Silva",
+        "cargo": "Dono da Empresa",
         "email": "ana@ressonant.dev",
         "senha": "senha-forte-1",
         "cpf": "529.982.247-25",
         "idade": 25,
         "termos_contrato": True,
         "telefone": "(11) 98765-4321",
+        "organizacao": {"nome": "Acme Ltda", "slug": f"acme-{uuid.uuid4().hex[:8]}"},
+        "plano_id": "equipe",
+        "workspace_nome": "Acme Ltda",
+        "equipe_inicial_nome": "Engenharia",
+        "convidados": [],
     }
     payload.update(overrides)
     return payload

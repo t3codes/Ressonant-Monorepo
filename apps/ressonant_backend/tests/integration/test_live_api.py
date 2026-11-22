@@ -36,12 +36,19 @@ def _unique_cpf() -> str:
 
 def _payload(email: str, cpf: str) -> dict:
     return {
+        "nome_completo": "Ana Silva",
+        "cargo": "Dono da Empresa",
         "email": email,
         "senha": PASSWORD,
         "cpf": cpf,
         "telefone": "11987654321",
         "idade": 30,
         "termos_contrato": True,
+        "organizacao": {"nome": "Acme Ltda", "slug": f"acme-{uuid.uuid4().hex[:8]}"},
+        "plano_id": "equipe",
+        "workspace_nome": "Acme Ltda",
+        "equipe_inicial_nome": "Engenharia",
+        "convidados": [],
     }
 
 
@@ -57,9 +64,10 @@ def test_register_login_me_roundtrip_persists(api: httpx.Client) -> None:
     created = api.post("/auth/register", json=_payload(email, cpf))
     assert created.status_code == 201
     body = created.json()
-    assert body["email"] == email
-    assert body["interno_adm"] is False
-    assert "senha" not in body and "senha_hash" not in body
+    user = body["user"]
+    assert user["email"] == email
+    assert user["interno_adm"] is False
+    assert "senha" not in user and "senha_hash" not in user
 
     duplicate = api.post("/auth/register", json=_payload(email, cpf))
     assert duplicate.status_code == 409
@@ -71,7 +79,7 @@ def test_register_login_me_roundtrip_persists(api: httpx.Client) -> None:
 
     me = api.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert me.status_code == 200
-    assert me.json()["id"] == body["id"]  # persistido e lido de volta do Postgres
+    assert me.json()["id"] == user["id"]  # persistido e lido de volta do Postgres
 
 
 def test_login_rejects_wrong_password_and_unknown_email_identically(api: httpx.Client) -> None:

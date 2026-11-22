@@ -5,7 +5,7 @@ from tests.conftest import login, register_payload
 def _register(client: TestClient, **overrides: object) -> dict:
     response = client.post("/auth/register", json=register_payload(**overrides))
     assert response.status_code == 201, response.text
-    return response.json()
+    return response.json()["user"]
 
 
 def test_crud_requires_authentication(client: TestClient) -> None:
