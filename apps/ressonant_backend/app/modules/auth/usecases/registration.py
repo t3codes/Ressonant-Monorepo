@@ -129,7 +129,9 @@ class RegistrationService:
             )
 
             ChannelService(ChannelRepository(self._db)).add_channel(
-                ChannelCreate(workspace_id=workspace.id, name="geral"), created_by=user.id
+                ChannelCreate(workspace_id=workspace.id, name="geral"),
+                created_by=user.id,
+                slug=f"geral-{workspace.id}",
             )
 
             billing_repo.add_audit_event(

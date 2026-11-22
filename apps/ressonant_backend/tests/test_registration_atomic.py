@@ -167,7 +167,8 @@ def test_register_persists_all_entities_and_full_response(
 
         channel = db.scalar(select(Channel).where(Channel.workspace_id == workspace.id))
         assert channel is not None
-        assert (channel.name, channel.slug) == ("geral", "geral")
+        assert (channel.name, channel.slug) == ("geral", f"geral-{workspace.id}")
+        assert channel.name == "geral"
         assert json.loads(channel.member_ids) == [user.id]
 
         events = list(
@@ -226,7 +227,7 @@ def test_register_failure_at_channel_rolls_back_everything(
     before = _counts(session_factory)
 
     def fail_add_channel(
-        service: ChannelService, payload: ChannelCreate, created_by: str
+        service: ChannelService, payload: ChannelCreate, created_by: str, *, slug: str | None = None
     ) -> Channel:
         raise RuntimeError("falha ao criar canal")
 

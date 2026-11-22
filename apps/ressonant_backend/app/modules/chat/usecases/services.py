@@ -46,13 +46,17 @@ class ChannelService:
     def get_by_id(self, channel_id: str) -> Channel | None:
         return self._repo.get_by_id(channel_id)
 
-    def add_channel(self, payload: ChannelCreate, created_by: str) -> Channel:
+    def add_channel(
+        self, payload: ChannelCreate, created_by: str, *, slug: str | None = None
+    ) -> Channel:
         """Prepara o canal na Session; a transação fica com quem chama."""
-        slug = re.sub(r"[^a-z0-9]+", "-", payload.name.lower()).strip("-")
+        channel_slug = slug
+        if channel_slug is None:
+            channel_slug = re.sub(r"[^a-z0-9]+", "-", payload.name.lower()).strip("-")
         channel = Channel(
             workspace_id=payload.workspace_id,
             name=payload.name,
-            slug=slug,
+            slug=channel_slug,
             topic=payload.topic,
             visibility=payload.visibility,
             member_ids=json.dumps([created_by]),

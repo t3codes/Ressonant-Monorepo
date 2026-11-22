@@ -122,6 +122,25 @@ def test_add_channel_stages_without_commit(session_factory: sessionmaker[Session
     assert _count(session_factory, Channel) == 1
 
 
+def test_add_channel_explicit_slug_and_create_default_slug(
+    session_factory: sessionmaker[Session],
+) -> None:
+    created_by = str(uuid.uuid4())
+
+    with session_factory() as db:
+        service = ChannelService(ChannelRepository(db))
+        explicit = service.add_channel(_channel_payload(), created_by, slug="geral-custom")
+        assert explicit.slug == "geral-custom"
+        assert explicit.name == "Canal Geral"
+        db.commit()
+
+        default = service.create(_channel_payload(), created_by)
+        assert default.slug == "canal-geral"
+        assert default.name == "Canal Geral"
+
+    assert _count(session_factory, Channel) == 2
+
+
 def test_channel_create_commits(session_factory: sessionmaker[Session]) -> None:
     with session_factory() as db:
         channel = ChannelService(ChannelRepository(db)).create(
