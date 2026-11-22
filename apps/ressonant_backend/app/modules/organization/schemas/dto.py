@@ -4,7 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 InvitationRole = Literal["admin", "member"]
-InvitationStatus = Literal["pending", "accepted", "revoked", "expired"]
+InvitationStatus = Literal["pending", "accepted", "revoked", "expired", "declined"]
 
 
 class InvitationCreateRequest(BaseModel):
@@ -28,8 +28,7 @@ class InvitationCreateResponse(BaseModel):
     expires_at: datetime
     invited_by_id: str
     criado_em: datetime
-    # Returned only at creation time so the caller can deliver it out-of-band.
-    token: str
+    token: str | None = None
     invite_url: str | None = None
     email_sent: bool = False
 
@@ -46,8 +45,25 @@ class InvitationResponse(BaseModel):
     expires_at: datetime
     accepted_at: datetime | None = None
     revoked_at: datetime | None = None
+    declined_at: datetime | None = None
+    resent_at: datetime | None = None
+    last_sent_at: datetime | None = None
+    send_status: str | None = None
     invited_by_id: str
     criado_em: datetime
+
+
+class InvitationPublicResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    organization_name: str
+    workspace_name: str
+    role: str
+    email_masked: str
+    expires_at: datetime
+    status: InvitationStatus
+    invited_by_name: str | None = None
+    user_exists: bool = False
 
 
 class InvitationAcceptResponse(BaseModel):
@@ -62,3 +78,9 @@ class InvitationAcceptResponse(BaseModel):
     accepted_at: datetime
     organization_member_created: bool
     workspace_member_created: bool
+
+
+class InvitationResendResponse(InvitationResponse):
+    token: str | None = None
+    invite_url: str | None = None
+    email_sent: bool = False

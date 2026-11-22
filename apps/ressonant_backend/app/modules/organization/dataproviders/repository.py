@@ -5,6 +5,7 @@ from app.modules.billing.domain.models import ACTIVE_SUBSCRIPTION_STATUSES, Plan
 from app.modules.organization.domain.models import Invitation, Organization, OrganizationMember
 from app.modules.user.domain.models import User
 from app.modules.workspace.domain.models import Workspace, WorkspaceMember
+from app.modules.workspace_management.domain.models import AuditEvent
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -12,6 +13,20 @@ from sqlalchemy.orm import Session
 class OrganizationRepository:
     def __init__(self, db: Session) -> None:
         self._db = db
+
+    @property
+    def db(self) -> Session:
+        return self._db
+
+    def add_audit_event(self, event: AuditEvent) -> AuditEvent:
+        self._db.add(event)
+        self._db.flush()
+        return event
+
+    def get_user_by_id(self, user_id: str) -> User | None:
+        if not self._is_uuid(user_id):
+            return None
+        return self._db.get(User, user_id)
 
     @staticmethod
     def _is_uuid(value: str) -> bool:
@@ -167,13 +182,39 @@ class OrganizationRepository:
             return None, plan.name
         return limit + subscription.seats_purchased, plan.name
 
-    def get_invitation_by_id(self, invitation_id: str) -> Invitation | None:
+    def _supports_for_update(self) -> bool:
+        bind = self._db.get_bind()
+        dialect = bind.dialect
+        supports = getattr(dialect, "supports_for_update", None)
+        if supports is None:
+            supports = dialect.name not in {"sqlite"}
+        return bool(supports)
+
+    def get_invitation_by_id(
+        self, invitation_id: str, *, for_update: bool = False
+    ) -> Invitation | None:
         if not self._is_uuid(invitation_id):
             return None
-        return self._db.get(Invitation, invitation_id)
+        stmt = select(Invitation).where(Invitation.id == invitation_id)
+        if for_update and self._supports_for_update():
+            stmt = stmt.with_for_update()
+        return self._db.scalar(stmt)
 
-    def get_invitation_by_token_hash(self, token_hash: str) -> Invitation | None:
-        return self._db.scalar(select(Invitation).where(Invitation.token_hash == token_hash))
+    def get_invitation_by_token_hash(
+        self, token_hash: str, *, for_update: bool = False
+    ) -> Invitation | None:
+        stmt = select(Invitation).where(Invitation.token_hash == token_hash)
+        if for_update and self._supports_for_update():
+            stmt = stmt.with_for_update()
+        return self._db.scalar(stmt)
+
+    def lock_organization(self, organization_id: str) -> Organization | None:
+        if not self._is_uuid(organization_id):
+            return None
+        stmt = select(Organization).where(Organization.id == organization_id)
+        if self._supports_for_update():
+            stmt = stmt.with_for_update()
+        return self._db.scalar(stmt)
 
     def get_pending_invitation(
         self, *, organization_id: str, workspace_id: str, email: str
@@ -188,6 +229,7 @@ class OrganizationRepository:
                 Invitation.email == email,
                 Invitation.accepted_at.is_(None),
                 Invitation.revoked_at.is_(None),
+                Invitation.declined_at.is_(None),
             )
             .order_by(Invitation.criado_em.desc(), Invitation.id.desc())
             .limit(1)
@@ -215,6 +257,31 @@ class OrganizationRepository:
 
     def mark_invitation_revoked(self, invitation: Invitation, *, revoked_at: datetime) -> None:
         invitation.revoked_at = revoked_at
+        self._db.flush()
+
+    def mark_invitation_declined(self, invitation: Invitation, *, declined_at: datetime) -> None:
+        invitation.declined_at = declined_at
+        self._db.flush()
+
+    def update_invitation_for_resend(
+        self, invitation: Invitation, *, token_hash: str, expires_at: datetime, resent_at: datetime
+    ) -> None:
+        invitation.token_hash = token_hash
+        invitation.expires_at = expires_at
+        invitation.resent_at = resent_at
+        invitation.send_status = "pending"
+        self._db.flush()
+
+    def set_invitation_send_status(
+        self, invitation: Invitation, *, send_status: str, last_sent_at: datetime | None = None
+    ) -> None:
+        invitation.send_status = send_status
+        if last_sent_at is not None:
+            invitation.last_sent_at = last_sent_at
+        self._db.flush()
+
+    def delete_invitation(self, invitation: Invitation) -> None:
+        self._db.delete(invitation)
         self._db.flush()
 
     def commit(self) -> None:

@@ -1,6 +1,8 @@
 import uuid
+from datetime import UTC, datetime
 
 from app.modules.organization.domain.models import OrganizationMember
+from app.modules.user.domain.models import User
 from app.modules.workspace.domain.models import Workspace, WorkspaceMember
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
@@ -97,13 +99,52 @@ class WorkspaceRepository:
             uuid.UUID(workspace_id)
         except ValueError:
             return []
-        return list(
-            self._db.scalars(
-                select(WorkspaceMember)
-                .where(WorkspaceMember.workspace_id == workspace_id)
-                .order_by(WorkspaceMember.criado_em)
-            )
+        rows = self._db.execute(
+            select(WorkspaceMember, User)
+            .outerjoin(User, User.id == WorkspaceMember.user_id)
+            .where(WorkspaceMember.workspace_id == workspace_id)
+            .order_by(WorkspaceMember.criado_em, WorkspaceMember.id)
+        ).all()
+        members: list[WorkspaceMember] = []
+        seen_user_ids: set[str] = set()
+        for member, user in rows:
+            # atributo transitório para enriquecimento de resposta sem persistir
+            setattr(member, "user", user)
+            members.append(member)
+            seen_user_ids.add(str(member.user_id))
+
+        # Owner da organização deve ser visível em todos os workspaces da empresa
+        # para descoberta/contato no chat, mesmo sem membership de workspace.
+        workspace_org_id = self._db.scalar(
+            select(Workspace.organization_id).where(Workspace.id == workspace_id)
         )
+        if workspace_org_id:
+            owner_rows = self._db.execute(
+                select(OrganizationMember, User)
+                .outerjoin(User, User.id == OrganizationMember.user_id)
+                .where(
+                    OrganizationMember.organization_id == workspace_org_id,
+                    OrganizationMember.status == "active",
+                    OrganizationMember.role == "owner",
+                )
+                .order_by(OrganizationMember.criado_em, OrganizationMember.user_id)
+            ).all()
+            for org_member, user in owner_rows:
+                uid = str(org_member.user_id)
+                if uid in seen_user_ids:
+                    continue
+                synthetic = WorkspaceMember(
+                    workspace_id=workspace_id,
+                    user_id=uid,
+                    role="owner",
+                )
+                # id/criado_em sintéticos para resposta; não persistidos
+                synthetic.id = f"org-owner:{workspace_org_id}:{uid}"
+                synthetic.criado_em = getattr(org_member, "criado_em", None) or datetime.now(UTC)
+                setattr(synthetic, "user", user)
+                members.append(synthetic)
+                seen_user_ids.add(uid)
+        return members
 
     def remove_member(self, member: WorkspaceMember) -> None:
         self._db.delete(member)

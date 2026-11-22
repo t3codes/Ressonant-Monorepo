@@ -296,6 +296,67 @@ class TestRevokeR9AndEffect:
         assert after.json()["capabilities"]["management_read"] is False
 
 
+class TestPeopleManagement:
+    def test_get_person_detail_remove_and_change_team(
+        self, client: TestClient, session_factory
+    ) -> None:
+        make_user(session_factory, email="owner@r.dev", cpf=VALID_CPFS[0])
+        member = make_user(session_factory, email="member@r.dev", cpf=VALID_CPFS[1])
+        owner_h = _auth(client, "owner@r.dev")
+        ws = _create_workspace(client, owner_h, "ws-people", name="WS People")
+        _add_member(client, owner_h, ws["id"], member.id)
+
+        team_a = client.post(
+            "/teams",
+            json={"name": "Equipe A", "slug": f"equipe-a-{ws['id'][:8]}", "workspace_id": ws["id"]},
+            headers=owner_h,
+        )
+        team_b = client.post(
+            "/teams",
+            json={"name": "Equipe B", "slug": f"equipe-b-{ws['id'][:8]}", "workspace_id": ws["id"]},
+            headers=owner_h,
+        )
+        assert team_a.status_code == 201, team_a.text
+        assert team_b.status_code == 201, team_b.text
+        team_a_id = team_a.json()["id"]
+        team_b_id = team_b.json()["id"]
+
+        add_a = client.post(
+            f"/teams/{team_a_id}/members", json={"user_id": member.id}, headers=owner_h
+        )
+        assert add_a.status_code in (200, 201), add_a.text
+
+        detail = client.get(
+            f"/workspaces/{ws['id']}/management/people/{member.id}", headers=owner_h
+        )
+        assert detail.status_code == 200, detail.text
+        body = detail.json()
+        assert body["user_id"] == member.id
+        assert body["email"] == "member@r.dev"
+        assert any(t["team_id"] == team_a_id for t in body["teams"])
+
+        changed = client.patch(
+            f"/workspaces/{ws['id']}/management/people/{member.id}/team",
+            json={"target_team_id": team_b_id, "from_team_id": team_a_id},
+            headers=owner_h,
+        )
+        assert changed.status_code == 200, changed.text
+        changed_body = changed.json()
+        team_ids = {t["team_id"] for t in changed_body["teams"]}
+        assert team_b_id in team_ids
+        assert team_a_id not in team_ids
+
+        removed = client.delete(
+            f"/workspaces/{ws['id']}/management/people/{member.id}", headers=owner_h
+        )
+        assert removed.status_code == 204, removed.text
+
+        missing = client.get(
+            f"/workspaces/{ws['id']}/management/people/{member.id}", headers=owner_h
+        )
+        assert missing.status_code == 404
+
+
 class TestInternoAdmBreakGlass:
     def test_break_glass_requires_reason(self, client: TestClient, session_factory) -> None:
         make_user(session_factory, email="owner@r.dev", cpf=VALID_CPFS[0])

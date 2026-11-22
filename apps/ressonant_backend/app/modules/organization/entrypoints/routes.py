@@ -1,15 +1,18 @@
 from typing import Annotated
 
 from app.modules.auth.deps import CurrentUser
+from app.modules.auth.usecases.services import _rate_limit
 from app.modules.organization.deps import get_invitation_service
 from app.modules.organization.schemas.dto import (
     InvitationAcceptResponse,
     InvitationCreateRequest,
     InvitationCreateResponse,
+    InvitationPublicResponse,
+    InvitationResendResponse,
     InvitationResponse,
 )
 from app.modules.organization.usecases.services import InvitationService
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 router = APIRouter(tags=["invitations"])
 Service = Annotated[InvitationService, Depends(get_invitation_service)]
@@ -54,8 +57,46 @@ def list_invitations(
     )
 
 
+@router.post(
+    "/organizations/{organization_id}/invitations/{invitation_id}/resend",
+    response_model=InvitationResendResponse,
+)
+def resend_invitation(
+    organization_id: str,
+    invitation_id: str,
+    request: Request,
+    service: Service,
+    current_user: CurrentUser,
+) -> InvitationResendResponse:
+    return service.resend_invitation(
+        organization_id,
+        invitation_id,
+        current_user,
+        reason=_break_glass_reason(request),
+    )
+
+
 @router.delete(
     "/organizations/{organization_id}/invitations/{invitation_id}",
+    status_code=204,
+)
+def delete_invitation(
+    organization_id: str,
+    invitation_id: str,
+    request: Request,
+    service: Service,
+    current_user: CurrentUser,
+) -> None:
+    service.delete_invitation(
+        organization_id,
+        invitation_id,
+        current_user,
+        reason=_break_glass_reason(request),
+    )
+
+
+@router.post(
+    "/organizations/{organization_id}/invitations/{invitation_id}/revoke",
     response_model=InvitationResponse,
 )
 def revoke_invitation(
@@ -73,10 +114,37 @@ def revoke_invitation(
     )
 
 
+def _check_public_rate(request: Request, scope: str) -> None:
+    ip = request.client.host if request.client else "unknown"
+    allowed, info = _rate_limit.consume(f"invite:{scope}:{ip}")
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail="Muitas tentativas. Aguarde antes de tentar novamente.",
+            headers={
+                "RateLimit-Remaining": str(info["remaining"]),
+                "RateLimit-Reset": str(info["reset"]),
+            },
+        )
+
+
+@router.get("/invitations/{token}", response_model=InvitationPublicResponse)
+def get_public_invitation(
+    token: str, request: Request, service: Service
+) -> InvitationPublicResponse:
+    _check_public_rate(request, "public")
+    return service.get_public_invitation(token)
+
+
 @router.post("/invitations/{token}/accept", response_model=InvitationAcceptResponse)
 def accept_invitation(
-    token: str,
-    service: Service,
-    current_user: CurrentUser,
+    token: str, request: Request, service: Service, current_user: CurrentUser
 ) -> InvitationAcceptResponse:
+    _check_public_rate(request, "accept")
     return service.accept_invitation(token, current_user)
+
+
+@router.post("/invitations/{token}/decline", response_model=InvitationResponse)
+def decline_invitation(token: str, request: Request, service: Service) -> InvitationResponse:
+    _check_public_rate(request, "decline")
+    return service.decline_invitation(token)

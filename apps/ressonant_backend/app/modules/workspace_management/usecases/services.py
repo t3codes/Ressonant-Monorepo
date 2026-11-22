@@ -12,6 +12,7 @@ from app.modules.workspace_management.schemas.dto import (
     ManagementAccessResponse,
     ManagementCapabilities,
 )
+from app.modules.teams.domain.models import TeamMember
 from common.errors import ExceptionData, ForbiddenException, NotFoundException
 
 ManagementLevel = Literal["none", "read", "modify", "grant"]
@@ -415,6 +416,143 @@ class WorkspaceManagementService:
     def list_people(self, workspace_id: str, actor: User):
         self.require_read(workspace_id, actor)
         return self._repo.list_workspace_members(workspace_id)
+
+    def get_person(self, workspace_id: str, actor: User, target_user_id: str):
+        self.require_read(workspace_id, actor)
+        person = self._repo.get_workspace_person(workspace_id, target_user_id)
+        if person is None:
+            raise self._not_found("Pessoa não encontrada no workspace", "WORKSPACE_MEMBER_NOT_FOUND")
+        return person
+
+    def remove_person(
+        self,
+        workspace_id: str,
+        actor: User,
+        target_user_id: str,
+        *,
+        reason: str | None = None,
+        request_id: str | None = None,
+    ) -> None:
+        access = self.require_modify(workspace_id, actor)
+        workspace = access.workspace
+        break_glass = self._ensure_break_glass(workspace, actor, reason, "management.person.remove")
+        member = self._repo.get_workspace_member(workspace_id, target_user_id)
+        if member is None:
+            raise self._not_found("Pessoa não encontrada no workspace", "WORKSPACE_MEMBER_NOT_FOUND")
+        if workspace.owner_id == target_user_id:
+            raise self._conflict(
+                "O proprietário do workspace não pode ser removido pelo painel de gestão.",
+                "WORKSPACE_OWNER_CANNOT_BE_REMOVED",
+            )
+        target_role = self._repo.get_organization_role(workspace.organization_id, target_user_id)
+        if target_role == "owner" and not actor.interno_adm:
+            raise self._forbidden(
+                "Apenas interno_adm pode remover um dono da organização do workspace.",
+                required="management.owner_remove",
+            )
+        try:
+            team_memberships = self._repo.list_workspace_team_memberships(workspace_id, target_user_id)
+            removed_team_ids = [tm.team_id for tm in team_memberships]
+            for tm in team_memberships:
+                self._repo.remove_team_member(tm)
+            self._repo.remove_workspace_member(member)
+            self._repo.bump_permission_version(workspace_id)
+            self._audit(
+                workspace_id=workspace_id,
+                actor=actor,
+                action="management.person.removed",
+                entity_type="workspace_member",
+                entity_id=target_user_id,
+                target_user_id=target_user_id,
+                before={"role": member.role, "team_ids": removed_team_ids},
+                after={"removed": True},
+                metadata=break_glass,
+                request_id=request_id,
+                actor_role=access.organization_role,
+                permission_version=access.permission_version,
+            )
+            self._repo.commit()
+        except Exception:
+            self._repo.rollback()
+            raise
+
+    def change_person_team(
+        self,
+        workspace_id: str,
+        actor: User,
+        target_user_id: str,
+        *,
+        target_team_id: str,
+        from_team_id: str | None = None,
+        reason: str | None = None,
+        request_id: str | None = None,
+    ):
+        access = self.require_modify(workspace_id, actor)
+        workspace = access.workspace
+        break_glass = self._ensure_break_glass(
+            workspace, actor, reason, "management.person.team_change"
+        )
+        member = self._repo.get_workspace_member(workspace_id, target_user_id)
+        if member is None:
+            raise self._not_found("Pessoa não encontrada no workspace", "WORKSPACE_MEMBER_NOT_FOUND")
+        target_team = self._repo.get_team(target_team_id)
+        if (
+            target_team is None
+            or target_team.workspace_id != workspace_id
+            or target_team.is_deleted
+        ):
+            raise self._not_found("Equipe não encontrada", "TEAM_NOT_FOUND")
+        if from_team_id:
+            from_team = self._repo.get_team(from_team_id)
+            if from_team is None or from_team.workspace_id != workspace_id:
+                raise self._not_found("Equipe de origem não encontrada", "TEAM_NOT_FOUND")
+            from_member = self._repo.get_team_member(from_team_id, target_user_id)
+            if from_member is None:
+                raise self._conflict(
+                    "Usuário não pertence à equipe de origem informada.",
+                    "TEAM_MEMBER_NOT_FOUND",
+                )
+        try:
+            removed_from = []
+            if from_team_id:
+                from_member = self._repo.get_team_member(from_team_id, target_user_id)
+                if from_member is not None:
+                    self._repo.remove_team_member(from_member)
+                    removed_from.append(from_team_id)
+            existing_target = self._repo.get_team_member(target_team_id, target_user_id)
+            added = False
+            target_role = "admin" if member.role == "admin" else "member"
+            if existing_target is None:
+                self._repo.add_team_member(
+                    TeamMember(team_id=target_team_id, user_id=target_user_id, role=target_role)
+                )
+                added = True
+            self._audit(
+                workspace_id=workspace_id,
+                actor=actor,
+                action="management.person.team_changed",
+                entity_type="workspace_member",
+                entity_id=target_user_id,
+                target_user_id=target_user_id,
+                before={"from_team_id": from_team_id},
+                after={
+                    "target_team_id": target_team_id,
+                    "removed_from": removed_from,
+                    "added": added,
+                },
+                metadata=break_glass,
+                request_id=request_id,
+                actor_role=access.organization_role,
+                permission_version=access.permission_version,
+            )
+            self._repo.commit()
+        except Exception:
+            self._repo.rollback()
+            raise
+        person = self._repo.get_workspace_person(workspace_id, target_user_id)
+        if person is None:
+            raise self._not_found("Pessoa não encontrada no workspace", "WORKSPACE_MEMBER_NOT_FOUND")
+        return person
 
     def list_teams(self, workspace_id: str, actor: User, include_deleted: bool = False):
         self.require_read(workspace_id, actor)

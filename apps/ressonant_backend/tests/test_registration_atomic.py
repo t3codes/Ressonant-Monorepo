@@ -310,20 +310,34 @@ def test_register_commit_integrity_error_uses_expected_copy(
     assert _counts(session_factory) == before
 
 
-def test_register_accepts_convidados_without_creating_invitations(
-    session_factory: sessionmaker[Session],
+def test_register_creates_invitations_for_convidados_in_development(
+    session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Limitação explícita: convites são B2.6; a transação de §5.1 não inclui invitations."""
-    _seed_plans(session_factory)
-    convidados = [
-        ConvidadoInput(email="convite1@example.com", role="admin", nome="Primeiro convite"),
-        ConvidadoInput(email="convite2@example.com"),
-    ]
+    """Cadastro do owner cria convites para e-mails convidados; em dev expõe link/token."""
+    monkeypatch.setenv("ENVIRONMENT", "development")
+    from app.config.settings import get_settings
 
-    with session_factory() as db:
-        response = RegistrationService(db).register(_payload(convidados=convidados))
+    get_settings.cache_clear()
+    try:
+        _seed_plans(session_factory)
+        convidados = [
+            ConvidadoInput(email="convite1@example.com", role="admin", nome="Primeiro convite"),
+            ConvidadoInput(email="convite2@example.com"),
+        ]
 
-    with session_factory() as db:
-        assert _count_in(db, Invitation) == 0
-        assert _count_in(db, User) == 1
-    assert response.member_ids == [response.user.id]
+        with session_factory() as db:
+            response = RegistrationService(db).register(_payload(convidados=convidados))
+
+        with session_factory() as db:
+            assert _count_in(db, Invitation) == 2
+            assert _count_in(db, User) == 1
+        assert response.member_ids == [response.user.id]
+        assert len(response.convites) == 2
+        assert all(c.token for c in response.convites)
+        assert all(c.invite_url for c in response.convites)
+        assert {c.email for c in response.convites} == {
+            "convite1@example.com",
+            "convite2@example.com",
+        }
+    finally:
+        get_settings.cache_clear()

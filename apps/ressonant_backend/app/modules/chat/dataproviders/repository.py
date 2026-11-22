@@ -26,6 +26,26 @@ class ChannelRepository:
         )
         return list(items), total
 
+    def get_default_for_workspace(self, workspace_id: str) -> Channel | None:
+        """Canal geral/default do workspace para onboarding por convite."""
+        try:
+            uuid.UUID(workspace_id)
+        except ValueError:
+            return None
+        channels = list(
+            self._db.scalars(
+                select(Channel)
+                .where(Channel.workspace_id == workspace_id, Channel.status_ativo.is_(True))
+                .order_by(Channel.criado_em, Channel.id)
+            )
+        )
+        for channel in channels:
+            slug = (channel.slug or "").lower()
+            name = (channel.name or "").strip().lower()
+            if slug == "geral" or slug.startswith("geral-") or name == "geral":
+                return channel
+        return channels[0] if channels else None
+
     def add(self, channel: Channel) -> Channel:
         self._db.add(channel)
         self._db.flush()

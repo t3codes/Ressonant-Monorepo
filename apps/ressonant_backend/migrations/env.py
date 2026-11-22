@@ -21,6 +21,7 @@ from app.modules.kanban_cards.domain.models import (  # noqa: F401
 )
 from app.modules.mail.domain.models import Email  # noqa: F401
 from app.modules.notifications.domain.models import AppNotification  # noqa: F401
+from app.modules.organization.domain.email_outbox import EmailOutbox  # noqa: F401
 from app.modules.organization.domain.models import (  # noqa: F401
     Invitation,
     Organization,

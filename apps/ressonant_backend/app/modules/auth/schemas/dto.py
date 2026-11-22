@@ -39,6 +39,35 @@ class ConvidadoInput(BaseModel):
     nome: str | None = None
 
 
+class InviteRegistrationCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    token: str = Field(min_length=20, max_length=512)
+    nome_completo: str = Field(min_length=2, max_length=60)
+    cpf: str = Field(min_length=11, max_length=14)
+    telefone: str = Field(min_length=10, max_length=20)
+    senha: str = Field(min_length=8, max_length=128)
+    idade: int = Field(ge=18, le=120)
+    termos_contrato: Literal[True] = True
+
+    @field_validator("nome_completo")
+    @classmethod
+    def must_have_two_words(cls, value: str) -> str:
+        if len(value.split()) < 2:
+            raise ValueError("nome_completo deve ter ao menos duas palavras")
+        return value
+
+
+class InviteRegistrationResponse(BaseModel):
+    user: UserResponse
+    invitation: dict
+    workspace_id: str
+    organization_id: str
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+
+
 class RegistrationCreate(UserRegister):
     """Payload aditivo do cadastro atômico (§5.1 do plano)."""
 
@@ -82,6 +111,18 @@ class SeatsResponse(BaseModel):
     used: int
 
 
+class RegistrationInviteResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    email: str
+    role: str
+    status: Literal["pending"] = "pending"
+    token: str | None = None
+    invite_url: str | None = None
+    email_sent: bool = False
+
+
 class RegistrationResponse(BaseModel):
     user: UserResponse
     organizacao: OrganizacaoResponse
@@ -91,3 +132,4 @@ class RegistrationResponse(BaseModel):
     equipe_inicial_id: str
     seats: SeatsResponse
     member_ids: list[str]
+    convites: list[RegistrationInviteResponse] = Field(default_factory=list)

@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from app.modules.kanban_cards.domain.models import Card
 from app.modules.organization.domain.models import OrganizationMember
 from app.modules.teams.domain.models import Team, TeamMember
+from app.modules.user.domain.models import User
 from app.modules.workspace.domain.models import Workspace, WorkspaceMember
 from app.modules.workspace_management.domain.models import AuditEvent, WorkspaceManagementGrant
 from sqlalchemy import select
@@ -127,8 +128,6 @@ class WorkspaceManagementRepository:
     def list_workspace_members(self, workspace_id: str) -> list[dict]:
         if not self._is_uuid(workspace_id):
             return []
-        from app.modules.user.domain.models import User
-
         rows = self._db.execute(
             select(WorkspaceMember, User)
             .join(User, User.id == WorkspaceMember.user_id)
@@ -145,6 +144,78 @@ class WorkspaceManagementRepository:
             }
             for m, u in rows
         ]
+
+    def get_workspace_person(self, workspace_id: str, user_id: str) -> dict | None:
+        if not self._is_uuid(workspace_id) or not self._is_uuid(user_id):
+            return None
+        row = self._db.execute(
+            select(WorkspaceMember, User)
+            .join(User, User.id == WorkspaceMember.user_id)
+            .where(
+                WorkspaceMember.workspace_id == workspace_id,
+                WorkspaceMember.user_id == user_id,
+            )
+        ).first()
+        if row is None:
+            return None
+        member, user = row
+        team_rows = self._db.execute(
+            select(Team, TeamMember)
+            .join(TeamMember, TeamMember.team_id == Team.id)
+            .where(
+                Team.workspace_id == workspace_id,
+                Team.is_deleted.is_(False),
+                TeamMember.user_id == user_id,
+            )
+            .order_by(Team.criado_em, Team.id)
+        ).all()
+        return {
+            "user_id": member.user_id,
+            "role": member.role,
+            "criado_em": member.criado_em,
+            "name": user.name,
+            "email": user.email,
+            "teams": [
+                {"team_id": team.id, "team_name": team.name, "team_role": team_member.role}
+                for team, team_member in team_rows
+            ],
+        }
+
+    def get_team(self, team_id: str) -> Team | None:
+        if not self._is_uuid(team_id):
+            return None
+        return self._db.get(Team, team_id)
+
+    def get_team_member(self, team_id: str, user_id: str) -> TeamMember | None:
+        if not self._is_uuid(team_id) or not self._is_uuid(user_id):
+            return None
+        return self._db.scalar(
+            select(TeamMember).where(TeamMember.team_id == team_id, TeamMember.user_id == user_id)
+        )
+
+    def add_team_member(self, member: TeamMember) -> TeamMember:
+        self._db.add(member)
+        self._db.flush()
+        return member
+
+    def remove_team_member(self, member: TeamMember) -> None:
+        self._db.delete(member)
+        self._db.flush()
+
+    def remove_workspace_member(self, member: WorkspaceMember) -> None:
+        self._db.delete(member)
+        self._db.flush()
+
+    def list_workspace_team_memberships(self, workspace_id: str, user_id: str) -> list[TeamMember]:
+        if not self._is_uuid(workspace_id) or not self._is_uuid(user_id):
+            return []
+        return list(
+            self._db.scalars(
+                select(TeamMember)
+                .join(Team, Team.id == TeamMember.team_id)
+                .where(Team.workspace_id == workspace_id, TeamMember.user_id == user_id)
+            )
+        )
 
     def list_teams(self, workspace_id: str, include_deleted: bool = False) -> list[Team]:
         if not self._is_uuid(workspace_id):

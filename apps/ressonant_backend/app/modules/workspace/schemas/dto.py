@@ -59,6 +59,8 @@ class WorkspaceMemberResponse(BaseModel):
     user_id: str
     role: str
     criado_em: datetime
+    name: str | None = None
+    email: str | None = None
 
 
 class WorkspaceMemberList(BaseModel):

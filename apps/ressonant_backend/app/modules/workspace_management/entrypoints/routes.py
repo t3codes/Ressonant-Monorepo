@@ -10,7 +10,9 @@ from app.modules.workspace_management.schemas.dto import (
     GrantRevokeRequest,
     ManagementAccessResponse,
     ManagementGrantResponse,
+    WorkspacePersonDetailResponse,
     WorkspacePersonResponse,
+    WorkspacePersonTeamChangeRequest,
 )
 from app.modules.workspace_management.usecases.services import WorkspaceManagementService
 from fastapi import APIRouter, Depends, Request
@@ -83,6 +85,55 @@ def list_management_people(
         WorkspacePersonResponse.model_validate(x)
         for x in service.list_people(workspace_id, current_user)
     ]
+
+
+@router.get("/people/{target_user_id}", response_model=WorkspacePersonDetailResponse)
+def get_management_person(
+    workspace_id: str,
+    target_user_id: str,
+    service: Service,
+    current_user: CurrentUser,
+) -> WorkspacePersonDetailResponse:
+    return WorkspacePersonDetailResponse.model_validate(
+        service.get_person(workspace_id, current_user, target_user_id)
+    )
+
+
+@router.delete("/people/{target_user_id}", status_code=204)
+def remove_management_person(
+    workspace_id: str,
+    target_user_id: str,
+    request: Request,
+    service: Service,
+    current_user: CurrentUser,
+) -> None:
+    service.remove_person(
+        workspace_id,
+        current_user,
+        target_user_id,
+        request_id=_request_id(request),
+    )
+
+
+@router.patch("/people/{target_user_id}/team", response_model=WorkspacePersonDetailResponse)
+def change_management_person_team(
+    workspace_id: str,
+    target_user_id: str,
+    payload: WorkspacePersonTeamChangeRequest,
+    request: Request,
+    service: Service,
+    current_user: CurrentUser,
+) -> WorkspacePersonDetailResponse:
+    return WorkspacePersonDetailResponse.model_validate(
+        service.change_person_team(
+            workspace_id,
+            current_user,
+            target_user_id,
+            target_team_id=payload.target_team_id,
+            from_team_id=payload.from_team_id,
+            request_id=_request_id(request),
+        )
+    )
 
 
 @router.get("/teams", response_model=list[AdminTeamResponse])

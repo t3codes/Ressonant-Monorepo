@@ -2,6 +2,8 @@ from typing import Annotated
 
 from app.modules.auth.deps import CurrentUser, get_auth_service, get_registration_service
 from app.modules.auth.schemas.dto import (
+    InviteRegistrationCreate,
+    InviteRegistrationResponse,
     LoginRequest,
     RegistrationCreate,
     RegistrationResponse,
@@ -27,6 +29,52 @@ def register(
 ) -> RegistrationResponse:
     """Cadastro público atômico: usuário, organização, billing e workspace."""
     return service.register(payload)
+
+
+@router.post(
+    "/register/invitation",
+    response_model=InviteRegistrationResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def register_invited_user(
+    payload: InviteRegistrationCreate,
+    request: Request,
+    service: Annotated[RegistrationService, Depends(get_registration_service)],
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
+) -> InviteRegistrationResponse:
+    ip = request.client.host if request.client else "unknown"
+    allowed, info = auth_service.check_rate_limit(f"invite-register:{ip}")
+    if not allowed:
+        return JSONResponse(
+            content={
+                "status_code": 429,
+                "message": "Muitas tentativas. Tente novamente mais tarde.",
+            },
+            status_code=429,
+            headers={
+                "RateLimit-Remaining": str(info["remaining"]),
+                "RateLimit-Reset": str(info["reset"]),
+            },
+        )
+    user, invitation = service.register_invited_user(payload)
+    access_token, expires_in = auth_service.login(user.email, payload.senha)
+    auth_service.clear_rate_limit(f"invite-register:{ip}")
+    return InviteRegistrationResponse(
+        user=UserResponse.model_validate(user),
+        invitation={
+            "id": invitation.id,
+            "organization_id": invitation.organization_id,
+            "workspace_id": invitation.workspace_id,
+            "email": invitation.email,
+            "role": invitation.role,
+            "status": "accepted",
+        },
+        workspace_id=invitation.workspace_id,
+        organization_id=invitation.organization_id,
+        access_token=access_token,
+        token_type="bearer",
+        expires_in=expires_in,
+    )
 
 
 @router.post("/login", response_model=TokenResponse)

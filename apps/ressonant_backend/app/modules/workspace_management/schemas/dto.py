@@ -76,6 +76,25 @@ class WorkspacePersonResponse(BaseModel):
     criado_em: datetime | None = None
 
 
+class WorkspacePersonTeamResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    team_id: str
+    team_name: str
+    team_role: str
+
+
+class WorkspacePersonDetailResponse(WorkspacePersonResponse):
+    teams: list[WorkspacePersonTeamResponse] = Field(default_factory=list)
+
+
+class WorkspacePersonTeamChangeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    target_team_id: str = Field(min_length=1)
+    from_team_id: str | None = Field(default=None, min_length=1)
+
+
 class AdminTeamResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
     id: str

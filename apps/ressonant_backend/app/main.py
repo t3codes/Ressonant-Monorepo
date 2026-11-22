@@ -84,8 +84,20 @@ class HealthResponse(BaseModel):
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    import asyncio
+    from app.common.email_outbox import outbox_worker_loop
+
     setup_logging()
-    yield
+    settings = get_settings()
+    task = asyncio.create_task(outbox_worker_loop(settings))
+    try:
+        yield
+    finally:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
 
 
 def create_app() -> FastAPI:

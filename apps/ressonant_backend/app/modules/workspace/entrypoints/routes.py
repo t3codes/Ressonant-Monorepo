@@ -94,10 +94,15 @@ def list_workspace_members(
 ) -> WorkspaceMemberList:
     """Lista membros do workspace (só se o usuário é membro)."""
     members = service.list_members(workspace_id, user.id)
-    return WorkspaceMemberList(
-        items=[WorkspaceMemberResponse.model_validate(m) for m in members],
-        total=len(members),
-    )
+    items = []
+    for member in members:
+        row = WorkspaceMemberResponse.model_validate(member).model_dump()
+        user_obj = getattr(member, "user", None)
+        if user_obj is not None:
+            row["name"] = getattr(user_obj, "name", None)
+            row["email"] = getattr(user_obj, "email", None)
+        items.append(WorkspaceMemberResponse(**row))
+    return WorkspaceMemberList(items=items, total=len(items))
 
 
 @router.post(

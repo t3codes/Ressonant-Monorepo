@@ -179,8 +179,9 @@ def test_accept_rejects_reused_expired_revoked_and_email_mismatch(
     ok = client.post(f"/invitations/{token}/accept", headers=invitee_headers)
     assert ok.status_code == 200
     reused = client.post(f"/invitations/{token}/accept", headers=invitee_headers)
-    assert reused.status_code == 409
-    assert reused.json()["error_code"] == "INVITATION_ALREADY_USED"
+    assert reused.status_code == 200
+    assert reused.json()["organization_member_created"] is False
+    assert reused.json()["workspace_member_created"] is False
 
     # expired
     create2 = client.post(
@@ -212,8 +213,8 @@ def test_accept_rejects_reused_expired_revoked_and_email_mismatch(
         json={"email": "third@example.com", "role": "member", "workspace_id": ctx["ws_id"]},
         headers=owner_headers,
     )
-    revoke = client.delete(
-        f"/organizations/{ctx['org_id']}/invitations/{create3.json()['id']}",
+    revoke = client.post(
+        f"/organizations/{ctx['org_id']}/invitations/{create3.json()['id']}/revoke",
         headers=owner_headers,
     )
     assert revoke.status_code == 200
@@ -237,7 +238,7 @@ def test_seat_limit_blocks_invitation_creation(
     assert resp.json()["error_code"] == "SEAT_LIMIT_EXCEEDED"
 
 
-def test_revoke_and_access_control(
+def test_revoke_delete_and_access_control(
     client: TestClient, session_factory: sessionmaker[Session]
 ) -> None:
     ctx = _seed_org_workspace(session_factory)
@@ -255,14 +256,50 @@ def test_revoke_and_access_control(
     denied = client.get(f"/organizations/{ctx['org_id']}/invitations", headers=outsider_headers)
     assert denied.status_code in (403, 404)
 
-    revoke = client.delete(f"/organizations/{ctx['org_id']}/invitations/{inv_id}", headers=headers)
-    assert revoke.status_code == 200
-    assert revoke.json()["status"] == "revoked"
+    delete = client.delete(f"/organizations/{ctx['org_id']}/invitations/{inv_id}", headers=headers)
+    assert delete.status_code == 204
 
-    # outsider cannot revoke/create
+    listed = client.get(f"/organizations/{ctx['org_id']}/invitations", headers=headers)
+    assert listed.status_code == 200
+    assert all(item["id"] != inv_id for item in listed.json())
+
+    # outsider cannot create
     create2 = client.post(
         f"/organizations/{ctx['org_id']}/invitations",
         json={"email": "invitee2@example.com", "role": "member", "workspace_id": ctx["ws_id"]},
         headers=outsider_headers,
     )
     assert create2.status_code in (403, 404)
+
+
+def test_invite_secret_hidden_outside_development(
+    client: TestClient, session_factory: sessionmaker[Session], monkeypatch
+) -> None:
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    from app.config.settings import get_settings
+
+    get_settings.cache_clear()
+    try:
+        ctx = _seed_org_workspace(session_factory)
+        headers = _auth(client, ctx["owner_email"])
+        resp = client.post(
+            f"/organizations/{ctx['org_id']}/invitations",
+            json={"email": "invitee@example.com", "role": "member", "workspace_id": ctx["ws_id"]},
+            headers=headers,
+        )
+        assert resp.status_code == 201, resp.text
+        body = resp.json()
+        assert body["token"] is None
+        assert body["invite_url"] is None
+        assert "email_sent" in body
+
+        resend = client.post(
+            f"/organizations/{ctx['org_id']}/invitations/{body['id']}/resend",
+            headers=headers,
+        )
+        assert resend.status_code == 200, resend.text
+        resend_body = resend.json()
+        assert resend_body["token"] is None
+        assert resend_body["invite_url"] is None
+    finally:
+        get_settings.cache_clear()

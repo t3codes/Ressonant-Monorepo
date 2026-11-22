@@ -104,6 +104,23 @@ class TeamRepository:
     def get_member(self, team_id: str, user_id: str) -> TeamMember | None:
         return self.is_member(team_id, user_id)
 
+    def get_default_for_workspace(self, workspace_id: str) -> Team | None:
+        """Primeira equipe ativa do workspace (mais antiga) para onboarding por convite."""
+        try:
+            uuid.UUID(workspace_id)
+        except ValueError:
+            return None
+        return self._db.scalar(
+            select(Team)
+            .where(
+                Team.workspace_id == workspace_id,
+                Team.status_ativo.is_(True),
+                Team.is_deleted.is_(False),
+            )
+            .order_by(Team.criado_em, Team.id)
+            .limit(1)
+        )
+
     def remove_member(self, member: TeamMember) -> None:
         self._db.delete(member)
         self._db.flush()

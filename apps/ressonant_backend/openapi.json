@@ -48,6 +48,47 @@
         }
       }
     },
+    "/auth/register/invitation": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Register Invited User",
+        "operationId": "register_invited_user_auth_register_invitation_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteRegistrationCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteRegistrationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/login": {
       "post": {
         "tags": [
@@ -475,13 +516,118 @@
         }
       }
     },
+    "/organizations/{organization_id}/invitations/{invitation_id}/resend": {
+      "post": {
+        "tags": [
+          "invitations"
+        ],
+        "summary": "Resend Invitation",
+        "operationId": "resend_invitation_organizations__organization_id__invitations__invitation_id__resend_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "organization_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Organization Id"
+            }
+          },
+          {
+            "name": "invitation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Invitation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationResendResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/organizations/{organization_id}/invitations/{invitation_id}": {
       "delete": {
         "tags": [
           "invitations"
         ],
+        "summary": "Delete Invitation",
+        "operationId": "delete_invitation_organizations__organization_id__invitations__invitation_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "organization_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Organization Id"
+            }
+          },
+          {
+            "name": "invitation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Invitation Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/organizations/{organization_id}/invitations/{invitation_id}/revoke": {
+      "post": {
+        "tags": [
+          "invitations"
+        ],
         "summary": "Revoke Invitation",
-        "operationId": "revoke_invitation_organizations__organization_id__invitations__invitation_id__delete",
+        "operationId": "revoke_invitation_organizations__organization_id__invitations__invitation_id__revoke_post",
         "security": [
           {
             "HTTPBearer": []
@@ -531,6 +677,48 @@
         }
       }
     },
+    "/invitations/{token}": {
+      "get": {
+        "tags": [
+          "invitations"
+        ],
+        "summary": "Get Public Invitation",
+        "operationId": "get_public_invitation_invitations__token__get",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationPublicResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/invitations/{token}/accept": {
       "post": {
         "tags": [
@@ -561,6 +749,48 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InvitationAcceptResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/invitations/{token}/decline": {
+      "post": {
+        "tags": [
+          "invitations"
+        ],
+        "summary": "Decline Invitation",
+        "operationId": "decline_invitation_invitations__token__decline_post",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationResponse"
                 }
               }
             }
@@ -1696,6 +1926,175 @@
                     "$ref": "#/components/schemas/WorkspacePersonResponse"
                   },
                   "title": "Response List Management People Workspaces  Workspace Id  Management People Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace_id}/management/people/{target_user_id}": {
+      "get": {
+        "tags": [
+          "workspace-management"
+        ],
+        "summary": "Get Management Person",
+        "operationId": "get_management_person_workspaces__workspace_id__management_people__target_user_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workspace Id"
+            }
+          },
+          {
+            "name": "target_user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Target User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspacePersonDetailResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "workspace-management"
+        ],
+        "summary": "Remove Management Person",
+        "operationId": "remove_management_person_workspaces__workspace_id__management_people__target_user_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workspace Id"
+            }
+          },
+          {
+            "name": "target_user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Target User Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace_id}/management/people/{target_user_id}/team": {
+      "patch": {
+        "tags": [
+          "workspace-management"
+        ],
+        "summary": "Change Management Person Team",
+        "operationId": "change_management_person_team_workspaces__workspace_id__management_people__target_user_id__team_patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workspace Id"
+            }
+          },
+          {
+            "name": "target_user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Target User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspacePersonTeamChangeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspacePersonDetailResponse"
                 }
               }
             }
@@ -7175,8 +7574,31 @@
             "title": "Criado Em"
           },
           "token": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Token"
+          },
+          "invite_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invite Url"
+          },
+          "email_sent": {
+            "type": "boolean",
+            "title": "Email Sent",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -7189,12 +7611,74 @@
           "role",
           "expires_at",
           "invited_by_id",
-          "criado_em",
-          "token"
+          "criado_em"
         ],
         "title": "InvitationCreateResponse"
       },
-      "InvitationResponse": {
+      "InvitationPublicResponse": {
+        "properties": {
+          "organization_name": {
+            "type": "string",
+            "title": "Organization Name"
+          },
+          "workspace_name": {
+            "type": "string",
+            "title": "Workspace Name"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "email_masked": {
+            "type": "string",
+            "title": "Email Masked"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "accepted",
+              "revoked",
+              "expired",
+              "declined"
+            ],
+            "title": "Status"
+          },
+          "invited_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invited By Name"
+          },
+          "user_exists": {
+            "type": "boolean",
+            "title": "User Exists",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "organization_name",
+          "workspace_name",
+          "role",
+          "email_masked",
+          "expires_at",
+          "status"
+        ],
+        "title": "InvitationPublicResponse"
+      },
+      "InvitationResendResponse": {
         "properties": {
           "id": {
             "type": "string",
@@ -7222,7 +7706,8 @@
               "pending",
               "accepted",
               "revoked",
-              "expired"
+              "expired",
+              "declined"
             ],
             "title": "Status"
           },
@@ -7255,6 +7740,214 @@
             ],
             "title": "Revoked At"
           },
+          "declined_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declined At"
+          },
+          "resent_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resent At"
+          },
+          "last_sent_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Sent At"
+          },
+          "send_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Send Status"
+          },
+          "invited_by_id": {
+            "type": "string",
+            "title": "Invited By Id"
+          },
+          "criado_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Criado Em"
+          },
+          "token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token"
+          },
+          "invite_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invite Url"
+          },
+          "email_sent": {
+            "type": "boolean",
+            "title": "Email Sent",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "organization_id",
+          "workspace_id",
+          "email",
+          "role",
+          "status",
+          "expires_at",
+          "invited_by_id",
+          "criado_em"
+        ],
+        "title": "InvitationResendResponse"
+      },
+      "InvitationResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "organization_id": {
+            "type": "string",
+            "title": "Organization Id"
+          },
+          "workspace_id": {
+            "type": "string",
+            "title": "Workspace Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "accepted",
+              "revoked",
+              "expired",
+              "declined"
+            ],
+            "title": "Status"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          },
+          "accepted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted At"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "declined_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declined At"
+          },
+          "resent_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resent At"
+          },
+          "last_sent_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Sent At"
+          },
+          "send_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Send Status"
+          },
           "invited_by_id": {
             "type": "string",
             "title": "Invited By Id"
@@ -7279,6 +7972,106 @@
           "criado_em"
         ],
         "title": "InvitationResponse"
+      },
+      "InviteRegistrationCreate": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 512,
+            "minLength": 20,
+            "title": "Token"
+          },
+          "nome_completo": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 2,
+            "title": "Nome Completo"
+          },
+          "cpf": {
+            "type": "string",
+            "maxLength": 14,
+            "minLength": 11,
+            "title": "Cpf"
+          },
+          "telefone": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 10,
+            "title": "Telefone"
+          },
+          "senha": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Senha"
+          },
+          "idade": {
+            "type": "integer",
+            "maximum": 120.0,
+            "minimum": 18.0,
+            "title": "Idade"
+          },
+          "termos_contrato": {
+            "type": "boolean",
+            "const": true,
+            "title": "Termos Contrato",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "token",
+          "nome_completo",
+          "cpf",
+          "telefone",
+          "senha",
+          "idade"
+        ],
+        "title": "InviteRegistrationCreate"
+      },
+      "InviteRegistrationResponse": {
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/UserResponse"
+          },
+          "invitation": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Invitation"
+          },
+          "workspace_id": {
+            "type": "string",
+            "title": "Workspace Id"
+          },
+          "organization_id": {
+            "type": "string",
+            "title": "Organization Id"
+          },
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type",
+            "default": "bearer"
+          },
+          "expires_in": {
+            "type": "integer",
+            "title": "Expires In"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user",
+          "invitation",
+          "workspace_id",
+          "organization_id",
+          "access_token",
+          "expires_in"
+        ],
+        "title": "InviteRegistrationResponse"
       },
       "LoginRequest": {
         "properties": {
@@ -8400,6 +9193,63 @@
         "title": "RegistrationCreate",
         "description": "Payload aditivo do cadastro atômico (§5.1 do plano)."
       },
+      "RegistrationInviteResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "status": {
+            "type": "string",
+            "const": "pending",
+            "title": "Status",
+            "default": "pending"
+          },
+          "token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token"
+          },
+          "invite_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invite Url"
+          },
+          "email_sent": {
+            "type": "boolean",
+            "title": "Email Sent",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "role"
+        ],
+        "title": "RegistrationInviteResponse"
+      },
       "RegistrationResponse": {
         "properties": {
           "user": {
@@ -8435,6 +9285,13 @@
             },
             "type": "array",
             "title": "Member Ids"
+          },
+          "convites": {
+            "items": {
+              "$ref": "#/components/schemas/RegistrationInviteResponse"
+            },
+            "type": "array",
+            "title": "Convites"
           }
         },
         "type": "object",
@@ -9670,7 +10527,7 @@
         ],
         "title": "WorkspaceMemberUpdate"
       },
-      "WorkspacePersonResponse": {
+      "WorkspacePersonDetailResponse": {
         "properties": {
           "user_id": {
             "type": "string",
@@ -9679,18 +10536,6 @@
           "role": {
             "type": "string",
             "title": "Role"
-          },
-          "criado_em": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Criado Em"
           },
           "name": {
             "anyOf": [
@@ -9713,6 +10558,78 @@
               }
             ],
             "title": "Email"
+          },
+          "criado_em": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Criado Em"
+          },
+          "teams": {
+            "items": {
+              "$ref": "#/components/schemas/WorkspacePersonTeamResponse"
+            },
+            "type": "array",
+            "title": "Teams"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "user_id",
+          "role"
+        ],
+        "title": "WorkspacePersonDetailResponse"
+      },
+      "WorkspacePersonResponse": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "criado_em": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Criado Em"
           }
         },
         "additionalProperties": false,
@@ -9722,6 +10639,57 @@
           "role"
         ],
         "title": "WorkspacePersonResponse"
+      },
+      "WorkspacePersonTeamChangeRequest": {
+        "properties": {
+          "target_team_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Target Team Id"
+          },
+          "from_team_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Team Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "target_team_id"
+        ],
+        "title": "WorkspacePersonTeamChangeRequest"
+      },
+      "WorkspacePersonTeamResponse": {
+        "properties": {
+          "team_id": {
+            "type": "string",
+            "title": "Team Id"
+          },
+          "team_name": {
+            "type": "string",
+            "title": "Team Name"
+          },
+          "team_role": {
+            "type": "string",
+            "title": "Team Role"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "team_id",
+          "team_name",
+          "team_role"
+        ],
+        "title": "WorkspacePersonTeamResponse"
       },
       "WorkspaceResponse": {
         "properties": {
