@@ -4,7 +4,7 @@
 - **Regra original**: 100% evidência dos arquivos do frontend (`ressonant-frontend-work`). Zero invenção de rotas/campos.
 - **Escopo**: contratos tal como o frontend os consome (`src/repositories/contracts.ts` + `src/mocks/*.json` + `src/services/*`).
 - **Legenda de estado**: **Entregue — Fase 0** · **Implementado** · **Planejado — Fase N (gate)**. "Implementado"/"Entregue" descrevem o backend; o consumo pelo frontend é dito explicitamente quando verificado.
-- **Status frente ao backend — atualizado em 2026-11-21 (Fase 0, O0–O4; gates P0-4/P0-5/P0-6)**: conferido contra `apps/ressonant_backend/openapi.json` (63 paths, SHA `ff2bf163d04e648e8f37d2d9c08489825531b55fa5c73ed06af8e3a86f50545c`) e `app/main.py`. **Implementado** significa que a rota existe no backend; **não** significa, por si só, que o frontend a consome. D1 e D7 estão **Entregues — Fase 0** e o frontend já consome `GET /me/context`; o mapeamento camelCase ↔ snake_case vive nos adaptadores HTTP do frontend e o backend deriva o usuário do JWT.
+- **Status frente ao backend — atualizado em 2026-11-21 (Fase 0, O0–O4; gates P0-4/P0-5/P0-6)**: conferido contra `apps/ressonant_backend/openapi.json` (66 paths, SHA `da24e1aad76ef52bc078a203f797ef96e4165330b703f17cec1ad475b7c16869`) e `app/main.py`. **Implementado** significa que a rota existe no backend; **não** significa, por si só, que o frontend a consome. D1 e D7 estão **Entregues — Fase 0** e o frontend já consome `GET /me/context`; o mapeamento camelCase ↔ snake_case vive nos adaptadores HTTP do frontend e o backend deriva o usuário do JWT.
 
 ## Índice por domínio
 

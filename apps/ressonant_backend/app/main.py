@@ -53,6 +53,7 @@ from app.modules.organization.domain.models import (  # noqa: F401
     Organization,
     OrganizationMember,
 )
+from app.modules.organization.entrypoints import routes as organization_routes
 from app.modules.reactions.domain.models import (
     MessageReaction,  # noqa: F401  (registra as tabelas no metadata)
 )
@@ -105,6 +106,7 @@ def create_app() -> FastAPI:
     setup_exception_handlers(app)
     app.include_router(auth_routes.router)
     app.include_router(billing_routes.router)
+    app.include_router(organization_routes.router)
     app.include_router(context_routes.router)
     app.include_router(user_routes.router)
     app.include_router(workspace_routes.router)
