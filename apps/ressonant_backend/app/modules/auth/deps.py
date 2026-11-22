@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from app.database.engine import get_db
+from app.modules.auth.usecases.registration import RegistrationService
 from app.modules.auth.usecases.services import AuthService
 from app.modules.auth.usecases.tokens import decode_access_token
 from app.modules.user.dataproviders.repository import UserRepository
@@ -15,6 +16,10 @@ bearer_scheme = HTTPBearer(auto_error=False)
 
 def get_auth_service(db: Annotated[Session, Depends(get_db)]) -> AuthService:
     return AuthService(UserRepository(db))
+
+
+def get_registration_service(db: Annotated[Session, Depends(get_db)]) -> RegistrationService:
+    return RegistrationService(db)
 
 
 def get_current_user(
