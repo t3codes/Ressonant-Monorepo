@@ -93,8 +93,8 @@ class TeamService:
             raise _user_not_found()
         return user.id
 
-    def create(self, payload: TeamCreate, owner_id: str) -> Team:
-        """Cria team. workspace_id vem do payload; owner_id vem do JWT."""
+    def add_team(self, payload: TeamCreate, owner_id: str) -> Team:
+        """Prepara team e membership na Session; a transação fica com quem chama."""
         ws_repo = self._ws_repo()
         if not ws_repo.is_member(payload.workspace_id, owner_id):
             raise _forbidden("Você não é membro deste workspace")
@@ -110,9 +110,14 @@ class TeamService:
             owner_id=owner_id,
             key_prefix=allocate_key_prefix(payload.slug, used),
         )
+        self._repo.add(team)
+        self._repo.add_member(TeamMember(team_id=team.id, user_id=owner_id, role="admin"))
+        return team
+
+    def create(self, payload: TeamCreate, owner_id: str) -> Team:
+        """Cria team. workspace_id vem do payload; owner_id vem do JWT."""
         try:
-            self._repo.add(team)
-            self._repo.add_member(TeamMember(team_id=team.id, user_id=owner_id, role="admin"))
+            team = self.add_team(payload, owner_id)
             self._repo.commit()
         except IntegrityError as exc:
             self._repo.rollback()

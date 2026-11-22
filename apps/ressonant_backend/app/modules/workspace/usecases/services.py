@@ -100,8 +100,8 @@ class WorkspaceService:
             )
         return eligible[0]
 
-    def create(self, payload: WorkspaceCreate, owner_id: str) -> Workspace:
-        """Cria workspace. owner_id vem do JWT; a organização é validada no servidor."""
+    def add_workspace(self, payload: WorkspaceCreate, owner_id: str) -> Workspace:
+        """Prepara workspace e membership na Session; a transação fica com quem chama."""
         organization_id = self._resolve_organization_id(payload.organization_id, owner_id)
         if self._repo.exists_by_slug(payload.slug):
             raise _conflict("Já existe um workspace com este slug", "WORKSPACE_ALREADY_EXISTS")
@@ -112,11 +112,16 @@ class WorkspaceService:
             owner_id=owner_id,
             organization_id=organization_id,
         )
+        self._repo.add(workspace)
+        self._repo.add_member(
+            WorkspaceMember(workspace_id=workspace.id, user_id=owner_id, role="admin")
+        )
+        return workspace
+
+    def create(self, payload: WorkspaceCreate, owner_id: str) -> Workspace:
+        """Cria workspace. owner_id vem do JWT; a organização é validada no servidor."""
         try:
-            self._repo.add(workspace)
-            self._repo.add_member(
-                WorkspaceMember(workspace_id=workspace.id, user_id=owner_id, role="admin")
-            )
+            workspace = self.add_workspace(payload, owner_id)
             self._repo.commit()
         except IntegrityError as exc:
             self._repo.rollback()

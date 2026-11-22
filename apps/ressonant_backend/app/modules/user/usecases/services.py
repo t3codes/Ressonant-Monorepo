@@ -22,14 +22,14 @@ class UserService:
     def __init__(self, repository: UserRepository) -> None:
         self._repo = repository
 
-    def register(self, payload: UserRegister) -> User:
-        """Cadastro público: sempre usuário comum e ativo."""
-        return self._create(payload, status_ativo=True, interno_adm=False)
-
-    def create(self, payload: UserCreate) -> User:
-        return self._create(payload, payload.status_ativo, payload.interno_adm)
-
-    def _create(self, payload: UserRegister, status_ativo: bool, interno_adm: bool) -> User:
+    def add_user(
+        self,
+        payload: UserRegister,
+        *,
+        status_ativo: bool = True,
+        interno_adm: bool = False,
+    ) -> User:
+        """Prepara o usuário na Session; a transação fica com quem chama."""
         if self._repo.exists_by_email_or_cpf(payload.email, payload.cpf):
             raise _conflict("E-mail ou CPF já cadastrado", "USER_ALREADY_EXISTS")
         user = User(
@@ -42,8 +42,24 @@ class UserService:
             status_ativo=status_ativo,
             interno_adm=interno_adm,
         )
+        self._repo.add(user)
+        return user
+
+    def register(self, payload: UserRegister) -> User:
+        """Cadastro público: sempre usuário comum e ativo."""
         try:
-            self._repo.add(user)
+            user = self.add_user(payload)
+            self._repo.commit()
+        except IntegrityError:
+            self._repo.rollback()
+            raise _conflict("E-mail ou CPF já cadastrado", "USER_ALREADY_EXISTS") from None
+        return user
+
+    def create(self, payload: UserCreate) -> User:
+        try:
+            user = self.add_user(
+                payload, status_ativo=payload.status_ativo, interno_adm=payload.interno_adm
+            )
             self._repo.commit()
         except IntegrityError:
             self._repo.rollback()
