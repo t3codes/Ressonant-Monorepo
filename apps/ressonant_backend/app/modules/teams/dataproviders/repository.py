@@ -22,6 +22,16 @@ class TeamRepository:
     def exists_by_slug(self, slug: str) -> bool:
         return self._db.scalar(select(Team.id).where(Team.slug == slug).limit(1)) is not None
 
+    def list_key_prefixes(self, workspace_id: str) -> set[str]:
+        """Prefixos já usados no workspace; a unicidade da constraint é por workspace."""
+        try:
+            uuid.UUID(workspace_id)
+        except ValueError:
+            return set()
+        return set(
+            self._db.scalars(select(Team.key_prefix).where(Team.workspace_id == workspace_id)).all()
+        )
+
     def list_for_workspace(
         self,
         workspace_id: str,

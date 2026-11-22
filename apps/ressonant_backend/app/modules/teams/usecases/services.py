@@ -14,11 +14,24 @@ from app.modules.teams.schemas.dto import (
 from app.modules.user.dataproviders.repository import UserRepository
 from app.modules.workspace.dataproviders.repository import WorkspaceRepository
 from common.errors import ExceptionData, ForbiddenException, NotFoundException
+from sqlalchemy.exc import IntegrityError
 
 
 def derive_key_prefix(slug: str) -> str:
     """Mesma base da migration 0015: alfanumérico, uppercase, até 20 chars."""
     return re.sub(r"[^A-Za-z0-9]", "", slug).upper()[:20] or "TEAM"
+
+
+def allocate_key_prefix(slug: str, used: set[str]) -> str:
+    """Mesmo sufixo da migration 0015: base, base2, base3... limitado a 20 chars."""
+    base = derive_key_prefix(slug)
+    prefix = base
+    counter = 2
+    while prefix in used:
+        suffix = str(counter)
+        prefix = base[: 20 - len(suffix)] + suffix
+        counter += 1
+    return prefix
 
 
 def _not_found() -> NotFoundException:
@@ -88,18 +101,25 @@ class TeamService:
 
         if self._repo.exists_by_slug(payload.slug):
             raise _conflict("Já existe um team com este slug", "TEAM_ALREADY_EXISTS")
+        used = self._repo.list_key_prefixes(payload.workspace_id)
         team = Team(
             name=payload.name,
             slug=payload.slug,
             description=payload.description,
             workspace_id=payload.workspace_id,
             owner_id=owner_id,
-            key_prefix=derive_key_prefix(payload.slug),
+            key_prefix=allocate_key_prefix(payload.slug, used),
         )
         try:
             self._repo.add(team)
             self._repo.add_member(TeamMember(team_id=team.id, user_id=owner_id, role="admin"))
             self._repo.commit()
+        except IntegrityError as exc:
+            self._repo.rollback()
+            raise _conflict(
+                "Prefixo de chave do team já está em uso neste workspace",
+                "TEAM_KEY_PREFIX_CONFLICT",
+            ) from exc
         except Exception:
             self._repo.rollback()
             raise

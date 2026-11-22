@@ -4,6 +4,7 @@ from app.modules.teams.domain.models import Team
 from app.modules.teams.usecases.services import derive_key_prefix
 from fastapi.testclient import TestClient
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from tests.conftest import login
 from tests.conftest import make_user as _plain_make_user
 
@@ -364,3 +365,116 @@ def test_create_team_persists_derived_key_prefix(
     with session_factory() as db:
         persisted = db.scalar(select(Team.key_prefix).where(Team.id == team_id))
     assert persisted == "FRONTENDPLATAFORMA"
+
+
+def test_key_prefix_collision_same_workspace_gets_numeric_suffix(
+    client: TestClient, session_factory
+) -> None:
+    workspace = _create_workspace(
+        client, session_factory, "ana@ressonant.dev", "Plataforma", "plataforma"
+    )
+    headers = _headers(client, "ana@ressonant.dev")
+    slugs = ("team-a", "team.a")  # ambos normalizam para TEAMA
+    team_ids: list[str] = []
+
+    for slug in slugs:
+        response = client.post(
+            "/teams",
+            json={"name": f"Time {slug}", "slug": slug, "workspace_id": workspace["id"]},
+            headers=headers,
+        )
+        assert response.status_code == 201, response.text
+        team_ids.append(response.json()["id"])
+
+    with session_factory() as db:
+        prefixes = [
+            db.scalar(select(Team.key_prefix).where(Team.id == team_id)) for team_id in team_ids
+        ]
+    assert prefixes == ["TEAMA", "TEAMA2"]
+
+
+def test_key_prefix_scoped_to_workspace(client: TestClient, session_factory) -> None:
+    workspace_a = _create_workspace(
+        client, session_factory, "ana@ressonant.dev", "Plataforma", "plataforma"
+    )
+    headers = _headers(client, "ana@ressonant.dev")
+    response = client.post(
+        "/workspaces",
+        json={"name": "Plataforma B", "slug": "plataforma-b"},
+        headers=headers,
+    )
+    assert response.status_code == 201, response.text
+    workspace_b = response.json()
+    slugs = ("team-a", "team.a")  # mesmo prefixo normalizado em workspaces distintos
+    team_ids: list[str] = []
+
+    for workspace, slug in ((workspace_a, slugs[0]), (workspace_b, slugs[1])):
+        response = client.post(
+            "/teams",
+            json={"name": f"Time {slug}", "slug": slug, "workspace_id": workspace["id"]},
+            headers=headers,
+        )
+        assert response.status_code == 201, response.text
+        team_ids.append(response.json()["id"])
+
+    with session_factory() as db:
+        prefixes = [
+            db.scalar(select(Team.key_prefix).where(Team.id == team_id)) for team_id in team_ids
+        ]
+    assert prefixes == ["TEAMA", "TEAMA"]
+
+
+def test_key_prefix_collision_on_long_base_stays_within_20_chars(
+    client: TestClient, session_factory
+) -> None:
+    workspace = _create_workspace(
+        client, session_factory, "ana@ressonant.dev", "Plataforma", "plataforma"
+    )
+    headers = _headers(client, "ana@ressonant.dev")
+    slugs = ("abcdefghijklmnopqrstuvwxyz", "abcdefghijklmnopqrstuvwxyz-2")
+    team_ids: list[str] = []
+
+    for slug in slugs:
+        response = client.post(
+            "/teams",
+            json={"name": f"Time {slug}", "slug": slug, "workspace_id": workspace["id"]},
+            headers=headers,
+        )
+        assert response.status_code == 201, response.text
+        team_ids.append(response.json()["id"])
+
+    with session_factory() as db:
+        prefixes = [
+            db.scalar(select(Team.key_prefix).where(Team.id == team_id)) for team_id in team_ids
+        ]
+    assert prefixes == ["ABCDEFGHIJKLMNOPQRST", "ABCDEFGHIJKLMNOPQRS2"]
+    assert all(len(prefix) <= 20 for prefix in prefixes)
+
+
+def test_key_prefix_race_becomes_conflict_error(
+    client: TestClient, session_factory, monkeypatch
+) -> None:
+    workspace = _create_workspace(
+        client, session_factory, "ana@ressonant.dev", "Plataforma", "plataforma"
+    )
+    headers = _headers(client, "ana@ressonant.dev")
+    slug = "team-race"
+
+    def raise_unique_violation(repository: TeamRepository, team: Team) -> Team:
+        raise IntegrityError(
+            "INSERT INTO teams",
+            {"workspace_id": team.workspace_id, "key_prefix": team.key_prefix},
+            Exception("uq_teams_workspace_key_prefix"),
+        )
+
+    monkeypatch.setattr(TeamRepository, "add", raise_unique_violation)
+    response = client.post(
+        "/teams",
+        json={"name": "Time Race", "slug": slug, "workspace_id": workspace["id"]},
+        headers=headers,
+    )
+    assert response.status_code == 409, response.text
+    assert response.json()["error_code"] == "TEAM_KEY_PREFIX_CONFLICT"
+
+    with session_factory() as db:
+        assert db.scalar(select(Team.id).where(Team.slug == slug)) is None
