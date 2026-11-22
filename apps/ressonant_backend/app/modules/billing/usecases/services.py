@@ -263,7 +263,7 @@ class BillingService:
             raise
         return self._build_response(organization_id)
 
-    def create_subscription(
+    def add_trial_subscription(
         self,
         organization_id: str,
         actor: User,
@@ -272,7 +272,8 @@ class BillingService:
         seats_purchased: int | None = None,
         request_id: str | None = None,
         reason: str | None = None,
-    ) -> BillingResponse:
+    ) -> Subscription:
+        """Prepara assinatura trial e auditoria na Session; a transação fica com quem chama."""
         role, break_glass = self._authorize(organization_id, actor, "billing.manage", reason)
         self._require_organization(organization_id)
         if self._repo.get_active_subscription(organization_id) is not None:
@@ -298,24 +299,44 @@ class BillingService:
             current_period_end=now + timedelta(days=plan.trial_days),
             gateway_ref=intent.gateway_ref,
         )
+        self._repo.add_subscription(subscription)
+        self._audit(
+            organization_id=organization_id,
+            actor=actor,
+            actor_role=role,
+            action="billing.subscription.created",
+            entity_type="subscription",
+            entity_id=subscription.id,
+            before=None,
+            after={
+                "plan_code": plan.code,
+                "status": subscription.status,
+                "seats_purchased": seats,
+                "gateway_ref": subscription.gateway_ref,
+            },
+            request_id=request_id,
+            break_glass=break_glass,
+        )
+        return subscription
+
+    def create_subscription(
+        self,
+        organization_id: str,
+        actor: User,
+        *,
+        plan_code: str | None = None,
+        seats_purchased: int | None = None,
+        request_id: str | None = None,
+        reason: str | None = None,
+    ) -> BillingResponse:
         try:
-            self._repo.add_subscription(subscription)
-            self._audit(
-                organization_id=organization_id,
-                actor=actor,
-                actor_role=role,
-                action="billing.subscription.created",
-                entity_type="subscription",
-                entity_id=subscription.id,
-                before=None,
-                after={
-                    "plan_code": plan.code,
-                    "status": subscription.status,
-                    "seats_purchased": seats,
-                    "gateway_ref": subscription.gateway_ref,
-                },
+            self.add_trial_subscription(
+                organization_id,
+                actor,
+                plan_code=plan_code,
+                seats_purchased=seats_purchased,
                 request_id=request_id,
-                break_glass=break_glass,
+                reason=reason,
             )
             self._repo.commit()
         except IntegrityError as exc:

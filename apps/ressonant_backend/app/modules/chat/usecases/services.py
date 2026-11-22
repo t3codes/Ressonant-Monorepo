@@ -1,4 +1,5 @@
 import json
+import re
 
 from app.common.exceptions import ConflictException
 from app.modules.chat.dataproviders.repository import (
@@ -45,9 +46,8 @@ class ChannelService:
     def get_by_id(self, channel_id: str) -> Channel | None:
         return self._repo.get_by_id(channel_id)
 
-    def create(self, payload: ChannelCreate, created_by: str) -> Channel:
-        import re
-
+    def add_channel(self, payload: ChannelCreate, created_by: str) -> Channel:
+        """Prepara o canal na Session; a transação fica com quem chama."""
         slug = re.sub(r"[^a-z0-9]+", "-", payload.name.lower()).strip("-")
         channel = Channel(
             workspace_id=payload.workspace_id,
@@ -58,8 +58,12 @@ class ChannelService:
             member_ids=json.dumps([created_by]),
             created_by=created_by,
         )
+        self._repo.add(channel)
+        return channel
+
+    def create(self, payload: ChannelCreate, created_by: str) -> Channel:
         try:
-            self._repo.add(channel)
+            channel = self.add_channel(payload, created_by)
             self._repo.commit()
         except Exception:
             self._repo.rollback()
