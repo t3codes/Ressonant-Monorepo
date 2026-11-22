@@ -7150,6 +7150,48 @@
           "permission_version": {
             "type": "integer",
             "title": "Permission Version"
+          },
+          "workspace_inicial_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Inicial Id"
+          },
+          "equipe_inicial_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Equipe Inicial Id"
+          },
+          "organizacao": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrganizationContextResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "seats": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SeatsResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
@@ -7161,7 +7203,11 @@
           "workspaces",
           "capabilities",
           "subscription",
-          "permission_version"
+          "permission_version",
+          "workspace_inicial_id",
+          "equipe_inicial_id",
+          "organizacao",
+          "seats"
         ],
         "title": "MeContextResponse"
       },

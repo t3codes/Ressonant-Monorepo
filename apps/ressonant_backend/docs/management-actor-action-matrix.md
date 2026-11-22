@@ -1,7 +1,7 @@
 # Matriz Ator × Ação — Gestão do Workspace (Fase 0)
 
 > Artefato P0. Fonte de verdade de autorização: backend. Frontend apenas reflete capabilities.
-> Estado conferido em 2026-11-21 (Fase 0, O0–O4; gates P0-4/P0-5/P0-6): rotas de gestão em `app/modules/workspace_management/entrypoints/routes.py`, de billing em `app/modules/billing/entrypoints/routes.py` e bootstrap em `app/modules/context/entrypoints/routes.py`, todas publicadas no `openapi.json` (63 paths, SHA `b690a6b15772c95a7e3e92b1a4e89c7ae6467db71c9776100120d86e7c5cd5c7`). D1 e D7 estão **Entregues — Fase 0** (P0-2/P0-6); ver `docs/contracts/00-INDEX.md`.
+> Estado conferido em 2026-11-21 (Fase 0, O0–O4; gates P0-4/P0-5/P0-6): rotas de gestão em `app/modules/workspace_management/entrypoints/routes.py`, de billing em `app/modules/billing/entrypoints/routes.py` e bootstrap em `app/modules/context/entrypoints/routes.py`, todas publicadas no `openapi.json` (63 paths, SHA `ff2bf163d04e648e8f37d2d9c08489825531b55fa5c73ed06af8e3a86f50545c`). D1 e D7 estão **Entregues — Fase 0** (P0-2/P0-6); ver `docs/contracts/00-INDEX.md`.
 > O prefixo real é `/workspaces/{workspace_id}/management` — um caminho `/management/...` sozinho **não existe**.
 
 ## Níveis e papéis (Entregue — Fase 0, P0-4)
@@ -75,7 +75,7 @@ Catálogo `inicial`/`equipe`/`empresa`: preços propostos, seats `3`/`15`/ilimit
 - [x] `tests/test_billing_rbac.py`: matriz de cinco eixos parametrizada (9 perfis × ver/alterar billing, conceder `grant`/`modify`, mutar card), R9 sem evento na falha, R10 com `reason` auditado, `SEAT_LIMIT_EXCEEDED` sem órfãos, ciclo de assinatura sem socket, auditoria com `scope`/`actor_role`/`request_id` e contrato publicado no OpenAPI.
 - [x] `tests/test_audit_events.py`: roundtrip de evento com `scope=card`, derivação de `actor_role`, redação de campos sensíveis e rejeição de `UPDATE`/`DELETE` diretos no Postgres (skip fora Postgres).
 - [x] `tests/test_context.py`: shape de `/me/context` (7 chaves), `member_ids`/`teams` lidos do banco, capabilities por papel, isolamento IDOR, assinatura ativa exposta e rota autenticada sem query parameters.
-- [x] `tests/test_openapi_sync.py`: `openapi.json` versionado sincronizado com `app.openapi()` (63 paths, SHA `b690a6b15772c95a7e3e92b1a4e89c7ae6467db71c9776100120d86e7c5cd5c7`).
+- [x] `tests/test_openapi_sync.py`: `openapi.json` versionado sincronizado com `app.openapi()` (63 paths, SHA `ff2bf163d04e648e8f37d2d9c08489825531b55fa5c73ed06af8e3a86f50545c`).
 - [x] auditoria append-only por privilégio de banco — **Entregue — Fase 0 (O3, P0-5)**: a migration `0017` aplica `REVOKE UPDATE, DELETE ON TABLE audit_events` ao papel da aplicação e cria o trigger `audit_events_append_only` no Postgres; a mutação de domínio grava o evento no mesmo commit. A proteção é do banco, não apenas do service.
 - [ ] endpoint admin não bypassa policy de domínio — **Planejado — Fase 3 (P3-7)**; as listas administrativas acima são somente leitura e não têm testes dedicados nesta suíte.
 - [ ] concorrência de chaves legíveis e conflito de versão — **Planejado — Fase 2 (P2-2/P2-3)**; sem cobertura nesta suíte.

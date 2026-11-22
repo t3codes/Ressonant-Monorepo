@@ -220,6 +220,10 @@ def test_owner_gets_full_context_from_database_without_users_call(
         "capabilities",
         "subscription",
         "permission_version",
+        "workspace_inicial_id",
+        "equipe_inicial_id",
+        "organizacao",
+        "seats",
     }
     assert body["user"]["email"] == owner.email
     assert body["user"]["name"] == "Owner Ressonant"
@@ -233,6 +237,7 @@ def test_owner_gets_full_context_from_database_without_users_call(
         "status": "active",
     }
     assert body["active_organization"] == body["organizations"][0]
+    assert body["organizacao"] == body["active_organization"]
 
     assert len(body["workspaces"]) == 1
     workspace = body["workspaces"][0]
@@ -250,6 +255,9 @@ def test_owner_gets_full_context_from_database_without_users_call(
     assert body["capabilities"]["domain"] == {"cards_write": True}
     assert body["permission_version"] == workspace["permission_version"]
     assert body["subscription"] is None
+    assert body["workspace_inicial_id"] == main_id
+    assert body["equipe_inicial_id"] == workspace["teams"][0]["id"]
+    assert body["seats"] is None
 
     assert "/me/context" in seen
     assert not [path for path in seen if path.startswith("/users")]
@@ -353,6 +361,10 @@ def test_user_without_membership_returns_empty_lists_and_denied_capabilities(
     assert body["active_organization"] is None
     assert body["workspaces"] == []
     assert body["subscription"] is None
+    assert body["workspace_inicial_id"] is None
+    assert body["equipe_inicial_id"] is None
+    assert body["organizacao"] is None
+    assert body["seats"] is None
     assert body["permission_version"] == 1
     assert not any(body["capabilities"]["management"].values())
     assert body["capabilities"]["billing"] == {"view": False, "manage": False}
@@ -458,6 +470,10 @@ def test_subscription_is_exposed_from_active_organization(
         "overage_cents_per_seat": 4900,
         "provider": "stub",
     }
+    assert body["workspace_inicial_id"] == seeded["main_id"]
+    assert body["equipe_inicial_id"] == body["workspaces"][0]["teams"][0]["id"]
+    assert body["organizacao"] == body["active_organization"]
+    assert body["seats"] == {"plan_code": "equipe", "limit": 15, "used": 5}
 
 
 def test_billing_manage_requires_owner_or_billing_owner(
@@ -493,6 +509,45 @@ def test_user_response_exposes_name_and_title_additively(
     assert body["cpf"] == seeded["users"][EMAILS[0]].cpf
 
 
+def test_atomic_registration_bootstrap_exposes_initial_ids_and_seats(
+    client: TestClient,
+) -> None:
+    payload = {
+        "email": "bootstrap.owner@ressonant.dev",
+        "senha": "senhaSegura123",
+        "telefone": "11987654321",
+        "cpf": "52998224725",
+        "idade": 30,
+        "termos_contrato": True,
+        "nome_completo": "Bootstrap Owner",
+        "cargo": "Fundador",
+        "organizacao": {"nome": "Org Bootstrap", "slug": "org-bootstrap"},
+        "plano_id": "inicial",
+        "trial": True,
+        "workspace_nome": "Workspace Bootstrap",
+        "equipe_inicial_nome": "Equipe Bootstrap",
+        "convidados": [],
+    }
+    reg = client.post("/auth/register", json=payload)
+    assert reg.status_code == 201, reg.text
+    reg_body = reg.json()
+
+    token = client.post("/auth/login", json={"email": payload["email"], "senha": payload["senha"]})
+    assert token.status_code == 200, token.text
+    headers = {"Authorization": f"Bearer {token.json()['access_token']}"}
+
+    body, seen = _get_context(client, headers)
+    assert body["workspace_inicial_id"] == reg_body["workspace_inicial_id"]
+    assert body["equipe_inicial_id"] == reg_body["equipe_inicial_id"]
+    assert body["organizacao"]["id"] == reg_body["organizacao"]["id"]
+    assert body["organizacao"]["id"] == body["active_organization"]["id"]
+    assert body["seats"]["plan_code"] == reg_body["seats"]["plan_code"]
+    assert body["seats"]["used"] >= 1
+    assert body["seats"]["limit"] == reg_body["seats"]["limit"]
+    assert body["seats"] == reg_body["seats"]
+    assert not [path for path in seen if path in {"/auth/me"}]
+
+
 def test_context_route_is_authenticated_and_published_without_query_parameters(
     client: TestClient,
 ) -> None:
@@ -511,6 +566,10 @@ def test_context_route_is_authenticated_and_published_without_query_parameters(
         "capabilities",
         "subscription",
         "permission_version",
+        "workspace_inicial_id",
+        "equipe_inicial_id",
+        "organizacao",
+        "seats",
     }
     workspace = app.openapi()["components"]["schemas"]["WorkspaceContextResponse"]
     assert set(workspace["required"]) == {

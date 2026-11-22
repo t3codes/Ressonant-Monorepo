@@ -1,6 +1,8 @@
 from typing import Annotated
 
 from app.database.engine import get_db
+from app.modules.billing.dataproviders.repository import BillingRepository
+from app.modules.billing.deps import get_billing_repository
 from app.modules.context.dataproviders.repository import ContextRepository
 from app.modules.context.usecases.services import ContextService
 from app.modules.workspace_management.deps import get_workspace_management_service
@@ -16,5 +18,6 @@ def get_context_repository(db: Annotated[Session, Depends(get_db)]) -> ContextRe
 def get_context_service(
     repo: Annotated[ContextRepository, Depends(get_context_repository)],
     management: Annotated[WorkspaceManagementService, Depends(get_workspace_management_service)],
+    billing_repo: Annotated[BillingRepository, Depends(get_billing_repository)],
 ) -> ContextService:
-    return ContextService(repo, management)
+    return ContextService(repo, management, billing_repo)

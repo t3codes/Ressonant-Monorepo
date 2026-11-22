@@ -1,3 +1,5 @@
+from app.modules.auth.schemas.dto import SeatsResponse
+from app.modules.billing.dataproviders.repository import BillingRepository
 from app.modules.context.dataproviders.repository import ContextRepository
 from app.modules.context.schemas.dto import (
     BillingCapabilities,
@@ -38,9 +40,15 @@ _BILLING_MANAGE_ROLES = frozenset({"owner", "billing_owner"})
 class ContextService:
     """Monta o bootstrap apenas com fatos persistidos e capacidades do RWMS."""
 
-    def __init__(self, repo: ContextRepository, management: WorkspaceManagementService) -> None:
+    def __init__(
+        self,
+        repo: ContextRepository,
+        management: WorkspaceManagementService,
+        billing_repo: BillingRepository,
+    ) -> None:
         self._repo = repo
         self._management = management
+        self._billing_repo = billing_repo
 
     def get_context(self, user: User) -> MeContextResponse:
         workspace_rows = self._repo.list_workspaces_for_user(user.id)
@@ -52,6 +60,10 @@ class ContextService:
             (organization for organization in organizations if organization.status == "active"),
             None,
         )
+        workspace_inicial_id, equipe_inicial_id = self._resolve_initial_ids(
+            active_organization, workspaces
+        )
+        subscription = self._build_subscription(active_organization)
 
         return MeContextResponse(
             user=UserResponse.model_validate(user),
@@ -74,10 +86,14 @@ class ContextService:
                     cards_write=bool(workspaces) or self._repo.has_team_membership(user.id)
                 ),
             ),
-            subscription=self._build_subscription(active_organization),
+            subscription=subscription,
             permission_version=max(
                 (workspace.permission_version for workspace in workspaces), default=1
             ),
+            workspace_inicial_id=workspace_inicial_id,
+            equipe_inicial_id=equipe_inicial_id,
+            organizacao=active_organization,
+            seats=self._build_seats(active_organization, subscription),
         )
 
     def _build_organizations(
@@ -148,6 +164,39 @@ class ContextService:
                 field: any(getattr(capabilities, field) for capabilities in items)
                 for field in _MANAGEMENT_CAPABILITY_FIELDS
             }
+        )
+
+    @staticmethod
+    def _resolve_initial_ids(
+        active_organization: OrganizationContextResponse | None,
+        workspaces: list[WorkspaceContextResponse],
+    ) -> tuple[str | None, str | None]:
+        if active_organization is None:
+            return None, None
+        workspace_inicial = next(
+            (
+                workspace
+                for workspace in workspaces
+                if workspace.organization_id == active_organization.id
+            ),
+            None,
+        )
+        if workspace_inicial is None:
+            return None, None
+        equipe_inicial_id = workspace_inicial.teams[0].id if workspace_inicial.teams else None
+        return workspace_inicial.id, equipe_inicial_id
+
+    def _build_seats(
+        self,
+        active_organization: OrganizationContextResponse | None,
+        subscription: SubscriptionContextResponse | None,
+    ) -> SeatsResponse | None:
+        if active_organization is None or subscription is None:
+            return None
+        return SeatsResponse(
+            plan_code=subscription.plan_code,
+            limit=subscription.seat_limit,
+            used=self._billing_repo.count_seats_used(active_organization.id),
         )
 
     def _build_subscription(

@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
+from app.modules.auth.schemas.dto import SeatsResponse
 from app.modules.user.schemas import UserResponse
 from app.modules.workspace_management.schemas.dto import ManagementCapabilities
 from pydantic import BaseModel, ConfigDict
@@ -86,3 +87,9 @@ class MeContextResponse(BaseModel):
     capabilities: ContextCapabilities
     subscription: SubscriptionContextResponse | None
     permission_version: int
+    # P1-3/P1-4: espelho top-level do bootstrap atômico. `organizacao` replica
+    # `active_organization` para manter o shape nominal do plano sem segunda fonte.
+    workspace_inicial_id: str | None
+    equipe_inicial_id: str | None
+    organizacao: OrganizationContextResponse | None
+    seats: SeatsResponse | None
