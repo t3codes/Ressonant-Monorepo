@@ -30,6 +30,8 @@ class InvitationCreateResponse(BaseModel):
     criado_em: datetime
     # Returned only at creation time so the caller can deliver it out-of-band.
     token: str
+    invite_url: str | None = None
+    email_sent: bool = False
 
 
 class InvitationResponse(BaseModel):

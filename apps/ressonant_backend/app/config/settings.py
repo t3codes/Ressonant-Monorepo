@@ -17,6 +17,16 @@ class Settings:
     jwt_algorithm: str
     access_token_expire_minutes: int
     cors_origins: list[str]
+    smtp_host: str
+    smtp_port: int
+    smtp_username: str
+    smtp_password: str
+    smtp_use_tls: bool
+    smtp_use_ssl: bool
+    smtp_from_email: str
+    smtp_from_name: str
+    frontend_base_url: str
+    email_enabled: bool
 
 
 def _required(name: str) -> str:
@@ -26,6 +36,13 @@ def _required(name: str) -> str:
     return value
 
 
+def _bool(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
 @lru_cache
 def get_settings() -> Settings:
     auth_secret = _required("AUTH_SECRET")
@@ -33,6 +50,7 @@ def get_settings() -> Settings:
         raise ConfigurationError(f"AUTH_SECRET deve ter ao menos {MIN_SECRET_LENGTH} caracteres")
 
     origins = os.getenv("CORS_ORIGINS", "http://localhost:3000")
+    smtp_host = os.getenv("SMTP_HOST", "").strip()
     return Settings(
         environment=os.getenv("ENVIRONMENT", "development"),
         database_url=_required("DATABASE_URL"),
@@ -40,4 +58,14 @@ def get_settings() -> Settings:
         jwt_algorithm="HS256",
         access_token_expire_minutes=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")),
         cors_origins=[o.strip() for o in origins.split(",") if o.strip()],
+        smtp_host=smtp_host,
+        smtp_port=int(os.getenv("SMTP_PORT", "1025")),
+        smtp_username=os.getenv("SMTP_USERNAME", "").strip(),
+        smtp_password=os.getenv("SMTP_PASSWORD", "").strip(),
+        smtp_use_tls=_bool("SMTP_USE_TLS", default=False),
+        smtp_use_ssl=_bool("SMTP_USE_SSL", default=False),
+        smtp_from_email=os.getenv("SMTP_FROM_EMAIL", "noreply@ressonant.local").strip(),
+        smtp_from_name=os.getenv("SMTP_FROM_NAME", "Ressonant").strip(),
+        frontend_base_url=os.getenv("FRONTEND_BASE_URL", "http://localhost:5173").rstrip("/"),
+        email_enabled=_bool("EMAIL_ENABLED", default=bool(smtp_host)),
     )

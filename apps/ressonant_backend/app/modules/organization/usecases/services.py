@@ -5,7 +5,9 @@ import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Literal
 
+from app.common.email import build_invite_url, send_invitation_email
 from app.common.exceptions import ConflictException
+from app.config.settings import Settings, get_settings
 from app.modules.organization.dataproviders.repository import OrganizationRepository
 from app.modules.organization.domain.models import Invitation, OrganizationMember
 from app.modules.organization.schemas.dto import (
@@ -22,8 +24,9 @@ _INVITATION_MANAGE_ROLES = frozenset({"owner", "admin"})
 
 
 class InvitationService:
-    def __init__(self, repo: OrganizationRepository) -> None:
+    def __init__(self, repo: OrganizationRepository, settings: Settings | None = None) -> None:
         self._repo = repo
+        self._settings = settings or get_settings()
 
     @staticmethod
     def _not_found(message: str, error_code: str) -> NotFoundException:
@@ -162,6 +165,17 @@ class InvitationService:
             self._repo.rollback()
             raise
 
+        workspace = self._repo.get_workspace(payload.workspace_id)
+        organization = self._repo.get_by_id(organization_id)
+        invite_url = build_invite_url(self._settings.frontend_base_url, token)
+        email_sent = send_invitation_email(
+            settings=self._settings,
+            to_email=invitation.email,
+            invite_url=invite_url,
+            workspace_name=workspace.name if workspace else None,
+            organization_name=organization.name if organization else None,
+        )
+
         return InvitationCreateResponse(
             id=invitation.id,
             organization_id=invitation.organization_id,
@@ -173,6 +187,8 @@ class InvitationService:
             invited_by_id=invitation.invited_by_id,
             criado_em=invitation.criado_em,
             token=token,
+            invite_url=invite_url,
+            email_sent=email_sent,
         )
 
     def list_invitations(

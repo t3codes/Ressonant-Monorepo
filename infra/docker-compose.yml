@@ -18,6 +18,14 @@ services:
       retries: 10
     networks: [data]
 
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025"
+    networks: [data]
+
 networks:
   # Só o postgres e as apps que usam banco ficam nesta rede.
   data:
