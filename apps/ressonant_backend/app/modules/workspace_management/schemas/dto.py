@@ -71,6 +71,8 @@ class WorkspacePersonResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
     user_id: str
     role: str
+    name: str | None = None
+    email: str | None = None
     criado_em: datetime | None = None
 
 

@@ -124,16 +124,27 @@ class WorkspaceManagementRepository:
     def rollback(self) -> None:
         self._db.rollback()
 
-    def list_workspace_members(self, workspace_id: str) -> list[WorkspaceMember]:
+    def list_workspace_members(self, workspace_id: str) -> list[dict]:
         if not self._is_uuid(workspace_id):
             return []
-        return list(
-            self._db.scalars(
-                select(WorkspaceMember)
-                .where(WorkspaceMember.workspace_id == workspace_id)
-                .order_by(WorkspaceMember.criado_em)
-            )
-        )
+        from app.modules.user.domain.models import User
+
+        rows = self._db.execute(
+            select(WorkspaceMember, User)
+            .join(User, User.id == WorkspaceMember.user_id)
+            .where(WorkspaceMember.workspace_id == workspace_id)
+            .order_by(WorkspaceMember.criado_em)
+        ).all()
+        return [
+            {
+                "user_id": m.user_id,
+                "role": m.role,
+                "criado_em": m.criado_em,
+                "name": u.name,
+                "email": u.email,
+            }
+            for m, u in rows
+        ]
 
     def list_teams(self, workspace_id: str, include_deleted: bool = False) -> list[Team]:
         if not self._is_uuid(workspace_id):

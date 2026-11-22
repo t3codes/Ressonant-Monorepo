@@ -414,8 +414,7 @@ class WorkspaceManagementService:
 
     def list_people(self, workspace_id: str, actor: User):
         self.require_read(workspace_id, actor)
-        members = self._repo.list_workspace_members(workspace_id)
-        return [{"user_id": m.user_id, "role": m.role, "criado_em": m.criado_em} for m in members]
+        return self._repo.list_workspace_members(workspace_id)
 
     def list_teams(self, workspace_id: str, actor: User, include_deleted: bool = False):
         self.require_read(workspace_id, actor)
