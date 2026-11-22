@@ -12,6 +12,7 @@ from app.modules.kanban_cards.schemas.dto import (
     CardUpdate,
 )
 from common.errors import ExceptionData, ForbiddenException, NotFoundException
+from sqlalchemy.exc import IntegrityError
 
 
 def _not_found() -> NotFoundException:
@@ -47,17 +48,38 @@ class CardService:
             raise _forbidden("Usuário com papel viewer não pode editar cards")
 
     def create(self, payload: CardCreate, owner_id: str) -> Card:
-        """Cria card. board_id e team_id vêm do payload; owner_id do JWT.
-        columnId é ignorado: card nasce no backlog do time."""
+        """Cria card no time do board; owner_id vem do JWT.
+
+        columnId é ignorado: card nasce no backlog do time.
+        """
         board = self._board_repo.get_by_id(payload.board_id)
         if board is None:
             raise _not_found()
+        if payload.team_id != board.team_id:
+            raise _conflict("team_id do card diverge do time do board", "CARD_TEAM_MISMATCH")
         self._require_editor(board.team_id, owner_id)
 
+        from app.modules.teams.dataproviders.repository import TeamRepository
+
+        team_repo = TeamRepository(self._card_repo._db)
+        team = team_repo.get_by_id(board.team_id)
+        if team is None:
+            raise NotFoundException(
+                ExceptionData(message="Team não encontrado", error_code="TEAM_NOT_FOUND"),
+                is_expected=True,
+            )
+        if not team.key_prefix:
+            raise _conflict("Time sem prefixo de chave configurado", "TEAM_KEY_PREFIX_MISSING")
+
+        # count + insert não é atômico; o índice único é a última linha de defesa.
+        sequence = self._card_repo.count_by_team(board.team_id) + 1
+        key = f"{team.key_prefix}-{sequence}"[:50]
+
         card = Card(
+            key=key,
             board_id=payload.board_id,
             column_id=None,  # Nasce no backlog: columnId do cliente é ignorado
-            team_id=payload.team_id,
+            team_id=board.team_id,
             title=payload.title,
             description=payload.description,
             type=payload.type,
@@ -75,6 +97,9 @@ class CardService:
         try:
             self._card_repo.add(card)
             self._card_repo.commit()
+        except IntegrityError as exc:
+            self._card_repo.rollback()
+            raise _conflict("Chave de card já existe neste time", "CARD_KEY_CONFLICT") from exc
         except Exception:
             self._card_repo.rollback()
             raise

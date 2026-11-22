@@ -37,6 +37,16 @@ class CardRepository:
         items = self._db.scalars(stmt.order_by(Card.criado_em, Card.id).offset(skip).limit(limit))
         return list(items), total
 
+    def count_by_team(self, team_id: str) -> int:
+        try:
+            uuid.UUID(team_id)
+        except ValueError:
+            return 0
+        return (
+            self._db.scalar(select(func.count()).select_from(Card).where(Card.team_id == team_id))
+            or 0
+        )
+
     def add(self, card: Card) -> Card:
         self._db.add(card)
         self._db.flush()
