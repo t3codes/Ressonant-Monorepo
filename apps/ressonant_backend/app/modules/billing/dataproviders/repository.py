@@ -1,7 +1,9 @@
 import uuid
+from datetime import datetime
 
 from app.modules.billing.domain.models import ACTIVE_SUBSCRIPTION_STATUSES, Plan, Subscription
-from app.modules.organization.domain.models import Organization, OrganizationMember
+from app.modules.organization.domain.models import Invitation, Organization, OrganizationMember
+from app.modules.user.domain.models import User
 from app.modules.workspace.domain.models import Workspace, WorkspaceMember
 from app.modules.workspace_management.domain.models import AuditEvent
 from sqlalchemy import select
@@ -39,8 +41,8 @@ class BillingRepository:
             )
         )
 
-    def count_seats_used(self, organization_id: str) -> int:
-        """União de membros ativos da organização e membros de seus workspaces."""
+    def count_seats_used(self, organization_id: str, *, now: datetime | None = None) -> int:
+        """União de membros ativos, membros de workspaces e convites pendentes (por e-mail)."""
         if not self._is_uuid(organization_id):
             return 0
         organization_users = set(
@@ -58,7 +60,34 @@ class BillingRepository:
                 .where(Workspace.organization_id == organization_id)
             )
         )
-        return len(organization_users | workspace_users)
+        active_user_ids = organization_users | workspace_users
+        active_emails = {
+            email.strip().lower()
+            for email in self._db.scalars(select(User.email).where(User.id.in_(active_user_ids)))
+            if isinstance(email, str) and email.strip()
+        } if active_user_ids else set()
+
+        current_time = now or datetime.utcnow()
+        pending_emails = set()
+        for email, expires_at in self._db.execute(
+            select(Invitation.email, Invitation.expires_at).where(
+                Invitation.organization_id == organization_id,
+                Invitation.accepted_at.is_(None),
+                Invitation.revoked_at.is_(None),
+                Invitation.declined_at.is_(None),
+            )
+        ):
+            normalized = (email or "").strip().lower()
+            if not normalized or normalized in active_emails:
+                continue
+            exp = expires_at
+            if exp is None:
+                continue
+            exp_cmp = exp.replace(tzinfo=None) if exp.tzinfo is not None else exp
+            if exp_cmp <= current_time:
+                continue
+            pending_emails.add(normalized)
+        return len(active_user_ids) + len(pending_emails)
 
     def get_plan_by_code(self, code: str) -> Plan | None:
         return self._db.scalar(select(Plan).where(Plan.code == code, Plan.active.is_(True)))

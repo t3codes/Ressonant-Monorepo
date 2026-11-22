@@ -132,7 +132,7 @@ class OrganizationRepository:
         ).first()
         return (row[0], row[1]) if row is not None else None
 
-    def count_seats_used(self, organization_id: str) -> int:
+    def count_seats_used(self, organization_id: str, *, now: datetime | None = None) -> int:
         if not self._is_uuid(organization_id):
             return 0
         organization_users = set(
@@ -150,7 +150,37 @@ class OrganizationRepository:
                 .where(Workspace.organization_id == organization_id)
             )
         )
-        return len(organization_users | workspace_users)
+        active_user_ids = organization_users | workspace_users
+        active_emails = {
+            email.strip().lower()
+            for email in self._db.scalars(select(User.email).where(User.id.in_(active_user_ids)))
+            if isinstance(email, str) and email.strip()
+        } if active_user_ids else set()
+
+        current_time = now or datetime.utcnow()
+        pending_emails = set()
+        for email, expires_at in self._db.execute(
+            select(Invitation.email, Invitation.expires_at).where(
+                Invitation.organization_id == organization_id,
+                Invitation.accepted_at.is_(None),
+                Invitation.revoked_at.is_(None),
+                Invitation.declined_at.is_(None),
+            )
+        ):
+            normalized = (email or "").strip().lower()
+            if not normalized or normalized in active_emails:
+                continue
+            exp = expires_at
+            if exp is None:
+                continue
+            if exp.tzinfo is not None:
+                exp_cmp = exp.replace(tzinfo=None)
+            else:
+                exp_cmp = exp
+            if exp_cmp <= current_time:
+                continue
+            pending_emails.add(normalized)
+        return len(active_user_ids) + len(pending_emails)
 
     def is_user_counted_in_seats(self, organization_id: str, user_id: str) -> bool:
         if not self._is_uuid(organization_id) or not self._is_uuid(user_id):
