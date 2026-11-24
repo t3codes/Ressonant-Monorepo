@@ -1,12 +1,13 @@
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 from app.modules.billing.domain.models import ACTIVE_SUBSCRIPTION_STATUSES, Plan, Subscription
 from app.modules.organization.domain.models import Invitation, Organization, OrganizationMember
+from app.modules.teams.domain.models import Team
 from app.modules.user.domain.models import User
 from app.modules.workspace.domain.models import Workspace, WorkspaceMember
 from app.modules.workspace_management.domain.models import AuditEvent
-from sqlalchemy import select
+from sqlalchemy import select, text, union, update
 from sqlalchemy.orm import Session
 
 
@@ -52,6 +53,63 @@ class OrganizationRepository:
 
     def get_user_by_email(self, email: str) -> User | None:
         return self._db.scalar(select(User).where(User.email == email))
+
+    def get_team_by_id(self, team_id: str | None) -> Team | None:
+        if not team_id or not self._is_uuid(team_id):
+            return None
+        return self._db.get(Team, team_id)
+
+    def get_team_in_workspace(self, team_id: str | None, workspace_id: str) -> Team | None:
+        """Time apenas se pertencer ao workspace — usado em criação e leitura (CYB-002)."""
+        if not team_id or not self._is_uuid(team_id) or not self._is_uuid(workspace_id):
+            return None
+        return self._db.scalar(
+            select(Team).where(Team.id == team_id, Team.workspace_id == workspace_id)
+        )
+
+    def expire_invitation_reservations(self) -> int:
+        """Desativa reservas vencidas antes de consultar disponibilidade.
+
+        Em PostgreSQL chama a função criada na migration 0020; no SQLite dos
+        testes aplica a mesma transição com uma única instrução SQL.
+        """
+        if self._db.get_bind().dialect.name != "sqlite":
+            result = self._db.execute(text("SELECT expire_invitation_reservations()"))
+            return int(result.scalar_one())
+
+        result = self._db.execute(
+            update(Invitation)
+            .where(
+                Invitation.reservation_active.is_(True),
+                Invitation.expires_at <= datetime.now(UTC),
+            )
+            .values(reservation_active=False)
+        )
+        return int(result.rowcount or 0)
+
+    def first_available_corporate_email(self, candidates: list[str]) -> str | None:
+        """Primeiro candidato livre, com uma única consulta para as 3 origens.
+
+        A serialização é feita por `lock_organization` no service; o índice
+        parcial `uq_invitations_active_corporate_email` é a barreira final.
+        """
+        if not candidates:
+            return None
+        now = datetime.now(UTC)
+        stmt = union(
+            select(User.email).where(User.email.in_(candidates)),
+            select(User.corporate_email).where(User.corporate_email.in_(candidates)),
+            select(Invitation.corporate_email).where(
+                Invitation.corporate_email.in_(candidates),
+                Invitation.reservation_active.is_(True),
+                Invitation.accepted_at.is_(None),
+                Invitation.revoked_at.is_(None),
+                Invitation.declined_at.is_(None),
+                Invitation.expires_at > now,
+            ),
+        )
+        taken = {str(value).lower() for value in self._db.scalars(stmt) if value}
+        return next((candidate for candidate in candidates if candidate not in taken), None)
 
     def get_member(self, organization_id: str, user_id: str) -> OrganizationMember | None:
         if not self._is_uuid(organization_id) or not self._is_uuid(user_id):
@@ -151,11 +209,17 @@ class OrganizationRepository:
             )
         )
         active_user_ids = organization_users | workspace_users
-        active_emails = {
-            email.strip().lower()
-            for email in self._db.scalars(select(User.email).where(User.id.in_(active_user_ids)))
-            if isinstance(email, str) and email.strip()
-        } if active_user_ids else set()
+        active_emails = (
+            {
+                email.strip().lower()
+                for email in self._db.scalars(
+                    select(User.email).where(User.id.in_(active_user_ids))
+                )
+                if isinstance(email, str) and email.strip()
+            }
+            if active_user_ids
+            else set()
+        )
 
         current_time = now or datetime.utcnow()
         pending_emails = set()
@@ -283,14 +347,17 @@ class OrganizationRepository:
 
     def mark_invitation_accepted(self, invitation: Invitation, *, accepted_at: datetime) -> None:
         invitation.accepted_at = accepted_at
+        invitation.reservation_active = False
         self._db.flush()
 
     def mark_invitation_revoked(self, invitation: Invitation, *, revoked_at: datetime) -> None:
         invitation.revoked_at = revoked_at
+        invitation.reservation_active = False
         self._db.flush()
 
     def mark_invitation_declined(self, invitation: Invitation, *, declined_at: datetime) -> None:
         invitation.declined_at = declined_at
+        invitation.reservation_active = False
         self._db.flush()
 
     def update_invitation_for_resend(

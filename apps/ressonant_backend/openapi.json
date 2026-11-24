@@ -410,6 +410,183 @@
         }
       }
     },
+    "/plans": {
+      "get": {
+        "tags": [
+          "plans"
+        ],
+        "summary": "List Plans",
+        "description": "Catálogo público: só ativos; `Authorization`, se enviado, é ignorado.",
+        "operationId": "list_plans_plans_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanCatalogResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "plans"
+        ],
+        "summary": "Create Plan",
+        "description": "Adiciona plano ao catálogo (somente `interno_adm`; `active=false` por padrão).",
+        "operationId": "create_plan_plans_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/plans/{code}": {
+      "patch": {
+        "tags": [
+          "plans"
+        ],
+        "summary": "Update Plan",
+        "description": "Edita plano do catálogo (somente `interno_adm`; `code` é imutável).",
+        "operationId": "update_plan_plans__code__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20,
+              "pattern": "^[a-z][a-z0-9_]{0,19}$",
+              "title": "Code"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "plans"
+        ],
+        "summary": "Deactivate Plan",
+        "description": "Desativa plano do catálogo (remoção lógica; somente `interno_adm`).",
+        "operationId": "deactivate_plan_plans__code__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20,
+              "pattern": "^[a-z][a-z0-9_]{0,19}$",
+              "title": "Code"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/organizations/{organization_id}/invitations": {
       "post": {
         "tags": [
@@ -3712,6 +3889,62 @@
             }
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "Delete Card",
+        "description": "Exclui card (204) com auditoria append-only na mesma transação.",
+        "operationId": "delete_card_cards__card_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "card_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Card Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/CardDeleteInput"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/cards/{card_id}/move": {
@@ -3919,6 +4152,133 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CardResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cards/{card_id}/comments": {
+      "post": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "Create Card Comment",
+        "description": "Cria comentário; author_id é sempre o usuário autenticado.",
+        "operationId": "create_card_comment_cards__card_id__comments_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "card_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Card Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CardCommentCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardCommentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "List Card Comments",
+        "description": "Lista comentários do card (persistência verificável após reload).",
+        "operationId": "list_card_comments_cards__card_id__comments_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "card_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Card Id"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardCommentList"
                 }
               }
             }
@@ -6036,6 +6396,76 @@
         ],
         "title": "CardBlockInput"
       },
+      "CardCommentCreate": {
+        "properties": {
+          "body": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Body"
+          }
+        },
+        "type": "object",
+        "required": [
+          "body"
+        ],
+        "title": "CardCommentCreate"
+      },
+      "CardCommentList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CardCommentResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "CardCommentList"
+      },
+      "CardCommentResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "card_id": {
+            "type": "string",
+            "title": "Card Id"
+          },
+          "author_id": {
+            "type": "string",
+            "title": "Author Id"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          },
+          "criado_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Criado Em"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "card_id",
+          "author_id",
+          "body",
+          "criado_em"
+        ],
+        "title": "CardCommentResponse"
+      },
       "CardCreate": {
         "properties": {
           "title": {
@@ -6270,6 +6700,37 @@
         ],
         "title": "CardCreate",
         "description": "Payload para criar um card. board_id e team_id são obrigatórios; columnId é ignorado."
+      },
+      "CardDeleteInput": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "expected_version": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Version"
+          }
+        },
+        "type": "object",
+        "title": "CardDeleteInput",
+        "description": "Corpo opcional do delete: reason vai para auditoria; version é otimistic locking."
       },
       "CardList": {
         "properties": {
@@ -7497,6 +7958,12 @@
             "format": "email",
             "title": "Email"
           },
+          "nome_completo": {
+            "type": "string",
+            "maxLength": 254,
+            "minLength": 2,
+            "title": "Nome Completo"
+          },
           "role": {
             "type": "string",
             "enum": [
@@ -7510,6 +7977,17 @@
             "minLength": 1,
             "title": "Workspace Id"
           },
+          "team_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Id"
+          },
           "expires_in_days": {
             "type": "integer",
             "maximum": 30.0,
@@ -7522,6 +8000,7 @@
         "type": "object",
         "required": [
           "email",
+          "nome_completo",
           "role",
           "workspace_id"
         ],
@@ -7544,6 +8023,40 @@
           "email": {
             "type": "string",
             "title": "Email"
+          },
+          "personal_email": {
+            "type": "string",
+            "title": "Personal Email"
+          },
+          "corporate_email": {
+            "type": "string",
+            "title": "Corporate Email"
+          },
+          "invitee_name": {
+            "type": "string",
+            "title": "Invitee Name"
+          },
+          "team_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Id"
+          },
+          "team_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Name"
           },
           "role": {
             "type": "string",
@@ -7599,6 +8112,17 @@
             "type": "boolean",
             "title": "Email Sent",
             "default": false
+          },
+          "email_delivery_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Delivery Status"
           }
         },
         "additionalProperties": false,
@@ -7608,6 +8132,9 @@
           "organization_id",
           "workspace_id",
           "email",
+          "personal_email",
+          "corporate_email",
+          "invitee_name",
           "role",
           "expires_at",
           "invited_by_id",
@@ -7624,6 +8151,17 @@
           "workspace_name": {
             "type": "string",
             "title": "Workspace Name"
+          },
+          "team_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Name"
           },
           "role": {
             "type": "string",
@@ -7660,6 +8198,28 @@
             ],
             "title": "Invited By Name"
           },
+          "invitee_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invitee Name"
+          },
+          "corporate_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corporate Email"
+          },
           "user_exists": {
             "type": "boolean",
             "title": "User Exists",
@@ -7695,6 +8255,59 @@
           "email": {
             "type": "string",
             "title": "Email"
+          },
+          "personal_email": {
+            "type": "string",
+            "title": "Personal Email"
+          },
+          "corporate_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corporate Email"
+          },
+          "invitee_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invitee Name"
+          },
+          "team_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Id"
+          },
+          "team_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Name"
+          },
+          "reservation_active": {
+            "type": "boolean",
+            "title": "Reservation Active",
+            "default": true
           },
           "role": {
             "type": "string",
@@ -7822,6 +8435,17 @@
             "type": "boolean",
             "title": "Email Sent",
             "default": false
+          },
+          "email_delivery_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Delivery Status"
           }
         },
         "additionalProperties": false,
@@ -7831,6 +8455,7 @@
           "organization_id",
           "workspace_id",
           "email",
+          "personal_email",
           "role",
           "status",
           "expires_at",
@@ -7856,6 +8481,59 @@
           "email": {
             "type": "string",
             "title": "Email"
+          },
+          "personal_email": {
+            "type": "string",
+            "title": "Personal Email"
+          },
+          "corporate_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corporate Email"
+          },
+          "invitee_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invitee Name"
+          },
+          "team_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Id"
+          },
+          "team_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Name"
+          },
+          "reservation_active": {
+            "type": "boolean",
+            "title": "Reservation Active",
+            "default": true
           },
           "role": {
             "type": "string",
@@ -7965,6 +8643,7 @@
           "organization_id",
           "workspace_id",
           "email",
+          "personal_email",
           "role",
           "status",
           "expires_at",
@@ -7994,9 +8673,16 @@
             "title": "Cpf"
           },
           "telefone": {
-            "type": "string",
-            "maxLength": 20,
-            "minLength": 10,
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20,
+                "minLength": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Telefone"
           },
           "senha": {
@@ -8006,9 +8692,16 @@
             "title": "Senha"
           },
           "idade": {
-            "type": "integer",
-            "maximum": 120.0,
-            "minimum": 18.0,
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 120.0,
+                "minimum": 18.0
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Idade"
           },
           "termos_contrato": {
@@ -8024,16 +8717,14 @@
           "token",
           "nome_completo",
           "cpf",
-          "telefone",
-          "senha",
-          "idade"
+          "senha"
         ],
         "title": "InviteRegistrationCreate"
       },
       "InviteRegistrationResponse": {
         "properties": {
           "user": {
-            "$ref": "#/components/schemas/UserResponse"
+            "$ref": "#/components/schemas/InvitedUserResponse"
           },
           "invitation": {
             "additionalProperties": true,
@@ -8072,6 +8763,134 @@
           "expires_in"
         ],
         "title": "InviteRegistrationResponse"
+      },
+      "InvitedUserResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "cpf": {
+            "type": "string",
+            "title": "Cpf"
+          },
+          "telefone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telefone"
+          },
+          "idade": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idade"
+          },
+          "termos_contrato": {
+            "type": "boolean",
+            "title": "Termos Contrato"
+          },
+          "status_ativo": {
+            "type": "boolean",
+            "title": "Status Ativo"
+          },
+          "interno_adm": {
+            "type": "boolean",
+            "title": "Interno Adm"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "avatar_content_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Content Type"
+          },
+          "avatar_size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Size Bytes"
+          },
+          "criado_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Criado Em"
+          },
+          "atualizado_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Atualizado Em"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "cpf",
+          "termos_contrato",
+          "status_ativo",
+          "interno_adm",
+          "criado_em",
+          "atualizado_em"
+        ],
+        "title": "InvitedUserResponse",
+        "description": "Resposta do aceite por convite (CYB-003; mantido por compatibilidade).\n\nApós BE-04, `UserResponse` já admite `telefone`/`idade` nulos — este alias\nnão adiciona regra nova e existe apenas para não quebrar o contrato do\n201 publicado no ciclo anterior."
       },
       "LoginRequest": {
         "properties": {
@@ -8827,13 +9646,20 @@
             "minLength": 3,
             "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
             "title": "Slug"
+          },
+          "corporate_domain": {
+            "type": "string",
+            "maxLength": 254,
+            "minLength": 4,
+            "title": "Corporate Domain"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
           "nome",
-          "slug"
+          "slug",
+          "corporate_domain"
         ],
         "title": "OrganizacaoInput"
       },
@@ -8850,6 +9676,17 @@
           "slug": {
             "type": "string",
             "title": "Slug"
+          },
+          "corporate_domain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corporate Domain"
           },
           "role": {
             "type": "string",
@@ -8879,6 +9716,17 @@
             "type": "string",
             "title": "Slug"
           },
+          "corporate_domain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corporate Domain"
+          },
           "role": {
             "type": "string",
             "title": "Role"
@@ -8898,6 +9746,108 @@
           "status"
         ],
         "title": "OrganizationContextResponse"
+      },
+      "PlanCatalogResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PlanResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "provider": {
+            "type": "string",
+            "const": "stub",
+            "title": "Provider",
+            "default": "stub"
+          },
+          "simulation": {
+            "type": "boolean",
+            "title": "Simulation",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "PlanCatalogResponse"
+      },
+      "PlanCreateRequest": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_]{0,19}$",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 2,
+            "title": "Name"
+          },
+          "price_cents": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Price Cents"
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "title": "Currency"
+          },
+          "seat_limit": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seat Limit"
+          },
+          "overage": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overage"
+          },
+          "trial_days": {
+            "type": "integer",
+            "maximum": 365.0,
+            "minimum": 0.0,
+            "title": "Trial Days",
+            "default": 14
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "name",
+          "price_cents",
+          "currency",
+          "seat_limit",
+          "overage"
+        ],
+        "title": "PlanCreateRequest"
       },
       "PlanResponse": {
         "properties": {
@@ -8959,6 +9909,98 @@
           "active"
         ],
         "title": "PlanResponse"
+      },
+      "PlanUpdateRequest": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "price_cents": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Cents"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Z]{3}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "seat_limit": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seat Limit"
+          },
+          "overage": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overage"
+          },
+          "trial_days": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 365.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trial Days"
+          },
+          "active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "PlanUpdateRequest"
       },
       "ReactionList": {
         "properties": {
@@ -10095,11 +11137,25 @@
             "title": "Cpf"
           },
           "telefone": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Telefone"
           },
           "idade": {
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Idade"
           },
           "termos_contrato": {
@@ -10185,15 +11241,14 @@
           "id",
           "email",
           "cpf",
-          "telefone",
-          "idade",
           "termos_contrato",
           "status_ativo",
           "interno_adm",
           "criado_em",
           "atualizado_em"
         ],
-        "title": "UserResponse"
+        "title": "UserResponse",
+        "description": "Contrato de resposta: a migration 0020 permite telefone/idade NULL.\n\nO aceite por convite persiste ambos como NULL quando omitidos; torná-los\nopcionais aqui faz `/auth/me` e `/me/context` carregarem a sessão sem\nduplicar schema. `_UserIdentity`, `UserRegister` e `UserUpdate` continuam\nexigindo os campos na entrada (CYB-006)."
       },
       "UserStatusUpdate": {
         "properties": {
@@ -10501,6 +11556,28 @@
             "type": "string",
             "format": "date-time",
             "title": "Criado Em"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
           }
         },
         "type": "object",

@@ -31,9 +31,19 @@ class DefaultErrorRenderer:
         )
 
     def render_http(self, exc: StarletteHTTPException) -> tuple[int, Any]:
+        message = "The request is invalid or cannot be served"
+        if exc.status_code == status.HTTP_429_TOO_MANY_REQUESTS:
+            # BUG-T3-014: o detalhe enviado pela rota já está em PT-BR e é a
+            # única orientação acionável para o cliente; o texto genérico
+            # em inglês impedia o frontend de explicar o bloqueio ao usuário.
+            message = (
+                str(exc.detail)
+                if exc.detail
+                else "Muitas tentativas. Aguarde antes de tentar novamente."
+            )
         return exc.status_code, ErrorSchema(
             status_code=exc.status_code,
-            message="The request is invalid or cannot be served",
+            message=message,
             detail=build_trace_reference_detail(),
             error_code=get_error_code(exc.status_code),
             error_messages=[{"detail": str(exc.detail)}] if exc.detail else None,

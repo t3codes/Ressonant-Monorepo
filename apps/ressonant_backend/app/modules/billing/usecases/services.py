@@ -6,18 +6,27 @@ from typing import Literal
 from app.common.exceptions import ConflictException
 from app.modules.billing.dataproviders.repository import BillingRepository
 from app.modules.billing.domain.gateway import BillingGateway
-from app.modules.billing.domain.models import Plan, Subscription
+from app.modules.billing.domain.models import PLAN_CODES, Plan, Subscription
 from app.modules.billing.schemas.dto import (
     BillingResponse,
+    PlanCatalogResponse,
+    PlanCreateRequest,
     PlanResponse,
+    PlanUpdateRequest,
     SubscriptionResponse,
 )
 from app.modules.user.domain.models import User
 from app.modules.workspace_management.domain.models import AuditEvent
-from common.errors import ExceptionData, ForbiddenException, NotFoundException
+from common.errors import (
+    BadRequestException,
+    ExceptionData,
+    ForbiddenException,
+    NotFoundException,
+)
 from sqlalchemy.exc import IntegrityError
 
 _BILLING_MANAGE_ROLES = frozenset({"owner", "billing_owner"})
+_PROTECTED_PLAN_CODES = frozenset(PLAN_CODES)
 _DEFAULT_PLAN_CODE = "inicial"
 _TRANSITIONS: dict[str, frozenset[str]] = {
     "trialing": frozenset({"active"}),
@@ -64,15 +73,20 @@ class BillingService:
         )
 
     @staticmethod
-    def _not_found(message: str, error_code: str) -> NotFoundException:
+    def _not_found(
+        message: str, error_code: str, *, detail: str | None = None
+    ) -> NotFoundException:
         return NotFoundException(
-            ExceptionData(message=message, error_code=error_code), is_expected=True
+            ExceptionData(message=message, detail=detail, error_code=error_code),
+            is_expected=True,
         )
 
     @staticmethod
-    def _conflict(message: str, error_code: str) -> ConflictException:
+    def _conflict(message: str, error_code: str, *, detail: str | None = None) -> ConflictException:
         return ConflictException(
-            ExceptionData(message=message, error_code=error_code, error_layer="domain"),
+            ExceptionData(
+                message=message, detail=detail, error_code=error_code, error_layer="domain"
+            ),
             is_expected=True,
         )
 
@@ -390,3 +404,94 @@ class BillingService:
             self._repo.rollback()
             raise
         return self._build_response(organization_id)
+
+    @staticmethod
+    def _require_plan_changes(payload: PlanUpdateRequest) -> None:
+        if payload.model_fields_set:
+            return
+        raise BadRequestException(
+            ExceptionData(
+                message="Pelo menos um campo deve ser enviado",
+                error_code="VALIDATION_ERROR",
+                error_messages=[
+                    {
+                        "loc": ["body"],
+                        "msg": "At least one field is required",
+                        "type": "value_error",
+                    }
+                ],
+            ),
+            status_code=422,
+            is_expected=True,
+        )
+
+    def list_plans(self) -> PlanCatalogResponse:
+        """Catálogo público: somente planos ativos, ordenados por código."""
+        return PlanCatalogResponse(
+            items=[self._plan_response(plan) for plan in self._repo.list_active_plans()],
+            provider="stub",
+            simulation=True,
+        )
+
+    def create_plan(self, payload: PlanCreateRequest) -> PlanResponse:
+        if payload.code in _PROTECTED_PLAN_CODES:
+            raise self._conflict(
+                "Código de plano protegido", "DUPLICATE_CODE", detail="duplicate_code"
+            )
+        if self._repo.get_plan_by_code_including_inactive(payload.code) is not None:
+            raise self._conflict(
+                "Código de plano já existe", "DUPLICATE_CODE", detail="duplicate_code"
+            )
+        plan = Plan(
+            code=payload.code,
+            name=payload.name,
+            price_cents=payload.price_cents,
+            currency=payload.currency,
+            seat_limit=payload.seat_limit,
+            overage_cents_per_seat=payload.overage,
+            trial_days=payload.trial_days,
+            active=payload.active,
+        )
+        try:
+            self._repo.add_plan(plan)
+            self._repo.commit()
+        except IntegrityError as exc:
+            self._repo.rollback()
+            raise self._conflict(
+                "Código de plano já existe", "DUPLICATE_CODE", detail="duplicate_code"
+            ) from exc
+        except Exception:
+            self._repo.rollback()
+            raise
+        return self._plan_response(plan)
+
+    def update_plan(self, code: str, payload: PlanUpdateRequest) -> PlanResponse:
+        if code in _PROTECTED_PLAN_CODES:
+            raise self._conflict("Plano protegido", "PROTECTED_PLAN", detail="protected_plan")
+        self._require_plan_changes(payload)
+        plan = self._repo.get_plan_by_code_including_inactive(code)
+        if plan is None:
+            raise self._not_found("Plano não encontrado", "PLAN_NOT_FOUND", detail="plan_not_found")
+        field_map = {"overage": "overage_cents_per_seat"}
+        for field, value in payload.model_dump(exclude_unset=True).items():
+            setattr(plan, field_map.get(field, field), value)
+        try:
+            self._repo.commit()
+        except Exception:
+            self._repo.rollback()
+            raise
+        return self._plan_response(plan)
+
+    def deactivate_plan(self, code: str) -> PlanResponse:
+        if code in _PROTECTED_PLAN_CODES:
+            raise self._conflict("Plano protegido", "PROTECTED_PLAN", detail="protected_plan")
+        plan = self._repo.get_plan_by_code_including_inactive(code)
+        if plan is None:
+            raise self._not_found("Plano não encontrado", "PLAN_NOT_FOUND", detail="plan_not_found")
+        try:
+            plan.active = False
+            self._repo.commit()
+        except Exception:
+            self._repo.rollback()
+            raise
+        return self._plan_response(plan)

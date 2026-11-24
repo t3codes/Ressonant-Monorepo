@@ -112,6 +112,32 @@ class CardCloneInput(BaseModel):
     pass
 
 
+class CardDeleteInput(BaseModel):
+    """Corpo opcional do delete: reason vai para auditoria; version é otimistic locking."""
+
+    reason: str | None = Field(default=None, max_length=500)
+    expected_version: int | None = Field(default=None, ge=1)
+
+
+class CardCommentCreate(BaseModel):
+    body: Annotated[str, Field(min_length=1, max_length=2000)]
+
+
+class CardCommentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    card_id: str
+    author_id: str
+    body: str
+    criado_em: datetime
+
+
+class CardCommentList(BaseModel):
+    items: list[CardCommentResponse]
+    total: int
+
+
 class CardHistoryResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

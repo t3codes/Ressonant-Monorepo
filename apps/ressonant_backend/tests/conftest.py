@@ -195,7 +195,11 @@ def register_payload(**overrides: object) -> dict[str, object]:
         "idade": 25,
         "termos_contrato": True,
         "telefone": "(11) 98765-4321",
-        "organizacao": {"nome": "Acme Ltda", "slug": f"acme-{uuid.uuid4().hex[:8]}"},
+        "organizacao": {
+            "nome": "Acme Ltda",
+            "slug": f"acme-{uuid.uuid4().hex[:8]}",
+            "corporate_domain": "example.com",
+        },
         "plano_id": "equipe",
         "workspace_nome": "Acme Ltda",
         "equipe_inicial_nome": "Engenharia",

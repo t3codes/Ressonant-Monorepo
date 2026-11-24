@@ -102,13 +102,21 @@ class UserAdminUpdate(BaseModel):
 
 
 class UserResponse(BaseModel):
+    """Contrato de resposta: a migration 0020 permite telefone/idade NULL.
+
+    O aceite por convite persiste ambos como NULL quando omitidos; torná-los
+    opcionais aqui faz `/auth/me` e `/me/context` carregarem a sessão sem
+    duplicar schema. `_UserIdentity`, `UserRegister` e `UserUpdate` continuam
+    exigindo os campos na entrada (CYB-006).
+    """
+
     model_config = ConfigDict(from_attributes=True)
 
     id: str
     email: str
     cpf: str
-    telefone: str
-    idade: int
+    telefone: str | None = None
+    idade: int | None = None
     termos_contrato: bool
     status_ativo: bool
     interno_adm: bool
@@ -119,6 +127,18 @@ class UserResponse(BaseModel):
     avatar_size_bytes: int | None = None
     criado_em: datetime
     atualizado_em: datetime
+
+
+class InvitedUserResponse(UserResponse):
+    """Resposta do aceite por convite (CYB-003; mantido por compatibilidade).
+
+    Após BE-04, `UserResponse` já admite `telefone`/`idade` nulos — este alias
+    não adiciona regra nova e existe apenas para não quebrar o contrato do
+    201 publicado no ciclo anterior.
+    """
+
+    telefone: str | None = None
+    idade: int | None = None
 
 
 class UserList(BaseModel):

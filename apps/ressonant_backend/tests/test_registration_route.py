@@ -135,7 +135,11 @@ def test_register_route_rejects_duplicate_email_cpf_and_org_slug(
         json=register_payload(
             email="terceira@ressonant.dev",
             cpf=VALID_CPFS[2],
-            organizacao={"nome": "Outra", "slug": first["organizacao"]["slug"]},
+            organizacao={
+                "nome": "Outra",
+                "slug": first["organizacao"]["slug"],
+                "corporate_domain": first["organizacao"]["corporate_domain"],
+            },
         ),
     )
     assert same_org_slug.status_code == 409

@@ -1,5 +1,9 @@
 import pytest
-from app.modules.auth.schemas.dto import ConvidadoInput, RegistrationCreate
+from app.modules.auth.schemas.dto import (
+    ConvidadoInput,
+    InviteRegistrationCreate,
+    RegistrationCreate,
+)
 from pydantic import ValidationError
 from tests.conftest import VALID_CPFS
 
@@ -15,7 +19,11 @@ def registration_payload(**overrides: object) -> dict[str, object]:
         "idade": 30,
         "senha": "senha-forte-1",
         "termos_contrato": True,
-        "organizacao": {"nome": "Acme Ltda", "slug": "acme"},
+        "organizacao": {
+            "nome": "Acme Ltda",
+            "slug": "acme",
+            "corporate_domain": "example.com",
+        },
         "plano_id": "equipe",
         "trial": True,
         "workspace_nome": "Acme Ltda",
@@ -114,3 +122,87 @@ def test_convidado_defaults_to_member_role() -> None:
 
     assert convidado.role == "member"
     assert convidado.nome is None
+
+
+def test_corporate_domain_is_required() -> None:
+    payload = registration_payload()
+    del payload["organizacao"]["corporate_domain"]  # type: ignore[attr-defined]
+
+    with pytest.raises(ValidationError) as exc:
+        RegistrationCreate.model_validate(payload)
+
+    assert "organizacao.corporate_domain" in error_paths(exc.value)
+
+
+@pytest.mark.parametrize(
+    "domain",
+    [
+        "joao@example.com",
+        "https://example.com",
+        "example.com/path",
+        "example",
+        ".example.com",
+        "example.com.",
+        "empresa.local",
+        "empresa.test",
+        "empresa.invalid",
+        "empresa.localhost",
+        "empresa example.com",
+    ],
+)
+def test_invalid_corporate_domain_is_rejected(domain: str) -> None:
+    with pytest.raises(ValidationError) as exc:
+        RegistrationCreate.model_validate(
+            registration_payload(
+                organizacao={"nome": "Acme Ltda", "slug": "acme", "corporate_domain": domain}
+            )
+        )
+
+    assert "organizacao.corporate_domain" in error_paths(exc.value)
+
+
+def test_corporate_domain_is_normalized() -> None:
+    dto = RegistrationCreate.model_validate(
+        registration_payload(
+            organizacao={
+                "nome": "Acme Ltda",
+                "slug": "acme",
+                "corporate_domain": "  Example.COM  ",
+            }
+        )
+    )
+
+    assert dto.organizacao.corporate_domain == "example.com"
+
+
+def test_invite_registration_accepts_minimal_payload_with_valid_cpf() -> None:
+    dto = InviteRegistrationCreate.model_validate(
+        {
+            "token": "t" * 32,
+            "nome_completo": "Helena Rocha",
+            "cpf": "529.982.247-25",
+            "senha": "senha-forte-1",
+            "termos_contrato": True,
+        }
+    )
+
+    assert dto.cpf == "52998224725"
+    assert dto.telefone is None
+    assert dto.idade is None
+    assert dto.termos_contrato is True
+
+
+@pytest.mark.parametrize("cpf", ["111.111.111-11", "529.982.247-26", "123"])
+def test_invite_registration_rejects_invalid_cpf(cpf: str) -> None:
+    with pytest.raises(ValidationError) as exc:
+        InviteRegistrationCreate.model_validate(
+            {
+                "token": "t" * 32,
+                "nome_completo": "Helena Rocha",
+                "cpf": cpf,
+                "senha": "senha-forte-1",
+                "termos_contrato": True,
+            }
+        )
+
+    assert "cpf" in error_paths(exc.value)

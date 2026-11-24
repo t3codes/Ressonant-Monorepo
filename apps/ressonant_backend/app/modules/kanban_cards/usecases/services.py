@@ -1,17 +1,26 @@
+import uuid
 from datetime import UTC, datetime
 
 from app.common.exceptions import ConflictException
 from app.modules.kanban_boards.dataproviders.repository import BoardRepository
 from app.modules.kanban_cards.dataproviders.repository import CardRepository
-from app.modules.kanban_cards.domain.models import Card, CardHistory
+from app.modules.kanban_cards.domain.models import Card, CardComment, CardHistory
 from app.modules.kanban_cards.schemas.dto import (
     CardBlockInput,
+    CardCommentCreate,
     CardCreate,
+    CardDeleteInput,
     CardMoveInput,
     CardUnblockInput,
     CardUpdate,
 )
-from common.errors import ExceptionData, ForbiddenException, NotFoundException
+from app.modules.workspace_management.domain.models import AuditEvent
+from common.errors import (
+    BadRequestException,
+    ExceptionData,
+    ForbiddenException,
+    NotFoundException,
+)
 from sqlalchemy.exc import IntegrityError
 
 
@@ -30,6 +39,10 @@ def _forbidden(message: str) -> ForbiddenException:
     return ForbiddenException(
         ExceptionData(message=message, error_code="FORBIDDEN"), is_expected=True
     )
+
+
+def _bad_request(message: str, code: str) -> BadRequestException:
+    return BadRequestException(ExceptionData(message=message, error_code=code), is_expected=True)
 
 
 class CardService:
@@ -71,8 +84,16 @@ class CardService:
         if not team.key_prefix:
             raise _conflict("Time sem prefixo de chave configurado", "TEAM_KEY_PREFIX_MISSING")
 
-        # count + insert não é atômico; o índice único é a última linha de defesa.
-        sequence = self._card_repo.count_by_team(board.team_id) + 1
+        if payload.parent_id:
+            try:
+                uuid.UUID(payload.parent_id)
+            except ValueError as exc:
+                raise _conflict("parent_id inválido", "CARD_PARENT_INVALID") from exc
+            # Mesmo lock do delete: fecha a janela entre checar filhos e excluir o pai.
+            self._card_repo.lock_card(payload.parent_id)
+
+        # max + insert não é atômico; o índice único é a última linha de defesa.
+        sequence = self._card_repo.max_sequence_by_team(board.team_id) + 1
         key = f"{team.key_prefix}-{sequence}"[:50]
 
         card = Card(
@@ -115,6 +136,28 @@ class CardService:
         if team_repo.is_member(card.team_id, user_id) is None:
             raise _forbidden("Você não é membro do time deste card")
         return card
+
+    def create_comment(self, card_id: str, payload: CardCommentCreate, user_id: str) -> CardComment:
+        """author_id vem sempre do JWT; o corpo do cliente nunca decide autoria."""
+        card = self.get(card_id, user_id)
+        self._require_editor(card.team_id, user_id)
+        body = payload.body.strip()
+        if not body:
+            raise _bad_request("Comentário não pode ser vazio", "CARD_COMMENT_BODY_REQUIRED")
+        comment = CardComment(card_id=card_id, author_id=user_id, body=body)
+        try:
+            self._card_repo.add_comment(comment)
+            self._card_repo.commit()
+        except Exception:
+            self._card_repo.rollback()
+            raise
+        return comment
+
+    def list_comments(
+        self, card_id: str, user_id: str, skip: int = 0, limit: int = 50
+    ) -> tuple[list[CardComment], int]:
+        self.get(card_id, user_id)
+        return self._card_repo.list_comments(card_id, skip, limit)
 
     def list_for_board(
         self,
@@ -285,6 +328,65 @@ class CardService:
             self._card_repo.rollback()
             raise
         return cloned
+
+    def delete(
+        self,
+        card_id: str,
+        payload: CardDeleteInput | None,
+        user_id: str,
+        actor_is_interno_adm: bool = False,
+    ) -> None:
+        """Exclusão com auditoria append-only na MESMA transação (um único commit)."""
+        card = self.get(card_id, user_id)
+        self._require_editor(card.team_id, user_id)
+        if payload and payload.expected_version is not None:
+            if card.version != payload.expected_version:
+                raise _conflict(
+                    "Versão desatualizada. O card foi modificado por outro usuário.",
+                    "CARD_VERSION_CONFLICT",
+                )
+        reason = (payload.reason or "").strip() if payload else ""
+
+        try:
+            self._card_repo.lock_card(card.id)
+            if self._card_repo.has_children(card.id):
+                raise _conflict(
+                    "Card possui cards filhos; exclua os filhos antes",
+                    "CARD_HAS_CHILDREN",
+                )
+            if self._card_repo.count_worklogs(card.id) > 0:
+                raise _conflict(
+                    "Card possui apontamentos de horas; exclusão bloqueada",
+                    "CARD_HAS_WORKLOGS",
+                )
+            snapshot = self._card_repo.delete_snapshot(card)
+            board = self._board_repo.get_by_id(card.board_id)
+            # organization_id fica NULL: a FK é RESTRICT e um valor inválido abortaria o INSERT.
+            event = AuditEvent(
+                workspace_id=board.workspace_id if board else None,
+                organization_id=None,
+                scope="card",
+                actor_user_id=user_id,
+                actor_type="internal_admin" if actor_is_interno_adm else "user",
+                action="card.deleted",
+                entity_type="card",
+                entity_id=card.id,
+                before=snapshot,
+                metadata_={"reason": reason or "user_request", "source": "BUG-T3-016"},
+                result="success",
+            )
+            self._card_repo.add_audit_event(event)
+            self._card_repo.delete_card(card)
+            self._card_repo.commit()
+        except IntegrityError as exc:
+            self._card_repo.rollback()
+            raise _conflict(
+                "Falha ao gravar auditoria da exclusão; nada foi excluído",
+                "CARD_DELETE_AUDIT_FAILED",
+            ) from exc
+        except Exception:
+            self._card_repo.rollback()
+            raise
 
     def _is_privileged_unblocker(
         self, card: Card, actor_id: str, actor_is_interno_adm: bool

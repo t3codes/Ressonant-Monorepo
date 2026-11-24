@@ -21,12 +21,18 @@ from app.modules.organization.schemas.dto import (
     InvitationResendResponse,
     InvitationResponse,
 )
+from app.modules.organization.usecases.corporate_email import (
+    corporate_email_candidates,
+    normalize_name_tokens,
+)
 from app.modules.teams.dataproviders.repository import TeamRepository
 from app.modules.teams.domain.models import TeamMember
 from app.modules.user.domain.models import User
 from app.modules.workspace.domain.models import Workspace, WorkspaceMember
 from app.modules.workspace_management.domain.models import AuditEvent
-from common.errors import ExceptionData, ForbiddenException, NotFoundException
+from common.errors import BadRequestException, ExceptionData, ForbiddenException, NotFoundException
+from fastapi import status
+from sqlalchemy.exc import IntegrityError
 
 _INVITATION_MANAGE_ROLES = frozenset({"owner", "admin"})
 
@@ -61,6 +67,14 @@ class InvitationService:
     def _conflict(message: str, error_code: str) -> ConflictException:
         return ConflictException(
             ExceptionData(message=message, error_code=error_code, error_layer="organization"),
+            is_expected=True,
+        )
+
+    @staticmethod
+    def _bad_request(message: str, error_code: str) -> BadRequestException:
+        return BadRequestException(
+            ExceptionData(message=message, error_code=error_code, error_layer="organization"),
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             is_expected=True,
         )
 
@@ -139,6 +153,35 @@ class InvitationService:
             raise self._not_found("Organização não encontrada", "ORGANIZATION_NOT_FOUND")
         return organization
 
+    def _generate_corporate_email(self, *, full_name: str, organization) -> str:
+        domain = (organization.corporate_domain or "").strip().lower()
+        if not domain:
+            raise self._bad_request(
+                "Organização sem domínio corporativo configurado. "
+                "Defina corporate_domain antes de convidar.",
+                "CORPORATE_DOMAIN_NOT_CONFIGURED",
+            )
+        try:
+            tokens = normalize_name_tokens(full_name)
+            candidates = corporate_email_candidates(tokens, domain)
+        except ValueError:
+            raise self._bad_request(
+                "Nome completo sem caracteres válidos para gerar o e-mail corporativo.",
+                "INVALID_INVITEE_NAME",
+            ) from None
+        available = self._repo.first_available_corporate_email(candidates)
+        if available is None:
+            raise self._conflict(
+                "Não há e-mail corporativo disponível para este nome.",
+                "CORPORATE_EMAIL_EXHAUSTED",
+            )
+        return available
+
+    def _team_name(self, team_id: str | None, workspace_id: str) -> str | None:
+        # CYB-002: nunca resolver o nome de um time fora do workspace da rota.
+        team = self._repo.get_team_in_workspace(team_id, workspace_id)
+        return team.name if team else None
+
     def _authorize_manage(
         self, organization_id: str, actor: User, *, reason: str | None = None
     ) -> str:
@@ -175,7 +218,9 @@ class InvitationService:
                 "SEAT_LIMIT_EXCEEDED",
             )
 
-    def _ensure_default_team_membership(self, *, workspace_id: str, user_id: str, role: str) -> bool:
+    def _ensure_default_team_membership(
+        self, *, workspace_id: str, user_id: str, role: str
+    ) -> bool:
         team_repo = TeamRepository(self._repo.db)
         team = team_repo.get_default_for_workspace(workspace_id)
         if team is None:
@@ -209,7 +254,7 @@ class InvitationService:
 
     def _enqueue_invite_email(
         self, *, invitation: Invitation, token: str, event_type: str, actor: User | None
-    ) -> tuple[str, bool]:
+    ) -> tuple[str, bool, str]:
         workspace = self._repo.get_workspace(invitation.workspace_id)
         organization = self._repo.get_by_id(invitation.organization_id)
         invite_url = build_invite_url(self._settings.frontend_base_url, token)
@@ -226,7 +271,7 @@ class InvitationService:
                 after={"send_status": "not_configured", "reason": "email_disabled"},
             )
             self._repo.commit()
-            return invite_url, False
+            return invite_url, False, "not_configured"
 
         payload = {
             "invite_url": invite_url,
@@ -259,7 +304,9 @@ class InvitationService:
             self._repo.set_invitation_send_status(invitation, send_status="pending")
         self._repo.commit()
         refreshed = self._repo.get_invitation_by_id(invitation.id) or invitation
-        return invite_url, refreshed.send_status == "sent"
+        # email_sent continua com o significado antigo: true somente quando o
+        # envio já foi confirmado. O estado real do outbox vai em campo novo.
+        return invite_url, refreshed.send_status == "sent", row.status
 
     def create_invitation(
         self,
@@ -274,11 +321,27 @@ class InvitationService:
         if org is None:
             raise self._not_found("Organização não encontrada", "ORGANIZATION_NOT_FOUND")
         self._require_workspace_in_org(organization_id, payload.workspace_id)
-        email = self._normalize_email(str(payload.email))
+        if payload.team_id is not None and (
+            self._repo.get_team_in_workspace(payload.team_id, payload.workspace_id) is None
+        ):
+            raise self._bad_request(
+                "O time informado não pertence ao workspace da organização.",
+                "INVALID_TEAM",
+            )
+        personal_email = self._normalize_email(str(payload.email))
+        invitee_name = payload.nome_completo.strip()
+
+        # A function expira reservas vencidas antes de qualquer checagem de
+        # disponibilidade, sob a mesma lock da organização.
+        self._repo.expire_invitation_reservations()
+        corporate_email = self._generate_corporate_email(full_name=invitee_name, organization=org)
+        team_name = self._team_name(payload.team_id, payload.workspace_id)
 
         now = datetime.now(UTC)
         pending = self._repo.get_pending_invitation(
-            organization_id=organization_id, workspace_id=payload.workspace_id, email=email
+            organization_id=organization_id,
+            workspace_id=payload.workspace_id,
+            email=personal_email,
         )
         if pending is not None and self._status(pending, now=now) == "pending":
             raise self._conflict(
@@ -292,7 +355,11 @@ class InvitationService:
         invitation = Invitation(
             organization_id=organization_id,
             workspace_id=payload.workspace_id,
-            email=email,
+            email=personal_email,
+            corporate_email=corporate_email,
+            invitee_name=invitee_name,
+            team_id=payload.team_id,
+            reservation_active=True,
             role=payload.role,
             token_hash=self._hash_token(token),
             expires_at=now + timedelta(days=payload.expires_in_days),
@@ -310,18 +377,22 @@ class InvitationService:
                 after={"status": "pending", "expires_at": invitation.expires_at.isoformat()},
             )
             self._repo.commit()
-        except Exception as exc:
+        except IntegrityError as exc:
             self._repo.rollback()
-            from sqlalchemy.exc import IntegrityError
-
-            if isinstance(exc, IntegrityError):
+            if "uq_invitations_active_corporate_email" in str(exc):
                 raise self._conflict(
-                    "Já existe convite pendente para este e-mail",
-                    "INVITATION_ALREADY_EXISTS",
+                    "E-mail corporativo já reservado por outro convite.",
+                    "CORPORATE_EMAIL_ALREADY_RESERVED",
                 ) from None
+            raise self._conflict(
+                "Já existe convite pendente para este e-mail",
+                "INVITATION_ALREADY_EXISTS",
+            ) from None
+        except Exception:
+            self._repo.rollback()
             raise
 
-        invite_url, email_sent = self._enqueue_invite_email(
+        invite_url, email_sent, delivery_status = self._enqueue_invite_email(
             invitation=invitation, token=token, event_type="invitation.created", actor=actor
         )
         secret_fields = self._secret_response_fields(token=token, invite_url=invite_url)
@@ -330,7 +401,12 @@ class InvitationService:
             id=invitation.id,
             organization_id=invitation.organization_id,
             workspace_id=invitation.workspace_id,
-            email=invitation.email,
+            email=invitation.personal_email,
+            personal_email=invitation.personal_email,
+            corporate_email=invitation.corporate_email,
+            invitee_name=invitation.invitee_name,
+            team_id=invitation.team_id,
+            team_name=team_name,
             role=invitation.role,  # type: ignore[arg-type]
             status="pending",
             expires_at=invitation.expires_at,
@@ -339,6 +415,7 @@ class InvitationService:
             token=secret_fields["token"],
             invite_url=secret_fields["invite_url"],
             email_sent=email_sent,
+            email_delivery_status=delivery_status,
         )
 
     def list_invitations(
@@ -355,7 +432,13 @@ class InvitationService:
             id=inv.id,
             organization_id=inv.organization_id,
             workspace_id=inv.workspace_id,
-            email=inv.email,
+            email=inv.personal_email,
+            personal_email=inv.personal_email,
+            corporate_email=inv.corporate_email,
+            invitee_name=inv.invitee_name,
+            team_id=inv.team_id,
+            team_name=self._team_name(inv.team_id, inv.workspace_id),
+            reservation_active=bool(inv.reservation_active),
             role=inv.role,
             status=self._status(inv, now=now),
             expires_at=inv.expires_at,
@@ -382,15 +465,22 @@ class InvitationService:
             if hasattr(self._repo, "get_user_by_id")
             else None
         )
-        user_exists = bool(self._repo.get_user_by_email(invitation.email))
+        corporate_email = invitation.corporate_email
+        user_exists = bool(
+            (corporate_email and self._repo.get_user_by_email(corporate_email))
+            or self._repo.get_user_by_email(invitation.personal_email)
+        )
         return InvitationPublicResponse(
             organization_name=org.name if org else "Organização",
             workspace_name=ws.name if ws else "Workspace",
+            team_name=self._team_name(invitation.team_id, invitation.workspace_id),
             role=invitation.role,
-            email_masked=self._mask_email(invitation.email),
+            email_masked=self._mask_email(invitation.personal_email),
             expires_at=invitation.expires_at,
             status=status,
             invited_by_name=(inviter.name or inviter.email) if inviter else None,
+            invitee_name=invitation.invitee_name,
+            corporate_email=corporate_email,
             user_exists=user_exists,
         )
 
@@ -429,7 +519,7 @@ class InvitationService:
         except Exception:
             self._repo.rollback()
             raise
-        invite_url, email_sent = self._enqueue_invite_email(
+        invite_url, email_sent, delivery_status = self._enqueue_invite_email(
             invitation=invitation, token=token, event_type="invitation.resent", actor=actor
         )
         refreshed = self._repo.get_invitation_by_id(invitation.id) or invitation
@@ -440,6 +530,7 @@ class InvitationService:
             token=secret_fields["token"],
             invite_url=secret_fields["invite_url"],
             email_sent=email_sent,
+            email_delivery_status=delivery_status,
         )
 
     def revoke_invitation(
@@ -522,7 +613,9 @@ class InvitationService:
                     ws_member = self._repo.get_workspace_member(invitation.workspace_id, actor.id)
                     if org_member is not None and ws_member is not None:
                         team_member_created = self._ensure_default_team_membership(
-                            workspace_id=invitation.workspace_id, user_id=actor.id, role=invitation.role
+                            workspace_id=invitation.workspace_id,
+                            user_id=actor.id,
+                            role=invitation.role,
                         )
                         channel_member_added = self._ensure_default_channel_membership(
                             workspace_id=invitation.workspace_id, user_id=actor.id

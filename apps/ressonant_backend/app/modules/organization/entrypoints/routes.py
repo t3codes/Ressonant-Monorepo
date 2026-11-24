@@ -1,7 +1,11 @@
 from typing import Annotated
 
 from app.modules.auth.deps import CurrentUser
-from app.modules.auth.usecases.services import _rate_limit
+from app.modules.auth.usecases.services import (
+    PUBLIC_READ_MAX_ATTEMPTS,
+    PUBLIC_READ_WINDOW_SECONDS,
+    _rate_limit,
+)
 from app.modules.organization.deps import get_invitation_service
 from app.modules.organization.schemas.dto import (
     InvitationAcceptResponse,
@@ -116,7 +120,16 @@ def revoke_invitation(
 
 def _check_public_rate(request: Request, scope: str) -> None:
     ip = request.client.host if request.client else "unknown"
-    allowed, info = _rate_limit.consume(f"invite:{scope}:{ip}")
+    if scope == "read":
+        # BUG-T3-014: leitura tem chave e limite próprios; não consome o bucket
+        # das mutações (accept/decline), que continua rígido em 5 tentativas.
+        allowed, info = _rate_limit.consume(
+            f"invite-read:{ip}",
+            max_attempts=PUBLIC_READ_MAX_ATTEMPTS,
+            window_seconds=PUBLIC_READ_WINDOW_SECONDS,
+        )
+    else:
+        allowed, info = _rate_limit.consume(f"invite:{scope}:{ip}")
     if not allowed:
         raise HTTPException(
             status_code=429,
@@ -132,7 +145,7 @@ def _check_public_rate(request: Request, scope: str) -> None:
 def get_public_invitation(
     token: str, request: Request, service: Service
 ) -> InvitationPublicResponse:
-    _check_public_rate(request, "public")
+    _check_public_rate(request, "read")
     return service.get_public_invitation(token)
 
 

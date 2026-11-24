@@ -1,18 +1,24 @@
 from typing import Annotated
 
-from app.modules.auth.deps import CurrentUser
+from app.modules.auth.deps import AdminUser, CurrentUser
 from app.modules.billing.deps import get_billing_service
 from app.modules.billing.schemas.dto import (
     BillingResponse,
     BillingUpdateRequest,
+    PlanCatalogResponse,
+    PlanCreateRequest,
+    PlanResponse,
+    PlanUpdateRequest,
     SubscriptionCreateRequest,
     SubscriptionStatusUpdateRequest,
 )
 from app.modules.billing.usecases.services import BillingService
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Path, Request, status
 
 router = APIRouter(prefix="/organizations/{organization_id}/billing", tags=["billing"])
+plans_router = APIRouter(prefix="/plans", tags=["plans"])
 Service = Annotated[BillingService, Depends(get_billing_service)]
+PlanCode = Annotated[str, Path(min_length=1, max_length=20, pattern=r"^[a-z][a-z0-9_]{0,19}$")]
 
 
 def _request_id(request: Request) -> str | None:
@@ -84,3 +90,29 @@ def update_subscription_status(
         request_id=_request_id(request),
         reason=_break_glass_reason(request),
     )
+
+
+@plans_router.get("", response_model=PlanCatalogResponse)
+def list_plans(service: Service) -> PlanCatalogResponse:
+    """Catálogo público: só ativos; `Authorization`, se enviado, é ignorado."""
+    return service.list_plans()
+
+
+@plans_router.post("", response_model=PlanResponse, status_code=status.HTTP_201_CREATED)
+def create_plan(payload: PlanCreateRequest, _: AdminUser, service: Service) -> PlanResponse:
+    """Adiciona plano ao catálogo (somente `interno_adm`; `active=false` por padrão)."""
+    return service.create_plan(payload)
+
+
+@plans_router.patch("/{code}", response_model=PlanResponse)
+def update_plan(
+    code: PlanCode, payload: PlanUpdateRequest, _: AdminUser, service: Service
+) -> PlanResponse:
+    """Edita plano do catálogo (somente `interno_adm`; `code` é imutável)."""
+    return service.update_plan(code, payload)
+
+
+@plans_router.delete("/{code}", response_model=PlanResponse)
+def deactivate_plan(code: PlanCode, _: AdminUser, service: Service) -> PlanResponse:
+    """Desativa plano do catálogo (remoção lógica; somente `interno_adm`)."""
+    return service.deactivate_plan(code)

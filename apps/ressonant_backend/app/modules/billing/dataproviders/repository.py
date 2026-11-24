@@ -92,6 +92,19 @@ class BillingRepository:
     def get_plan_by_code(self, code: str) -> Plan | None:
         return self._db.scalar(select(Plan).where(Plan.code == code, Plan.active.is_(True)))
 
+    def list_active_plans(self) -> list[Plan]:
+        return list(
+            self._db.scalars(select(Plan).where(Plan.active.is_(True)).order_by(Plan.code.asc()))
+        )
+
+    def get_plan_by_code_including_inactive(self, code: str) -> Plan | None:
+        return self._db.scalar(select(Plan).where(Plan.code == code))
+
+    def add_plan(self, plan: Plan) -> Plan:
+        self._db.add(plan)
+        self._db.flush()
+        return plan
+
     def get_active_subscription(self, organization_id: str) -> tuple[Subscription, Plan] | None:
         if not self._is_uuid(organization_id):
             return None

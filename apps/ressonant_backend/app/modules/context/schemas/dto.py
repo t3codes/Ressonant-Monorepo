@@ -13,6 +13,7 @@ class OrganizationContextResponse(BaseModel):
     id: str
     name: str
     slug: str
+    corporate_domain: str | None = None
     role: str
     status: str
 

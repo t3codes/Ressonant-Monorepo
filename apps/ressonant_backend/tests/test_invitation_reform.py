@@ -18,7 +18,9 @@ from tests.conftest import login, make_user
 def _seed(session_factory, *, seat_limit: int | None = 10, slug_suffix: str = ""):
     suffix = slug_suffix or uuid.uuid4().hex[:8]
     with session_factory() as db:
-        org = Organization(name=f"Org {suffix}", slug=f"org-{suffix}")
+        org = Organization(
+            name=f"Org {suffix}", slug=f"org-{suffix}", corporate_domain="example.com"
+        )
         db.add(org)
         db.flush()
         owner_email = f"owner-{suffix}@x.com"
@@ -70,7 +72,12 @@ def test_public_invitation_masks_email_and_resend_invalidates_token(client, sess
     headers = login(client, ids["owner_email"], "senha-forte-1")
     r = client.post(
         f"/organizations/{ids['org_id']}/invitations",
-        json={"email": "Guest@X.com", "role": "member", "workspace_id": ids["ws_id"]},
+        json={
+            "email": "Guest@X.com",
+            "nome_completo": "Convidado Exemplo",
+            "role": "member",
+            "workspace_id": ids["ws_id"],
+        },
         headers=headers,
     )
     assert r.status_code == 201
@@ -97,7 +104,12 @@ def test_register_invited_user_creates_identity_only_and_accepts(client, session
     headers = login(client, ids["owner_email"], "senha-forte-1")
     inv = client.post(
         f"/organizations/{ids['org_id']}/invitations",
-        json={"email": "new@x.com", "role": "member", "workspace_id": ids["ws_id"]},
+        json={
+            "email": "new@x.com",
+            "nome_completo": "Novo Exemplo",
+            "role": "member",
+            "workspace_id": ids["ws_id"],
+        },
         headers=headers,
     ).json()
     token = inv["token"]
@@ -121,8 +133,10 @@ def test_register_invited_user_creates_identity_only_and_accepts(client, session
     assert body["workspace_id"] == ids["ws_id"]
 
     with session_factory() as db:
-        user = db.query(User).filter(User.email == "new@x.com").first()
+        user = db.query(User).filter(User.email == "novo.exemplo@example.com").first()
         assert user is not None
+        assert user.corporate_email == "novo.exemplo@example.com"
+        assert user.personal_email == "new@x.com"
         orgs = db.query(OrganizationMember).filter(OrganizationMember.user_id == user.id).all()
         wss = db.query(WorkspaceMember).filter(WorkspaceMember.user_id == user.id).all()
         assert len(orgs) == 1
@@ -134,7 +148,12 @@ def test_decline_and_state_transitions(client, session_factory):
     headers = login(client, ids["owner_email"], "senha-forte-1")
     inv = client.post(
         f"/organizations/{ids['org_id']}/invitations",
-        json={"email": "decline@x.com", "role": "member", "workspace_id": ids["ws_id"]},
+        json={
+            "email": "decline@x.com",
+            "nome_completo": "Declinado Exemplo",
+            "role": "member",
+            "workspace_id": ids["ws_id"],
+        },
         headers=headers,
     ).json()
     token = inv["token"]
@@ -161,7 +180,12 @@ def test_resend_and_revoke_endpoints_and_no_token_leak(client, session_factory):
     headers = login(client, ids["owner_email"], "senha-forte-1")
     inv = client.post(
         f"/organizations/{ids['org_id']}/invitations",
-        json={"email": "r@x.com", "role": "member", "workspace_id": ids["ws_id"]},
+        json={
+            "email": "r@x.com",
+            "nome_completo": "Reenvio Exemplo",
+            "role": "member",
+            "workspace_id": ids["ws_id"],
+        },
         headers=headers,
     ).json()
     inv_id = inv["id"]
@@ -199,7 +223,12 @@ def test_seat_limit_blocks_accept_and_register(client, session_factory):
     # create should fail due to seat limit
     inv = client.post(
         f"/organizations/{ids['org_id']}/invitations",
-        json={"email": "s@x.com", "role": "member", "workspace_id": ids["ws_id"]},
+        json={
+            "email": "s@x.com",
+            "nome_completo": "Assento Exemplo",
+            "role": "member",
+            "workspace_id": ids["ws_id"],
+        },
         headers=headers,
     )
     assert inv.status_code == 409
@@ -210,7 +239,12 @@ def test_seat_limit_blocks_accept_and_register(client, session_factory):
     headers2 = login(client, ids2["owner_email"], "senha-forte-1")
     inv2 = client.post(
         f"/organizations/{ids2['org_id']}/invitations",
-        json={"email": "s2@x.com", "role": "member", "workspace_id": ids2["ws_id"]},
+        json={
+            "email": "s2@x.com",
+            "nome_completo": "Assento Dois Exemplo",
+            "role": "member",
+            "workspace_id": ids2["ws_id"],
+        },
         headers=headers2,
     )
     assert inv2.status_code == 201
@@ -242,17 +276,25 @@ def test_seat_limit_blocks_accept_and_register(client, session_factory):
     assert acc.json()["error_code"] == "SEAT_LIMIT_EXCEEDED"
 
 
-def test_register_invitation_email_mismatch_and_duplicate_account(client, session_factory):
+def test_register_invitation_accepts_with_token_when_personal_email_has_account(
+    client, session_factory
+):
     ids = _seed(session_factory)
     headers = login(client, ids["owner_email"], "senha-forte-1")
     inv = client.post(
         f"/organizations/{ids['org_id']}/invitations",
-        json={"email": "dup@x.com", "role": "member", "workspace_id": ids["ws_id"]},
+        json={
+            "email": "dup@x.com",
+            "nome_completo": "Duplicado Exemplo",
+            "role": "member",
+            "workspace_id": ids["ws_id"],
+        },
         headers=headers,
     ).json()
     token = inv["token"]
-    # existing account should be rejected with clear conflict
-    make_user(session_factory, email="dup@x.com", cpf="39053344705")
+    # A conta no e-mail pessoal não bloqueia o aceite: o token secreto e o CPF
+    # válido bastam, e a nova identidade usa o e-mail corporativo reservado.
+    existing = make_user(session_factory, email="dup@x.com", cpf="39053344705")
     r = client.post(
         "/auth/register/invitation",
         json={
@@ -265,8 +307,20 @@ def test_register_invitation_email_mismatch_and_duplicate_account(client, sessio
             "termos_contrato": True,
         },
     )
-    assert r.status_code == 409
-    assert r.json()["error_code"] == "USER_ALREADY_EXISTS"
+    assert r.status_code == 201, r.text
+    assert r.json()["organization_id"] == ids["org_id"]
+    assert r.json()["workspace_id"] == ids["ws_id"]
+
+    with session_factory() as db:
+        created = db.query(User).filter(User.email == "duplicado.exemplo@example.com").first()
+        assert created is not None
+        assert created.corporate_email == "duplicado.exemplo@example.com"
+        assert created.personal_email == "dup@x.com"
+        assert created.id != existing.id
+        untouched = db.get(User, existing.id)
+        assert untouched is not None
+        assert untouched.email == "dup@x.com"
+        assert untouched.cpf == "39053344705"
 
 
 def test_outbox_retry_and_idempotency(client, session_factory, monkeypatch):
@@ -279,7 +333,12 @@ def test_outbox_retry_and_idempotency(client, session_factory, monkeypatch):
         headers = login(client, ids["owner_email"], "senha-forte-1")
         inv = client.post(
             f"/organizations/{ids['org_id']}/invitations",
-            json={"email": "out@x.com", "role": "member", "workspace_id": ids["ws_id"]},
+            json={
+                "email": "out@x.com",
+                "nome_completo": "Outbox Exemplo",
+                "role": "member",
+                "workspace_id": ids["ws_id"],
+            },
             headers=headers,
         ).json()
         inv_id = inv["id"]
@@ -338,7 +397,12 @@ def test_invitation_audit_events_created(client, session_factory):
     headers = login(client, ids["owner_email"], "senha-forte-1")
     inv = client.post(
         f"/organizations/{ids['org_id']}/invitations",
-        json={"email": "audit@x.com", "role": "member", "workspace_id": ids["ws_id"]},
+        json={
+            "email": "audit@x.com",
+            "nome_completo": "Auditoria Exemplo",
+            "role": "member",
+            "workspace_id": ids["ws_id"],
+        },
         headers=headers,
     ).json()
     inv_id = inv["id"]

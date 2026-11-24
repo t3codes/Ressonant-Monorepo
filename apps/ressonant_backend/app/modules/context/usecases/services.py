@@ -120,6 +120,7 @@ class ContextService:
                 id=organization.id,
                 name=organization.name,
                 slug=organization.slug,
+                corporate_domain=organization.corporate_domain,
                 role=member.role if member is not None else "member",
                 status=member.status if member is not None else "active",
             )

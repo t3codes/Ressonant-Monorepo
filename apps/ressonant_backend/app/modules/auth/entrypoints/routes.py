@@ -12,6 +12,7 @@ from app.modules.auth.schemas.dto import (
 from app.modules.auth.usecases.registration import RegistrationService
 from app.modules.auth.usecases.services import AuthService
 from app.modules.user.schemas import UserResponse
+from app.modules.user.schemas.dto import InvitedUserResponse
 from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import JSONResponse
 
@@ -60,7 +61,7 @@ def register_invited_user(
     access_token, expires_in = auth_service.login(user.email, payload.senha)
     auth_service.clear_rate_limit(f"invite-register:{ip}")
     return InviteRegistrationResponse(
-        user=UserResponse.model_validate(user),
+        user=InvitedUserResponse.model_validate(user),
         invitation={
             "id": invitation.id,
             "organization_id": invitation.organization_id,

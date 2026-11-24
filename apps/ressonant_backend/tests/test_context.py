@@ -233,6 +233,7 @@ def test_owner_gets_full_context_from_database_without_users_call(
         "id": seeded["main_org_id"],
         "name": "Ressonant Corp",
         "slug": "ressonant-corp-seed",
+        "corporate_domain": None,
         "role": "owner",
         "status": "active",
     }
@@ -318,6 +319,7 @@ def test_non_owner_without_organization_membership_derives_member_role(
             "id": seeded["main_org_id"],
             "name": "Ressonant Corp",
             "slug": "ressonant-corp-seed",
+            "corporate_domain": None,
             "role": "member",
             "status": "active",
         }
@@ -337,6 +339,7 @@ def test_external_user_only_sees_own_isolated_workspace(
             "id": seeded["other_org_id"],
             "name": "Empresa B - Teste IDOR",
             "slug": "empresa-b-seed",
+            "corporate_domain": None,
             "role": "owner",
             "status": "active",
         }
@@ -521,7 +524,11 @@ def test_atomic_registration_bootstrap_exposes_initial_ids_and_seats(
         "termos_contrato": True,
         "nome_completo": "Bootstrap Owner",
         "cargo": "Fundador",
-        "organizacao": {"nome": "Org Bootstrap", "slug": "org-bootstrap"},
+        "organizacao": {
+            "nome": "Org Bootstrap",
+            "slug": "org-bootstrap",
+            "corporate_domain": "example.com",
+        },
         "plano_id": "inicial",
         "trial": True,
         "workspace_nome": "Workspace Bootstrap",

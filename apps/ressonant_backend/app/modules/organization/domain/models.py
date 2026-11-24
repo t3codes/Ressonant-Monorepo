@@ -3,8 +3,8 @@ from datetime import datetime
 
 import sqlalchemy as sa
 from app.database.engine import Base
-from sqlalchemy import DateTime, ForeignKey, String, Uuid, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Uuid, func
+from sqlalchemy.orm import Mapped, mapped_column, synonym
 
 
 class Organization(Base):
@@ -14,6 +14,7 @@ class Organization(Base):
         Uuid(as_uuid=False), primary_key=True, default=lambda: str(uuid.uuid4())
     )
     name: Mapped[str] = mapped_column(String(100), nullable=False)
+    corporate_domain: Mapped[str | None] = mapped_column(String(254), nullable=True)
     slug: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
     criado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -78,7 +79,11 @@ class Invitation(Base):
         nullable=False,
         index=True,
     )
-    email: Mapped[str] = mapped_column(String(254), nullable=False)
+    personal_email: Mapped[str] = mapped_column(String(254), nullable=False)
+    # Temporary alias: backend services/tests still use the old attribute name.
+    email = synonym("personal_email")
+    corporate_email: Mapped[str | None] = mapped_column(String(254), nullable=True)
+    invitee_name: Mapped[str | None] = mapped_column(String(254), nullable=True)
     role: Mapped[str] = mapped_column(String(20), nullable=False)
     token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -101,4 +106,36 @@ class Invitation(Base):
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
+    )
+    team_id: Mapped[str | None] = mapped_column(
+        Uuid(as_uuid=False),
+        ForeignKey("teams.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    reservation_active: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default=sa.text("true"), nullable=False
+    )
+
+    __table_args__ = (
+        sa.Index(
+            "uq_invitation_pending_org_ws_email",
+            "organization_id",
+            "workspace_id",
+            "personal_email",
+            unique=True,
+            sqlite_where=sa.text(
+                "accepted_at IS NULL AND revoked_at IS NULL AND declined_at IS NULL"
+            ),
+            postgresql_where=sa.text(
+                "accepted_at IS NULL AND revoked_at IS NULL AND declined_at IS NULL"
+            ),
+        ),
+        sa.Index(
+            "uq_invitations_active_corporate_email",
+            "corporate_email",
+            unique=True,
+            sqlite_where=sa.text("reservation_active = true"),
+            postgresql_where=sa.text("reservation_active = true"),
+        ),
     )

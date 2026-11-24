@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.common.email import send_invitation_email
 from app.config.settings import Settings
 from app.database.engine import get_session_factory
+from app.modules.organization.dataproviders.repository import OrganizationRepository
 from app.modules.organization.domain.email_outbox import EmailOutbox
 
 logger = logging.getLogger(__name__)
@@ -87,6 +88,8 @@ def process_outbox_batch(settings: Settings, *, limit: int = 20, session_factory
     processed = 0
     try:
         with session_factory() as db:
+            OrganizationRepository(db).expire_invitation_reservations()
+            db.commit()
             now = datetime.now(UTC)
             q = (
                 select(EmailOutbox.id)
@@ -117,6 +120,12 @@ def process_outbox_batch(settings: Settings, *, limit: int = 20, session_factory
                 row = _claim_outbox_row(db, row_id, now=now)
                 if row is None:
                     continue
+                invitation_row = None
+                invitation_id = (row.payload or {}).get("invitation_id")
+                if invitation_id:
+                    from app.modules.organization.domain.models import Invitation
+
+                    invitation_row = db.get(Invitation, str(invitation_id))
                 sent = False
                 skipped = False
                 error: str | None = None
@@ -135,6 +144,11 @@ def process_outbox_batch(settings: Settings, *, limit: int = 20, session_factory
                                 inviter_name=row.payload.get("inviter_name"),
                                 role=row.payload.get("role"),
                                 expires_at=row.payload.get("expires_at"),
+                                corporate_email=(
+                                    invitation_row.corporate_email
+                                    if invitation_row is not None
+                                    else None
+                                ),
                             )
                     else:
                         error = f"unsupported_event_type:{row.event_type}"
@@ -157,13 +171,11 @@ def process_outbox_batch(settings: Settings, *, limit: int = 20, session_factory
                         row.last_error = "send_failed"
                 row.updated_at = datetime.now(UTC)
 
-                invitation_id = (row.payload or {}).get("invitation_id")
-                if invitation_id:
+                if invitation_row is not None:
                     try:
-                        from app.modules.organization.domain.models import Invitation
                         from app.modules.workspace_management.domain.models import AuditEvent
 
-                        inv = db.get(Invitation, str(invitation_id))
+                        inv = invitation_row
                         if inv is not None:
                             if sent:
                                 inv.send_status = "sent"

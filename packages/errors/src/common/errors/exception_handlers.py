@@ -4,6 +4,7 @@ from typing import Any
 import structlog
 from common.errors.exceptions import ApplicationException
 from common.errors.renderers.default import DefaultErrorRenderer
+from common.errors.renderers.helpers import get_trace_id
 from common.errors.renderers.protocol import ErrorRenderer
 from fastapi import Request
 from fastapi.encoders import jsonable_encoder
@@ -32,13 +33,45 @@ def _to_response(rendered: tuple[int, Any]) -> JSONResponse:
     return JSONResponse(status_code=status_code, content=jsonable_encoder(body))
 
 
+def _constraint_name(exc: Exception) -> str | None:
+    """Nome da constraint violada, sem importar SQLAlchemy na lib (CYB-001).
+
+    Acesso estritamente por atributo: `exc.orig.diag.constraint_name` existe em
+    erros psycopg2. Nunca lemos `str(exc)`/`exc.orig` em log — o SQLAlchemy
+    renderiza os parâmetros vinculados (senha, CPF, e-mail) na mensagem.
+    """
+    orig = getattr(exc, "orig", None)
+    diag = getattr(orig, "diag", None)
+    name = getattr(diag, "constraint_name", None)
+    return str(name) if name else None
+
+
+def _safe_exception_fields(exc: Exception) -> dict[str, Any]:
+    # `exception` e `exc_info=False` são explícitos: o processador
+    # `extract_exception_info` do common.logs injeta o traceback corrente em
+    # todo log de nível error, mesmo sem exc_info=True. Informar o campo
+    # `exception` (com o tipo, nunca a mensagem) desativa essa injeção e evita
+    # que CPF/e-mail/hash Argon2id dos parâmetros do SQL cheguem ao stdout.
+    fields: dict[str, Any] = {
+        "exception": type(exc).__name__,
+        "correlation_id": get_trace_id(),
+        "exc_info": False,
+    }
+    constraint = _constraint_name(exc)
+    if constraint:
+        fields["constraint_name"] = constraint
+    return fields
+
+
 def setup_exception_handlers(app, renderer: ErrorRenderer | None = None):
     resolved_renderer = renderer if renderer is not None else DefaultErrorRenderer()
     logger.info("exception_handlers.renderer.resolved", renderer=type(resolved_renderer).__name__)
 
     @app.exception_handler(Exception)
     async def general_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-        logger.error("Unhandled Exception", error=str(exc), exc_info=True)
+        # CYB-001: só tipo, correlation_id e constraint — nunca str(exc) nem
+        # exc_info, cujos tracebacks carregam os parâmetros vinculados do SQL.
+        logger.error("unhandled.exception", **_safe_exception_fields(exc))
         return _to_response(resolved_renderer.render_unhandled(exc))
 
     @app.exception_handler(ApplicationException)
@@ -46,15 +79,19 @@ def setup_exception_handlers(app, renderer: ErrorRenderer | None = None):
         request: Request, exc: ApplicationException
     ) -> JSONResponse:
         if not exc.is_expected:
-            logger.error(exc.to_dict(), exc_info=True)
+            fields = _safe_exception_fields(exc)
+            fields["error_code"] = exc.exception_data.error_code
+            logger.error("application.exception", **fields)
         return _to_response(resolved_renderer.render(exc))
 
     @app.exception_handler(StarletteHTTPException)
     async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+        fields = _safe_exception_fields(exc)
+        fields["status_code"] = exc.status_code
         if exc.status_code == status.HTTP_404_NOT_FOUND:
-            logger.warning(str(exc))
+            logger.warning("http.exception", **fields)
         else:
-            logger.error(str(exc), exc_info=True)
+            logger.error("http.exception", **fields)
         return _to_response(resolved_renderer.render_http(exc))
 
     @app.exception_handler(RequestValidationError)

@@ -36,6 +36,7 @@ from app.modules.user.domain.models import User
 from app.modules.user.schemas.dto import UserResponse
 from app.modules.user.usecases.services import UserService
 from app.modules.workspace.dataproviders.repository import WorkspaceRepository
+from app.modules.workspace.domain.models import WorkspaceMember
 from app.modules.workspace.schemas.dto import WorkspaceCreate
 from app.modules.workspace.usecases.services import WorkspaceService
 from app.modules.workspace_management.domain.models import AuditEvent
@@ -81,6 +82,33 @@ def _registration_failed() -> ConflictException:
     )
 
 
+def _invited_user_exists() -> ConflictException:
+    return ConflictException(
+        ExceptionData(
+            message="CPF ou e-mail já cadastrado para outro usuário.",
+            error_code="USER_ALREADY_EXISTS",
+        ),
+        is_expected=True,
+    )
+
+
+def _invite_integrity_conflict(exc: IntegrityError) -> ConflictException:
+    """Traduz a quebra de unicidade para erro de domínio (CYB-004).
+
+    O nome da constraint e a mensagem são usados apenas para classificar o
+    erro — nunca entram em log (CYB-001).
+    """
+    diag = getattr(getattr(exc, "orig", None), "diag", None)
+    constraint = str(getattr(diag, "constraint_name", "") or "").lower()
+    detail = f"{constraint} {exc}".lower()
+    if "token_hash" in detail:
+        return ConflictException(
+            ExceptionData(message="Convite já aceito", error_code="INVITATION_ALREADY_USED"),
+            is_expected=True,
+        )
+    return _invited_user_exists()
+
+
 class RegistrationService:
     """Cadastro atômico: uma Session compartilhada e um único commit (§5.1)."""
 
@@ -88,22 +116,16 @@ class RegistrationService:
         self._db = db
 
     def register_invited_user(self, payload):
-        """Cria apenas identidade global e aceita convite existente; sem org/workspace novo."""
-        import hashlib
-        from datetime import UTC, datetime
-
+        """Cria identidade com o e-mail corporativo reservado e aceita o convite."""
         from app.common.security import hash_password
-        from app.modules.organization.domain.models import OrganizationMember
-        from app.modules.workspace.domain.models import WorkspaceMember
 
         token_hash = hashlib.sha256(payload.token.encode("utf-8")).hexdigest()
         now = datetime.now(UTC)
+        org_repo = OrganizationRepository(self._db)
         try:
-            q = self._db.query(Invitation).filter(Invitation.token_hash == token_hash)
-            bind = self._db.get_bind()
-            if getattr(bind.dialect, "supports_for_update", False):
-                q = q.with_for_update()
-            invitation = q.first()
+            # Serializa o aceite pela linha do convite: a segunda requisição
+            # paralela espera o commit e então vê `accepted_at` preenchido.
+            invitation = org_repo.get_invitation_by_token_hash(token_hash, for_update=True)
             if invitation is None:
                 raise NotFoundException(
                     ExceptionData(
@@ -138,23 +160,15 @@ class RegistrationService:
                     is_expected=True,
                 )
 
-            email = invitation.email.strip().lower()
-            existing = self._db.query(User).filter(User.email == email).first()
-            if existing is not None:
-                raise ConflictException(
-                    ExceptionData(
-                        message=(
-                            "Já existe uma conta com este e-mail. "
-                            "Faça login para aceitar o convite."
-                        ),
-                        error_code="USER_ALREADY_EXISTS",
-                    ),
-                    is_expected=True,
-                )
+            personal_email = invitation.personal_email.strip().lower()
+            # Convites anteriores à 0020 não têm corporativo; nesses casos o e-mail
+            # pessoal continua sendo a identidade, sem inventar endereço novo.
+            corporate_email = (
+                invitation.corporate_email.strip().lower()
+                if invitation.corporate_email
+                else personal_email
+            )
 
-            from app.modules.organization.dataproviders.repository import OrganizationRepository
-
-            org_repo = OrganizationRepository(self._db)
             org = org_repo.lock_organization(invitation.organization_id)
             if org is None:
                 raise NotFoundException(
@@ -180,9 +194,16 @@ class RegistrationService:
                     )
 
             cpf_digits = "".join(ch for ch in payload.cpf if ch.isdigit())
-            tel_digits = "".join(ch for ch in payload.telefone if ch.isdigit())
+            # Checagem antes do insert; a constraint de unicidade é a barreira final.
+            if UserRepository(self._db).exists_by_email_or_cpf(corporate_email, cpf_digits):
+                raise _invited_user_exists()
+            tel_digits = (
+                "".join(ch for ch in payload.telefone if ch.isdigit()) if payload.telefone else None
+            )
             user = User(
-                email=email,
+                email=corporate_email,
+                corporate_email=corporate_email if invitation.corporate_email else None,
+                personal_email=personal_email,
                 senha_hash=hash_password(payload.senha),
                 cpf=cpf_digits,
                 telefone=tel_digits,
@@ -227,11 +248,13 @@ class RegistrationService:
             team_member_created = False
             channel_member_added = False
             team_repo = TeamRepository(self._db)
-            default_team = team_repo.get_default_for_workspace(invitation.workspace_id)
-            if default_team is not None and team_repo.is_member(default_team.id, user.id) is None:
+            target_team = org_repo.get_team_by_id(invitation.team_id)
+            if target_team is None or target_team.workspace_id != invitation.workspace_id:
+                target_team = team_repo.get_default_for_workspace(invitation.workspace_id)
+            if target_team is not None and team_repo.is_member(target_team.id, user.id) is None:
                 self._db.add(
                     TeamMember(
-                        team_id=default_team.id,
+                        team_id=target_team.id,
                         user_id=user.id,
                         role="admin" if invitation.role == "admin" else "member",
                     )
@@ -254,7 +277,7 @@ class RegistrationService:
                     self._db.add(default_channel)
                     channel_member_added = True
 
-            invitation.accepted_at = now
+            org_repo.mark_invitation_accepted(invitation, accepted_at=now)
             self._db.add(
                 AuditEvent(
                     organization_id=invitation.organization_id,
@@ -272,12 +295,16 @@ class RegistrationService:
                         "team_member_created": team_member_created,
                         "channel_member_added": channel_member_added,
                         "role": invitation.role,
+                        "team_id": invitation.team_id,
                     },
                     metadata_={"email": invitation.email, "role": invitation.role},
                 )
             )
             self._db.commit()
             return user, invitation
+        except IntegrityError as exc:
+            self._db.rollback()
+            raise _invite_integrity_conflict(exc) from None
         except Exception:
             self._db.rollback()
             raise
@@ -292,7 +319,11 @@ class RegistrationService:
             if org_repo.exists_by_slug(payload.organizacao.slug):
                 raise _organization_conflict()
             organization = org_repo.add(
-                Organization(name=payload.organizacao.nome, slug=payload.organizacao.slug)
+                Organization(
+                    name=payload.organizacao.nome,
+                    slug=payload.organizacao.slug,
+                    corporate_domain=payload.organizacao.corporate_domain,
+                )
             )
             org_repo.add_member(
                 OrganizationMember(
@@ -370,7 +401,12 @@ class RegistrationService:
                     organization_id=organization.id, workspace_id=workspace.id, email=email
                 )
                 now = datetime.now(UTC)
-                if pending is not None and pending.accepted_at is None and pending.revoked_at is None and getattr(pending, "declined_at", None) is None:
+                if (
+                    pending is not None
+                    and pending.accepted_at is None
+                    and pending.revoked_at is None
+                    and getattr(pending, "declined_at", None) is None
+                ):
                     expires_at = pending.expires_at
                     if expires_at.tzinfo is None:
                         expires_at = expires_at.replace(tzinfo=UTC)
@@ -462,6 +498,7 @@ class RegistrationService:
                 id=organization.id,
                 nome=organization.name,
                 slug=organization.slug,
+                corporate_domain=organization.corporate_domain,
                 role="owner",
             ),
             assinatura=billing_data.subscription,

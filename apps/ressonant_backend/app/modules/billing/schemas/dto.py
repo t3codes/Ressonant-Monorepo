@@ -17,6 +17,39 @@ class PlanResponse(BaseModel):
     active: bool
 
 
+class PlanCatalogResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    items: list[PlanResponse]
+    provider: Literal["stub"] = "stub"
+    simulation: bool = True
+
+
+class PlanCreateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    code: str = Field(min_length=1, max_length=20, pattern=r"^[a-z][a-z0-9_]{0,19}$")
+    name: str = Field(min_length=2, max_length=100)
+    price_cents: int = Field(ge=0)
+    currency: str = Field(pattern=r"^[A-Z]{3}$")
+    seat_limit: int | None = Field(ge=1)
+    overage: int | None = Field(ge=0)
+    trial_days: int = Field(default=14, ge=0, le=365)
+    active: bool = False
+
+
+class PlanUpdateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = Field(default=None, min_length=2, max_length=100)
+    price_cents: int | None = Field(default=None, ge=0)
+    currency: str | None = Field(default=None, pattern=r"^[A-Z]{3}$")
+    seat_limit: int | None = Field(default=None, ge=1)
+    overage: int | None = Field(default=None, ge=0)
+    trial_days: int | None = Field(default=None, ge=0, le=365)
+    active: bool | None = None
+
+
 class SubscriptionResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

@@ -13,11 +13,15 @@ class User(Base):
         Uuid(as_uuid=False), primary_key=True, default=lambda: str(uuid.uuid4())
     )
     email: Mapped[str] = mapped_column(String(254), unique=True, index=True)
+    corporate_email: Mapped[str | None] = mapped_column(
+        String(254), unique=True, index=True, nullable=True
+    )
+    personal_email: Mapped[str | None] = mapped_column(String(254), nullable=True)
     senha_hash: Mapped[str] = mapped_column(String(255))
     cpf: Mapped[str] = mapped_column(String(11), unique=True)
-    idade: Mapped[int] = mapped_column(Integer)
+    idade: Mapped[int | None] = mapped_column(Integer, nullable=True)
     termos_contrato: Mapped[bool] = mapped_column(Boolean, default=False)
-    telefone: Mapped[str] = mapped_column(String(11))
+    telefone: Mapped[str | None] = mapped_column(String(11), nullable=True)
     status_ativo: Mapped[bool] = mapped_column(Boolean, default=True)
     interno_adm: Mapped[bool] = mapped_column(Boolean, default=False)
     name: Mapped[str | None] = mapped_column(String(100), nullable=True)

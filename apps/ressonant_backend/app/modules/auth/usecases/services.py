@@ -12,6 +12,11 @@ from app.config.settings import get_settings
 from app.modules.auth.usecases.tokens import create_access_token
 from app.modules.user.dataproviders.repository import UserRepository
 
+# BUG-T3-014: leitura pública é idempotente; bucket próprio e generoso evita
+# que retries do frontend bloqueiem o cadastro, sem remover a proteção a abuso.
+PUBLIC_READ_MAX_ATTEMPTS = 50
+PUBLIC_READ_WINDOW_SECONDS = 60
+
 
 class RateLimitInfo:
     """Estado thread-safe de tentativas de autenticação deste processo."""
@@ -22,17 +27,26 @@ class RateLimitInfo:
         self.window_seconds = window_seconds
         self._lock = threading.Lock()
 
-    def consume(self, key: str) -> tuple[bool, dict[str, int]]:
+    def consume(
+        self,
+        key: str,
+        *,
+        max_attempts: int | None = None,
+        window_seconds: int | None = None,
+    ) -> tuple[bool, dict[str, int]]:
+        """Consome uma tentativa; limites por chamada permitem buckets de leitura distintos."""
+        limit = self.max_attempts if max_attempts is None else max_attempts
+        window = self.window_seconds if window_seconds is None else window_seconds
         now = time.time()
         with self._lock:
             count, started_at = self.attempts.get(key, (0, now))
-            if now - started_at >= self.window_seconds:
+            if now - started_at >= window:
                 count, started_at = 0, now
             count += 1
             self.attempts[key] = (count, started_at)
-            reset = int(started_at + self.window_seconds)
-            return count <= self.max_attempts, {
-                "remaining": max(0, self.max_attempts - count),
+            reset = int(started_at + window)
+            return count <= limit, {
+                "remaining": max(0, limit - count),
                 "reset": reset,
                 "retry_after": max(0, reset - int(now)),
             }

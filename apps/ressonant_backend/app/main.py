@@ -118,6 +118,7 @@ def create_app() -> FastAPI:
     setup_exception_handlers(app)
     app.include_router(auth_routes.router)
     app.include_router(billing_routes.router)
+    app.include_router(billing_routes.plans_router)
     app.include_router(organization_routes.router)
     app.include_router(context_routes.router)
     app.include_router(user_routes.router)

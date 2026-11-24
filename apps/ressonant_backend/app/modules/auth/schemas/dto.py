@@ -1,8 +1,17 @@
+import re
 from typing import Literal
 
 from app.modules.billing.schemas.dto import SubscriptionResponse
-from app.modules.user.schemas.dto import UserRegister, UserResponse
+from app.modules.user.schemas.dto import (
+    InvitedUserResponse,
+    UserRegister,
+    UserResponse,
+    is_valid_cpf,
+)
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+
+_RESERVED_DOMAIN_SUFFIXES = (".local", ".test", ".invalid", ".localhost")
+_DOMAIN_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$")
 
 
 class LoginRequest(BaseModel):
@@ -29,6 +38,21 @@ class OrganizacaoInput(BaseModel):
         max_length=100,
         pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$",
     )
+    corporate_domain: str = Field(min_length=4, max_length=254)
+
+    @field_validator("corporate_domain")
+    @classmethod
+    def validate_corporate_domain(cls, value: str) -> str:
+        domain = value.strip().lower()
+        if "@" in domain or "://" in domain or "/" in domain:
+            raise ValueError("corporate_domain deve ser um domínio, sem @ ou esquema")
+        if "." not in domain or domain.startswith(".") or domain.endswith("."):
+            raise ValueError("corporate_domain deve conter ponto e não terminar com ponto")
+        if domain.endswith(_RESERVED_DOMAIN_SUFFIXES):
+            raise ValueError("corporate_domain não pode usar domínio reservado")
+        if not _DOMAIN_RE.fullmatch(domain):
+            raise ValueError("corporate_domain contém caracteres inválidos")
+        return domain
 
 
 class ConvidadoInput(BaseModel):
@@ -45,9 +69,9 @@ class InviteRegistrationCreate(BaseModel):
     token: str = Field(min_length=20, max_length=512)
     nome_completo: str = Field(min_length=2, max_length=60)
     cpf: str = Field(min_length=11, max_length=14)
-    telefone: str = Field(min_length=10, max_length=20)
+    telefone: str | None = Field(default=None, min_length=10, max_length=20)
     senha: str = Field(min_length=8, max_length=128)
-    idade: int = Field(ge=18, le=120)
+    idade: int | None = Field(default=None, ge=18, le=120)
     termos_contrato: Literal[True] = True
 
     @field_validator("nome_completo")
@@ -57,9 +81,17 @@ class InviteRegistrationCreate(BaseModel):
             raise ValueError("nome_completo deve ter ao menos duas palavras")
         return value
 
+    @field_validator("cpf")
+    @classmethod
+    def validate_cpf(cls, value: str) -> str:
+        digits = "".join(char for char in value if char.isdigit())
+        if not is_valid_cpf(digits):
+            raise ValueError("CPF inválido")
+        return digits
+
 
 class InviteRegistrationResponse(BaseModel):
-    user: UserResponse
+    user: InvitedUserResponse
     invitation: dict
     workspace_id: str
     organization_id: str
@@ -102,6 +134,7 @@ class OrganizacaoResponse(BaseModel):
     id: str
     nome: str
     slug: str
+    corporate_domain: str | None = None
     role: str = "owner"
 
 

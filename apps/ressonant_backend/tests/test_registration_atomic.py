@@ -1,11 +1,18 @@
 """Cadastro atômico: uma Session, um commit, nenhum registro parcial."""
 
+import hashlib
 import json
+import uuid
+from datetime import UTC, datetime, timedelta
 from typing import Literal
 
 import pytest
 from app.common.exceptions import ConflictException
-from app.modules.auth.schemas.dto import ConvidadoInput, RegistrationCreate
+from app.modules.auth.schemas.dto import (
+    ConvidadoInput,
+    InviteRegistrationCreate,
+    RegistrationCreate,
+)
 from app.modules.auth.usecases.registration import RegistrationService, _slugify, _unique_slug
 from app.modules.billing.domain.models import Plan, Subscription
 from app.modules.chat.domain.models import Channel
@@ -55,7 +62,7 @@ def _payload(
         idade=30,
         termos_contrato=True,
         telefone="11987654321",
-        organizacao={"nome": "Acme Ltda", "slug": slug},
+        organizacao={"nome": "Acme Ltda", "slug": slug, "corporate_domain": "example.com"},
         plano_id=plano_id,
         trial=True,
         workspace_nome="Acme Ltda",
@@ -129,6 +136,7 @@ def test_register_persists_all_entities_and_full_response(
         organization = db.scalar(select(Organization).where(Organization.slug == "acme"))
         assert organization is not None
         assert organization.name == "Acme Ltda"
+        assert organization.corporate_domain == "example.com"
 
         owner = db.scalar(
             select(OrganizationMember).where(
@@ -201,6 +209,7 @@ def test_register_persists_all_entities_and_full_response(
     assert response.organizacao.id == organization.id
     assert response.organizacao.nome == "Acme Ltda"
     assert response.organizacao.slug == "acme"
+    assert response.organizacao.corporate_domain == "example.com"
     assert response.organizacao.role == "owner"
     assert response.assinatura.status == "trialing"
     assert response.assinatura.gateway_ref is not None
@@ -341,3 +350,182 @@ def test_register_creates_invitations_for_convidados_in_development(
         }
     finally:
         get_settings.cache_clear()
+
+
+def _seed_invitation_context(
+    session_factory: sessionmaker[Session],
+    *,
+    corporate_email: str = "helena.rocha@example.com",
+    personal_email: str = "helena.pessoal@example.com",
+) -> dict[str, str]:
+    """Convite com reserva ativa e duas equipes, para provar o vínculo por team_id."""
+    token = uuid.uuid4().hex
+    now = datetime.now(UTC)
+    with session_factory() as db:
+        org = Organization(
+            name="Org Convite",
+            slug=f"org-{uuid.uuid4().hex[:8]}",
+            corporate_domain="example.com",
+        )
+        db.add(org)
+        db.flush()
+        owner_email = f"owner-{uuid.uuid4().hex[:8]}@x.com"
+        owner = make_user(session_factory, email=owner_email, cpf=VALID_CPFS[3])
+        db.add(
+            OrganizationMember(
+                organization_id=org.id, user_id=owner.id, role="owner", status="active"
+            )
+        )
+        workspace = Workspace(
+            name="WS Convite",
+            slug=f"ws-{uuid.uuid4().hex[:8]}",
+            owner_id=owner.id,
+            organization_id=org.id,
+        )
+        db.add(workspace)
+        db.flush()
+        db.add(WorkspaceMember(workspace_id=workspace.id, user_id=owner.id, role="admin"))
+        suffix = uuid.uuid4().hex[:6]
+        default_team = Team(
+            name="Equipe Default",
+            slug=f"default-{suffix}",
+            workspace_id=workspace.id,
+            owner_id=owner.id,
+            key_prefix="DFT",
+            criado_em=now - timedelta(days=1),
+        )
+        target_team = Team(
+            name="Equipe Auditoria",
+            slug=f"auditoria-{suffix}",
+            workspace_id=workspace.id,
+            owner_id=owner.id,
+            key_prefix="AUD",
+            criado_em=now,
+        )
+        db.add_all([default_team, target_team])
+        db.flush()
+        invitation = Invitation(
+            organization_id=org.id,
+            workspace_id=workspace.id,
+            personal_email=personal_email,
+            corporate_email=corporate_email,
+            invitee_name="Helena Rocha",
+            team_id=target_team.id,
+            role="member",
+            token_hash=hashlib.sha256(token.encode("utf-8")).hexdigest(),
+            expires_at=now + timedelta(days=7),
+            invited_by_id=owner.id,
+            send_status="pending",
+            reservation_active=True,
+        )
+        db.add(invitation)
+        db.commit()
+        return {
+            "token": token,
+            "organization_id": org.id,
+            "workspace_id": workspace.id,
+            "default_team_id": default_team.id,
+            "target_team_id": target_team.id,
+            "invitation_id": invitation.id,
+        }
+
+
+def test_register_invited_user_uses_reserved_corporate_email_and_minimal_payload(
+    session_factory: sessionmaker[Session],
+) -> None:
+    ctx = _seed_invitation_context(session_factory)
+    payload = InviteRegistrationCreate(
+        token=ctx["token"],
+        nome_completo="Helena Rocha",
+        cpf="529.982.247-25",
+        senha="senha-forte-1",
+        termos_contrato=True,
+    )
+
+    with session_factory() as db:
+        user, invitation = RegistrationService(db).register_invited_user(payload)
+
+    with session_factory() as db:
+        stored = db.get(User, user.id)
+        assert stored is not None
+        assert stored.email == "helena.rocha@example.com"
+        assert stored.corporate_email == "helena.rocha@example.com"
+        assert stored.personal_email == "helena.pessoal@example.com"
+        assert stored.cpf == "52998224725"
+        assert stored.telefone is None
+        assert stored.idade is None
+
+        assert (
+            db.scalar(
+                select(OrganizationMember).where(
+                    OrganizationMember.organization_id == ctx["organization_id"],
+                    OrganizationMember.user_id == stored.id,
+                )
+            )
+            is not None
+        )
+        assert (
+            db.scalar(
+                select(WorkspaceMember).where(
+                    WorkspaceMember.workspace_id == ctx["workspace_id"],
+                    WorkspaceMember.user_id == stored.id,
+                )
+            )
+            is not None
+        )
+        assert (
+            db.scalar(
+                select(TeamMember).where(
+                    TeamMember.team_id == ctx["target_team_id"], TeamMember.user_id == stored.id
+                )
+            )
+            is not None
+        )
+        assert (
+            db.scalar(
+                select(TeamMember).where(
+                    TeamMember.team_id == ctx["default_team_id"], TeamMember.user_id == stored.id
+                )
+            )
+            is None
+        )
+
+        stored_invitation = db.get(Invitation, ctx["invitation_id"])
+        assert stored_invitation is not None
+        assert stored_invitation.accepted_at is not None
+        assert stored_invitation.reservation_active is False
+        event = db.scalar(
+            select(AuditEvent).where(
+                AuditEvent.entity_id == stored_invitation.id,
+                AuditEvent.action == "invitation.accepted_with_registration",
+            )
+        )
+        assert event is not None
+        assert event.after["team_id"] == ctx["target_team_id"]
+    assert invitation.id == ctx["invitation_id"]
+
+
+def test_register_invited_user_does_not_require_matching_authored_email(
+    session_factory: sessionmaker[Session],
+) -> None:
+    """A posse do token e o CPF válido bastam, mesmo com conta no e-mail pessoal."""
+    personal_email = "dup@example.com"
+    ctx = _seed_invitation_context(
+        session_factory,
+        personal_email=personal_email,
+        corporate_email="duplicado.exemplo@example.com",
+    )
+    make_user(session_factory, email=personal_email, cpf=VALID_CPFS[1])
+    payload = InviteRegistrationCreate(
+        token=ctx["token"],
+        nome_completo="Duplicado Exemplo",
+        cpf=VALID_CPFS[2],
+        senha="senha-forte-1",
+        termos_contrato=True,
+    )
+
+    with session_factory() as db:
+        user, _ = RegistrationService(db).register_invited_user(payload)
+
+    assert user.email == "duplicado.exemplo@example.com"
+    assert user.personal_email == personal_email

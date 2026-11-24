@@ -44,7 +44,11 @@ def _payload(email: str, cpf: str) -> dict:
         "telefone": "11987654321",
         "idade": 30,
         "termos_contrato": True,
-        "organizacao": {"nome": "Acme Ltda", "slug": f"acme-{uuid.uuid4().hex[:8]}"},
+        "organizacao": {
+            "nome": "Acme Ltda",
+            "slug": f"acme-{uuid.uuid4().hex[:8]}",
+            "corporate_domain": "example.com",
+        },
         "plano_id": "equipe",
         "workspace_nome": "Acme Ltda",
         "equipe_inicial_nome": "Engenharia",

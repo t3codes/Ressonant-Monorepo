@@ -4,7 +4,11 @@ from app.modules.auth.deps import CurrentUser
 from app.modules.kanban_cards.deps import get_card_service
 from app.modules.kanban_cards.schemas.dto import (
     CardBlockInput,
+    CardCommentCreate,
+    CardCommentList,
+    CardCommentResponse,
     CardCreate,
+    CardDeleteInput,
     CardList,
     CardMoveInput,
     CardResponse,
@@ -12,7 +16,7 @@ from app.modules.kanban_cards.schemas.dto import (
     CardUpdate,
 )
 from app.modules.kanban_cards.usecases.services import CardService
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Body, Depends, Query, Response, status
 
 router = APIRouter(prefix="/cards", tags=["cards"])
 
@@ -69,6 +73,18 @@ def update_card(
     return CardResponse.model_validate(service.update(card_id, payload, user.id))
 
 
+@router.delete("/{card_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_card(
+    card_id: str,
+    user: CurrentUser,
+    service: Service,
+    payload: Annotated[CardDeleteInput | None, Body()] = None,
+) -> Response:
+    """Exclui card (204) com auditoria append-only na mesma transação."""
+    service.delete(card_id, payload, user.id, user.interno_adm)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.post("/{card_id}/move", response_model=CardResponse)
 def move_card(
     card_id: str,
@@ -114,3 +130,30 @@ def clone_card(
 ) -> CardResponse:
     """Clona card no backlog do time (sem comentários/histórico)."""
     return CardResponse.model_validate(service.clone(card_id, user.id))
+
+
+@router.post("/{card_id}/comments", response_model=CardCommentResponse, status_code=201)
+def create_card_comment(
+    card_id: str,
+    payload: CardCommentCreate,
+    user: CurrentUser,
+    service: Service,
+) -> CardCommentResponse:
+    """Cria comentário; author_id é sempre o usuário autenticado."""
+    return CardCommentResponse.model_validate(service.create_comment(card_id, payload, user.id))
+
+
+@router.get("/{card_id}/comments", response_model=CardCommentList)
+def list_card_comments(
+    card_id: str,
+    user: CurrentUser,
+    service: Service,
+    skip: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+) -> CardCommentList:
+    """Lista comentários do card (persistência verificável após reload)."""
+    items, total = service.list_comments(card_id, user.id, skip, limit)
+    return CardCommentList(
+        items=[CardCommentResponse.model_validate(item) for item in items],
+        total=total,
+    )
