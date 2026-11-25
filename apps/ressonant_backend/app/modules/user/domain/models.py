@@ -20,6 +20,9 @@ class User(Base):
     senha_hash: Mapped[str] = mapped_column(String(255))
     cpf: Mapped[str] = mapped_column(String(11), unique=True)
     idade: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    permission_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default="1"
+    )
     termos_contrato: Mapped[bool] = mapped_column(Boolean, default=False)
     telefone: Mapped[str | None] = mapped_column(String(11), nullable=True)
     status_ativo: Mapped[bool] = mapped_column(Boolean, default=True)

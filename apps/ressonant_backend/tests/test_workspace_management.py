@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from app.modules.organization.domain.models import Organization, OrganizationMember
-from app.modules.workspace_management.domain.models import AuditEvent
+from app.modules.workspace_management.domain.models import AuditEvent, WorkspaceCapabilityGrant
+from app.user.models import User
 from fastapi.testclient import TestClient
+from httpx import Response
 from sqlalchemy import select
 from tests.conftest import VALID_CPFS, login
 from tests.conftest import make_user as _plain_make_user
@@ -405,4 +407,148 @@ class TestInternoAdmBreakGlass:
         assert event.target_user_id == target.id
         assert isinstance(event.metadata_, dict)
         assert event.metadata_.get("break_glass") is True
-        assert event.metadata_.get("reason") == "suporte emergencial"
+        # C2: `reason` é validation-only; auditoria imutável nunca guarda texto livre.
+        assert "reason" not in event.metadata_ or event.metadata_.get("reason") == "[REDACTED]"
+        assert "suporte emergencial" not in str(event.metadata_)
+
+
+def _capability_target(
+    client: TestClient, session_factory, slug: str, level: str
+) -> tuple[str, str, dict[str, str]]:
+    """Owner com grants_manage e alvo editável, com nível basal explícito."""
+    make_user(session_factory, email="owner@r.dev", cpf=VALID_CPFS[0])
+    target = make_user(session_factory, email="target@r.dev", cpf=VALID_CPFS[1])
+    owner_h = _auth(client, "owner@r.dev")
+    ws = _create_workspace(client, owner_h, slug)
+    _add_member(client, owner_h, ws["id"], target.id)
+    assert _grant(client, owner_h, ws["id"], target.id, level).status_code == 201
+    return ws["id"], target.id, owner_h
+
+
+def _put_capabilities(
+    client: TestClient, ws_id: str, target_id: str, headers: dict[str, str], items: list
+) -> Response:
+    return client.put(
+        f"/workspaces/{ws_id}/management/access/{target_id}",
+        json={"items": items},
+        headers=headers,
+    )
+
+
+class TestDenyOnlyCapabilities:
+    def test_allow_teams_update_is_noop_for_member_without_capability(
+        self, client: TestClient, session_factory
+    ) -> None:
+        ws_id, target_id, owner_h = _capability_target(
+            client, session_factory, "ws-deny-only-noop", "read"
+        )
+        # Override `allow` legado pode existir no banco; não deve conceder a capability.
+        with session_factory() as db:
+            owner = db.scalars(select(User).where(User.email == "owner@r.dev")).one()
+            db.add(
+                WorkspaceCapabilityGrant(
+                    workspace_id=ws_id,
+                    user_id=target_id,
+                    capability="teams_update",
+                    effect="allow",
+                    granted_by_id=owner.id,
+                )
+            )
+            db.commit()
+
+        resp = client.get(f"/workspaces/{ws_id}/management/access/{target_id}", headers=owner_h)
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["capabilities"]["teams_update"] is False
+        assert {"capability": "teams_update", "effect": "allow"} in body["overrides"]
+
+    def test_deny_teams_update_removes_capability(
+        self, client: TestClient, session_factory
+    ) -> None:
+        ws_id, target_id, owner_h = _capability_target(
+            client, session_factory, "ws-deny-only-deny", "modify"
+        )
+        target_h = _auth(client, "target@r.dev")
+        before = client.get(f"/workspaces/{ws_id}/management/access/me", headers=target_h)
+        assert before.json()["capabilities"]["teams_update"] is True
+
+        resp = _put_capabilities(
+            client, ws_id, target_id, owner_h, [{"capability": "teams_update", "effect": "deny"}]
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["capabilities"]["teams_update"] is False
+
+        after = client.get(f"/workspaces/{ws_id}/management/access/me", headers=target_h)
+        assert after.status_code == 200, after.text
+        assert after.json()["capabilities"]["teams_update"] is False
+
+    def test_allow_deny_only_capability_returns_400_without_mutation(
+        self, client: TestClient, session_factory
+    ) -> None:
+        ws_id, target_id, owner_h = _capability_target(
+            client, session_factory, "ws-deny-only-400", "modify"
+        )
+        version_before = client.get(
+            f"/workspaces/{ws_id}/management/access/{target_id}", headers=owner_h
+        ).json()["permission_version"]
+
+        resp = _put_capabilities(
+            client,
+            ws_id,
+            target_id,
+            owner_h,
+            [
+                {"capability": "members_manage", "effect": "deny"},
+                {"capability": "teams_update", "effect": "allow"},
+            ],
+        )
+        assert resp.status_code == 400, resp.text
+        assert resp.json()["error_code"] == "CAPABILITY_DENY_ONLY"
+
+        after = client.get(f"/workspaces/{ws_id}/management/access/{target_id}", headers=owner_h)
+        body = after.json()
+        assert body["overrides"] == []
+        assert body["capabilities"]["members_manage"] is True
+        assert body["permission_version"] == version_before
+
+    def test_teams_soft_delete_is_hard_locked(self, client: TestClient, session_factory) -> None:
+        ws_id, target_id, owner_h = _capability_target(
+            client, session_factory, "ws-soft-delete-lock", "modify"
+        )
+        resp = client.get(f"/workspaces/{ws_id}/management/access/{target_id}", headers=owner_h)
+        assert resp.status_code == 200, resp.text
+        locked = resp.json()["hard_locked_capabilities"]
+        assert len(locked) == 8
+        assert "teams_soft_delete" in locked
+
+        for effect in ("deny", "allow"):
+            change = _put_capabilities(
+                client,
+                ws_id,
+                target_id,
+                owner_h,
+                [{"capability": "teams_soft_delete", "effect": effect}],
+            )
+            assert change.status_code == 403, change.text
+            assert change.json()["error_code"] == "CAPABILITY_PROTECTED"
+        assert (
+            client.get(
+                f"/workspaces/{ws_id}/management/access/{target_id}", headers=owner_h
+            ).json()["overrides"]
+            == []
+        )
+
+    def test_target_access_reports_deny_only_capabilities(
+        self, client: TestClient, session_factory
+    ) -> None:
+        ws_id, target_id, owner_h = _capability_target(
+            client, session_factory, "ws-deny-only-list", "read"
+        )
+        resp = client.get(f"/workspaces/{ws_id}/management/access/{target_id}", headers=owner_h)
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["deny_only_capabilities"] == [
+            "teams_create",
+            "teams_update",
+            "columns_manage",
+            "blocked_cards_unblock",
+        ]

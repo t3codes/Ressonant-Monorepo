@@ -61,11 +61,17 @@ class BillingRepository:
             )
         )
         active_user_ids = organization_users | workspace_users
-        active_emails = {
-            email.strip().lower()
-            for email in self._db.scalars(select(User.email).where(User.id.in_(active_user_ids)))
-            if isinstance(email, str) and email.strip()
-        } if active_user_ids else set()
+        active_emails = (
+            {
+                email.strip().lower()
+                for email in self._db.scalars(
+                    select(User.email).where(User.id.in_(active_user_ids))
+                )
+                if isinstance(email, str) and email.strip()
+            }
+            if active_user_ids
+            else set()
+        )
 
         current_time = now or datetime.utcnow()
         pending_emails = set()

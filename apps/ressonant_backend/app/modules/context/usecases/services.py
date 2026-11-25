@@ -33,6 +33,9 @@ _MANAGEMENT_CAPABILITY_FIELDS = (
     "audit_read",
     "settings_manage",
     "grants_manage",
+    "taxonomy_read",
+    "taxonomy_manage",
+    "taxonomy_manage_grant",
 )
 _BILLING_MANAGE_ROLES = frozenset({"owner", "billing_owner"})
 

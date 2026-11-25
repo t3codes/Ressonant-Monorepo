@@ -263,7 +263,10 @@ class WorkspaceService:
         old_owner_id = workspace.owner_id
         try:
             workspace.owner_id = new_owner_user_id
-            new_owner_member.role = "admin"
+            # ADR 0003 (vii): `workspaces.owner_id` é a fonte de verdade e
+            # `workspace_members.role` é projeção — sem isso /me/context devolve
+            # `admin` para quem acabou de receber a propriedade.
+            new_owner_member.role = "owner"
             old_member = self._repo.get_member(workspace_id, old_owner_id)
             if old_member is not None and old_member.role != "admin":
                 old_member.role = "admin"

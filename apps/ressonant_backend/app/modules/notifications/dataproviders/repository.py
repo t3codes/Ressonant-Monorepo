@@ -1,5 +1,5 @@
 from app.modules.notifications.domain.models import AppNotification
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 
@@ -17,15 +17,19 @@ class NotificationRepository:
         )
         return list(items), total
 
-    def mark_read(self, ids: list[str]) -> None:
+    def mark_read(self, ids: list[str], user_id: str) -> int:
+        """Atualiza somente notificações do usuário; devolve quantas linhas mudaram."""
         if not ids:
-            return
-        self._db.execute(
-            __import__("sqlalchemy")
-            .update(AppNotification)
-            .where(AppNotification.id.in_(ids))
+            return 0
+        result = self._db.execute(
+            update(AppNotification)
+            .where(
+                AppNotification.id.in_(ids),
+                AppNotification.user_id == user_id,
+            )
             .values(read_at=func.now())
         )
+        return result.rowcount or 0
 
     def mark_all_read(self, user_id: str, workspace_id: str) -> None:
         self._db.execute(

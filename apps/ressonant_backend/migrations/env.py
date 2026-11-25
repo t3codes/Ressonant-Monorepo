@@ -1,6 +1,7 @@
 from alembic import context
 from app.config.settings import get_settings
 from app.database.engine import Base
+from app.modules.admin.domain.models import SystemSetting  # noqa: F401
 from app.modules.billing.domain.models import Plan, Subscription  # noqa: F401
 from app.modules.chat.domain.models import (  # noqa: F401
     Channel,
@@ -33,7 +34,10 @@ from app.modules.teams.domain.models import Team, TeamMember  # noqa: F401
 from app.modules.workspace.domain.models import Workspace, WorkspaceMember  # noqa: F401
 from app.modules.workspace_management.domain.models import (  # noqa: F401
     AuditEvent,
+    CardTaxonomyModel,
+    WorkspaceCapabilityGrant,
     WorkspaceManagementGrant,
+    WorkspaceTaxonomyGrantModel,
 )
 from app.user import models  # noqa: F401
 from sqlalchemy import create_engine

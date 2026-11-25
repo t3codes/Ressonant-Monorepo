@@ -402,6 +402,22 @@ class CardService:
         ws = ws_repo.get_by_id(board.workspace_id)
         return ws is not None and ws.owner_id == actor_id
 
+    def _require_blocked_cards_unblock_allowed(self, workspace_id: str, user_id: str) -> None:
+        """Veto deny-only: reforça a política de domínio; atores inerentes são imunes."""
+        from app.modules.workspace_management.dataproviders.repository import (
+            WorkspaceManagementRepository,
+        )
+
+        repo = WorkspaceManagementRepository(self._card_repo._db)
+        # Regra dura: a mesma de ManagementAccess.has_inherent_access.
+        if repo.actor_has_inherent_access(workspace_id, user_id):
+            return
+        override = repo.get_active_capability_override(
+            workspace_id, user_id, "blocked_cards_unblock"
+        )
+        if override is not None and override.effect == "deny":
+            raise _forbidden("Capability blocked_cards_unblock negada neste workspace")
+
     def block(
         self,
         card_id: str,
@@ -451,6 +467,9 @@ class CardService:
         actor_is_interno_adm: bool = False,
     ) -> Card:
         card = self.get(card_id, user_id)
+        board = self._board_repo.get_by_id(card.board_id)
+        workspace_id = board.workspace_id if board is not None else ""
+        self._require_blocked_cards_unblock_allowed(workspace_id, user_id)
         self._require_editor(card.team_id, user_id)
         if card.version != payload.expected_version:
             raise _conflict(

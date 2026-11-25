@@ -14,9 +14,7 @@ from app.main import app  # noqa: E402
 from app.modules.auth.usecases.services import _rate_limit  # noqa: E402
 from app.modules.billing.domain.models import Plan  # noqa: E402
 from app.modules.kanban_cards.domain.models import Card  # noqa: E402
-from app.modules.organization.domain.email_outbox import EmailOutbox  # noqa: E402
 from app.modules.organization.domain.models import (  # noqa: E402
-    Invitation,
     Organization,
     OrganizationMember,
 )

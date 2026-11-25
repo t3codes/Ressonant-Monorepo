@@ -28,7 +28,15 @@ def _ensure_self_or_admin(current: CurrentUser, user_id: str) -> None:
 
 @router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def create_user(payload: UserCreate, _: AdminUser, service: Service) -> UserResponse:
-    """Cria usuário (admin), podendo definir flags administrativas."""
+    """Cria usuário comum; flags de superuser só via /admin/superusers."""
+    if payload.interno_adm:
+        raise ForbiddenException(
+            ExceptionData(
+                message="interno_adm é somente-leitura; use /admin/superusers",
+                error_code="ADMIN_FLAG_NOT_ALLOWED",
+            ),
+            is_expected=True,
+        )
     return UserResponse.model_validate(service.create(payload))
 
 
@@ -68,22 +76,26 @@ def update_user(
 
 @router.patch("/{user_id}/status", response_model=UserResponse)
 def set_user_status(
-    user_id: str, payload: UserStatusUpdate, _: AdminUser, service: Service
+    user_id: str, payload: UserStatusUpdate, actor: AdminUser, service: Service
 ) -> UserResponse:
-    """Ativa ou desativa o usuário (admin)."""
-    return UserResponse.model_validate(service.set_status(user_id, payload.status_ativo))
+    """Ativa ou desativa o usuário (admin); último admin ativo é protegido."""
+    return UserResponse.model_validate(
+        service.set_status(user_id, payload.status_ativo, actor_id=actor.id)
+    )
 
 
 @router.patch("/{user_id}/admin", response_model=UserResponse)
 def set_user_admin(
-    user_id: str, payload: UserAdminUpdate, _: AdminUser, service: Service
+    user_id: str, payload: UserAdminUpdate, actor: AdminUser, service: Service
 ) -> UserResponse:
-    """Concede ou revoga acesso administrativo global (somente interno_adm)."""
-    return UserResponse.model_validate(service.set_admin(user_id, payload.interno_adm))
+    """Concede/revoga acesso administrativo; último admin ativo é protegido."""
+    return UserResponse.model_validate(
+        service.set_admin(user_id, payload.interno_adm, actor_id=actor.id)
+    )
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_user(user_id: str, _: AdminUser, service: Service) -> Response:
-    """Soft delete: desativa o usuário (admin)."""
-    service.set_status(user_id, False)
+def delete_user(user_id: str, actor: AdminUser, service: Service) -> Response:
+    """Soft delete: desativa o usuário (admin); último admin ativo é protegido."""
+    service.set_status(user_id, False, actor_id=actor.id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

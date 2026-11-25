@@ -1,3 +1,4 @@
+import asyncio
 import os
 from contextlib import asynccontextmanager
 from typing import Annotated
@@ -15,8 +16,13 @@ from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.common.realtime import get_realtime_bus
 from app.config.settings import get_settings
 from app.database.engine import get_db
+from app.modules.admin.domain.models import (  # noqa: F401
+    SystemSetting,  # registra a tabela no metadata
+)
+from app.modules.admin.entrypoints import routes as admin_routes
 from app.modules.auth.entrypoints import routes as auth_routes
 from app.modules.billing.domain.models import (  # noqa: F401  (registra as tabelas no metadata)
     Plan,
@@ -75,6 +81,7 @@ from app.modules.workspace_management.domain.models import (  # noqa: F401
     WorkspaceManagementGrant,
 )
 from app.modules.workspace_management.entrypoints import routes as workspace_management_routes
+from app.modules.workspace_management.entrypoints import taxonomy_router
 
 
 class HealthResponse(BaseModel):
@@ -84,11 +91,13 @@ class HealthResponse(BaseModel):
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    import asyncio
     from app.common.email_outbox import outbox_worker_loop
 
     setup_logging()
     settings = get_settings()
+    bus = get_realtime_bus()
+    await chat_websocket_routes.start_event_dispatcher()
+    bus.start()
     task = asyncio.create_task(outbox_worker_loop(settings))
     try:
         yield
@@ -98,6 +107,8 @@ async def lifespan(_: FastAPI):
             await task
         except asyncio.CancelledError:
             pass
+        bus.stop()
+        await chat_websocket_routes.stop_event_dispatcher()
 
 
 def create_app() -> FastAPI:
@@ -116,6 +127,7 @@ def create_app() -> FastAPI:
         allow_headers=["Authorization", "Content-Type"],
     )
     setup_exception_handlers(app)
+    app.include_router(admin_routes.router)
     app.include_router(auth_routes.router)
     app.include_router(billing_routes.router)
     app.include_router(billing_routes.plans_router)
@@ -124,6 +136,7 @@ def create_app() -> FastAPI:
     app.include_router(user_routes.router)
     app.include_router(workspace_routes.router)
     app.include_router(workspace_management_routes.router)
+    app.include_router(taxonomy_router.router)
     app.include_router(teams_routes.router)
     app.include_router(kanban_boards_routes.router)
     app.include_router(kanban_cards_routes.router)

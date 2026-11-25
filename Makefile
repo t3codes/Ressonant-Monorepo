@@ -7,7 +7,7 @@ SERVICE := $(patsubst ressonant_%,%,$(notdir $(APP_DIR)))
 COMPOSE := docker compose
 
 .PHONY: help setup env check-app check-env infra-up infra-down observability-up observability-down \
-	up down build logs ps migrate test lint check-structure lint-check format-check typecheck hooks check
+	up down build logs ps migrate prod-init test lint check-structure lint-check format-check typecheck hooks check
 
 help: # Show help for each of the makefile recipes.
 	@grep -E '^[a-zA-Z0-9/ -]+:.*#' Makefile | sort | while read -r l; do \
@@ -43,8 +43,8 @@ env: # Run "make env" in each app, ignoring failures.
 		$(MAKE) -C "$$dir" env || true; \
 	done
 
-infra-up: check-env # Start shared infrastructure (Postgres) and wait until healthy.
-	$(COMPOSE) up -d --wait postgres
+infra-up: check-env # Start shared infrastructure (Postgres and Redis) and wait until healthy.
+	$(COMPOSE) up -d --wait postgres redis
 
 infra-down: # Stop shared infrastructure (data volumes are kept).
 	$(COMPOSE) stop postgres
@@ -73,6 +73,11 @@ ps: # List running containers of the monorepo.
 
 migrate: check-app check-env # Run the app's migrations in Docker: make migrate APP=backend
 	$(COMPOSE) run --rm --no-deps migrate
+
+prod-init: check-app check-env # Bootstrap idempotente: migrate/apply → create-admin → seed-prod-catalog.
+	$(MAKE) -C $(APP_DIR) migrate/apply
+	$(MAKE) -C $(APP_DIR) migrate/create-admin
+	$(MAKE) -C $(APP_DIR) seed-prod-catalog
 
 test: # Run tests: all projects, or one app with APP=<nome>.
 ifneq ($(APP),)

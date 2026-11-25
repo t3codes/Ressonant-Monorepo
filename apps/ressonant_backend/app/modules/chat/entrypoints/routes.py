@@ -3,6 +3,7 @@ from typing import Annotated
 from app.modules.auth.deps import CurrentUser
 from app.modules.chat.deps import (
     get_channel_service,
+    get_chat_realtime_service,
     get_conversation_service,
     get_message_service,
 )
@@ -18,6 +19,7 @@ from app.modules.chat.schemas.dto import (
     MessageResponse,
     MessageUpdate,
 )
+from app.modules.chat.usecases.chat_realtime_usecase import ChatRealtimeService
 from app.modules.chat.usecases.services import ChannelService, ConversationService, MessageService
 from fastapi import APIRouter, Depends, Query, status
 
@@ -26,6 +28,7 @@ router = APIRouter(prefix="/channels", tags=["channels"])
 ChannelServiceDep = Annotated[ChannelService, Depends(get_channel_service)]
 ConversationServiceDep = Annotated[ConversationService, Depends(get_conversation_service)]
 MessageServiceDep = Annotated[MessageService, Depends(get_message_service)]
+ChatRealtimeServiceDep = Annotated[ChatRealtimeService, Depends(get_chat_realtime_service)]
 
 
 @router.post("", response_model=ChannelResponse, status_code=status.HTTP_201_CREATED)
@@ -133,9 +136,9 @@ message_router = APIRouter(prefix="/messages", tags=["messages"])
 def create_message(
     payload: MessageCreate,
     user: CurrentUser,
-    service: MessageServiceDep,
+    service: ChatRealtimeServiceDep,
 ) -> MessageResponse:
-    return MessageResponse.model_validate(service.create(payload))
+    return MessageResponse.model_validate(service.create_message(payload, user.id))
 
 
 @message_router.get("", response_model=MessageList)

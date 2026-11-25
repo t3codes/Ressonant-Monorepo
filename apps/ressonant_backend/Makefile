@@ -5,7 +5,7 @@ ROOT := $(abspath $(APP_DIR)/../..)
 COMPOSE := docker compose --project-directory $(ROOT)
 RUN := uv run --project $(ROOT) --directory $(APP_DIR)
 
-.PHONY: help env setup up test test-integration lint check-structure migrate/generate migrate/apply migrate/create-admin export-openapi \
+.PHONY: help env setup up test test-integration lint check-structure migrate/generate migrate/apply migrate/create-admin seed-prod-catalog export-openapi \
 	docker/up dup docker/down ddown docker/build dbuild docker/logs dlogs docker/migrate dmigrate \
 	ci/setup ci/lint ci/tests
 
@@ -48,6 +48,9 @@ migrate/apply: # Apply migrations to the database in .env.
 
 migrate/create-admin: # Create the first admin (ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_CPF in .env).
 	set -a; . $(APP_DIR)/.env; set +a; $(RUN) python -m app.scripts.create_admin
+
+seed-prod-catalog: # Seed idempotente do catálogo (trial_default + inicial/equipe/empresa).
+	set -a; . $(APP_DIR)/.env; set +a; $(RUN) python -m app.scripts.seed_prod_catalog
 
 export-openapi: # Export OpenAPI to openapi.json (spec versionada).
 	PYTHONPATH=$(APP_DIR) $(RUN) python scripts/export_openapi.py $(APP_DIR)/openapi.json

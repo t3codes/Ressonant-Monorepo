@@ -94,7 +94,7 @@ class AuthService:
             raise invalid_credentials()
         if not verify_password(senha, user.senha_hash) or not user.status_ativo:
             raise invalid_credentials()
-        return create_access_token(user.id)
+        return create_access_token(user.id, permission_version=int(user.permission_version or 1))
 
     def check_rate_limit(self, ip: str) -> tuple[bool, dict[str, int]]:
         return self._rate_limit.consume(ip)
@@ -157,13 +157,20 @@ class AuthService:
         user_id = claims.get("sub")
         if not isinstance(user_id, str) or not user_id:
             return None
+        # ADR 0003: o access renovado precisa da versão corrente; sem ela o
+        # validador fail-closed rejeitaria o token de usuários já promovidos.
+        user = self._repo.get_by_id(user_id)
+        if user is None or not user.status_ativo:
+            return None
 
         self._redis.setex(
             f"blk_{refresh_token}",
             max(1, int(claims["exp"] - time.time())),
             "revoked",
         )
-        access_token, access_expires_in = create_access_token(user_id)
+        access_token, access_expires_in = create_access_token(
+            user_id, permission_version=int(user.permission_version or 1)
+        )
         refresh_claims = {
             "sub": user_id,
             "type": "refresh",

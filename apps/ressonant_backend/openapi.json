@@ -6,6 +6,307 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/admin/superusers": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "List Superusers",
+        "description": "Lista superusers; CPF sempre mascarado.",
+        "operationId": "list_superusers_admin_superusers_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SuperuserSummary"
+                  },
+                  "type": "array",
+                  "title": "Response List Superusers Admin Superusers Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Create Superuser",
+        "description": "Cria ou promove um superuser com auditoria `scope='system'`.",
+        "operationId": "create_superuser_admin_superusers_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuperuserCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuperuserSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/admin/plans": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "List Plans",
+        "description": "Lista o catálogo completo, inclusive planos inativos.",
+        "operationId": "list_plans_admin_plans_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/app__modules__admin__schemas__dto__PlanResponse"
+                  },
+                  "type": "array",
+                  "title": "Response List Plans Admin Plans Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Create Plan",
+        "description": "Adiciona plano ao catálogo global.",
+        "operationId": "create_plan_admin_plans_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__modules__admin__schemas__dto__PlanResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/admin/plans/{plan_id}": {
+      "patch": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Update Plan",
+        "description": "Edita plano por id; `code` é imutável.",
+        "operationId": "update_plan_admin_plans__plan_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Plan Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__modules__admin__schemas__dto__PlanResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/settings": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "List Settings",
+        "description": "Lista configurações globais não secretas.",
+        "operationId": "list_settings_admin_settings_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SystemSettingResponse"
+                  },
+                  "type": "array",
+                  "title": "Response List Settings Admin Settings Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/admin/settings/{key}": {
+      "patch": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Update Setting",
+        "description": "Cria/atualiza configuração global; chaves de segredo são rejeitadas.",
+        "operationId": "update_setting_admin_settings__key__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "title": "Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SystemSettingUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemSettingResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/register": {
       "post": {
         "tags": [
@@ -454,7 +755,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PlanResponse"
+                  "$ref": "#/components/schemas/app__modules__billing__schemas__dto__PlanResponse"
                 }
               }
             }
@@ -520,7 +821,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PlanResponse"
+                  "$ref": "#/components/schemas/app__modules__billing__schemas__dto__PlanResponse"
                 }
               }
             }
@@ -569,7 +870,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PlanResponse"
+                  "$ref": "#/components/schemas/app__modules__billing__schemas__dto__PlanResponse"
                 }
               }
             }
@@ -1018,7 +1319,7 @@
           "users"
         ],
         "summary": "Create User",
-        "description": "Cria usuário (admin), podendo definir flags administrativas.",
+        "description": "Cria usuário comum; flags de superuser só via /admin/superusers.",
         "operationId": "create_user_users_post",
         "security": [
           {
@@ -1243,7 +1544,7 @@
           "users"
         ],
         "summary": "Delete User",
-        "description": "Soft delete: desativa o usuário (admin).",
+        "description": "Soft delete: desativa o usuário (admin); último admin ativo é protegido.",
         "operationId": "delete_user_users__user_id__delete",
         "security": [
           {
@@ -1284,7 +1585,7 @@
           "users"
         ],
         "summary": "Set User Status",
-        "description": "Ativa ou desativa o usuário (admin).",
+        "description": "Ativa ou desativa o usuário (admin); último admin ativo é protegido.",
         "operationId": "set_user_status_users__user_id__status_patch",
         "security": [
           {
@@ -1342,7 +1643,7 @@
           "users"
         ],
         "summary": "Set User Admin",
-        "description": "Concede ou revoga acesso administrativo global (somente interno_adm).",
+        "description": "Concede/revoga acesso administrativo; último admin ativo é protegido.",
         "operationId": "set_user_admin_users__user_id__admin_patch",
         "security": [
           {
@@ -1880,6 +2181,126 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ManagementAccessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace_id}/management/access/{target_user_id}": {
+      "get": {
+        "tags": [
+          "workspace-management"
+        ],
+        "summary": "Get Target Management Access",
+        "operationId": "get_target_management_access_workspaces__workspace_id__management_access__target_user_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workspace Id"
+            }
+          },
+          {
+            "name": "target_user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Target User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TargetAccessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "workspace-management"
+        ],
+        "summary": "Update Target Management Access",
+        "operationId": "update_target_management_access_workspaces__workspace_id__management_access__target_user_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workspace Id"
+            }
+          },
+          {
+            "name": "target_user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Target User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CapabilityBatchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TargetAccessResponse"
                 }
               }
             }
@@ -2458,6 +2879,439 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace_id}/management/taxonomy": {
+      "get": {
+        "tags": [
+          "workspace-taxonomy"
+        ],
+        "summary": "List Taxonomy",
+        "operationId": "list_taxonomy_workspaces__workspace_id__management_taxonomy_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workspace Id"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "enum": [
+                "category",
+                "version"
+              ],
+              "type": "string",
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "include_inactive",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Inactive"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TaxonomyResponse"
+                  },
+                  "title": "Response List Taxonomy Workspaces  Workspace Id  Management Taxonomy Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "workspace-taxonomy"
+        ],
+        "summary": "Create Taxonomy",
+        "operationId": "create_taxonomy_workspaces__workspace_id__management_taxonomy_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaxonomyCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaxonomyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace_id}/management/taxonomy/{taxonomy_id}": {
+      "patch": {
+        "tags": [
+          "workspace-taxonomy"
+        ],
+        "summary": "Patch Taxonomy",
+        "operationId": "patch_taxonomy_workspaces__workspace_id__management_taxonomy__taxonomy_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workspace Id"
+            }
+          },
+          {
+            "name": "taxonomy_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Taxonomy Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaxonomyPatchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaxonomyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace_id}/management/taxonomy/{taxonomy_id}/deactivate": {
+      "post": {
+        "tags": [
+          "workspace-taxonomy"
+        ],
+        "summary": "Deactivate Taxonomy",
+        "operationId": "deactivate_taxonomy_workspaces__workspace_id__management_taxonomy__taxonomy_id__deactivate_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workspace Id"
+            }
+          },
+          {
+            "name": "taxonomy_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Taxonomy Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaxonomyDeactivateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaxonomyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace_id}/management/taxonomy-grants": {
+      "get": {
+        "tags": [
+          "workspace-taxonomy"
+        ],
+        "summary": "List Taxonomy Grants",
+        "operationId": "list_taxonomy_grants_workspaces__workspace_id__management_taxonomy_grants_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TaxonomyGrantResponse"
+                  },
+                  "title": "Response List Taxonomy Grants Workspaces  Workspace Id  Management Taxonomy Grants Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "workspace-taxonomy"
+        ],
+        "summary": "Create Taxonomy Grant",
+        "operationId": "create_taxonomy_grant_workspaces__workspace_id__management_taxonomy_grants_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaxonomyGrantCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaxonomyGrantResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace_id}/management/taxonomy-grants/{target_user_id}": {
+      "delete": {
+        "tags": [
+          "workspace-taxonomy"
+        ],
+        "summary": "Revoke Taxonomy Grant",
+        "operationId": "revoke_taxonomy_grant_workspaces__workspace_id__management_taxonomy_grants__target_user_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workspace Id"
+            }
+          },
+          {
+            "name": "target_user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Target User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/TaxonomyGrantRevokeRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
           },
           "422": {
             "description": "Validation Error",
@@ -5131,12 +5985,17 @@
         ],
         "summary": "Create Notification",
         "operationId": "create_notification_notifications_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/NotificationCreate"
+                "$ref": "#/components/schemas/NotificationPublicCreate"
               }
             }
           }
@@ -5839,7 +6698,7 @@
             "title": "Organization Id"
           },
           "plan": {
-            "$ref": "#/components/schemas/PlanResponse"
+            "$ref": "#/components/schemas/app__modules__billing__schemas__dto__PlanResponse"
           },
           "subscription": {
             "anyOf": [
@@ -6375,6 +7234,121 @@
           "file"
         ],
         "title": "Body_upload_image_upload_image_post"
+      },
+      "CapabilityBatchItem": {
+        "properties": {
+          "capability": {
+            "type": "string",
+            "enum": [
+              "management_read",
+              "management_modify",
+              "management_grant",
+              "teams_create",
+              "teams_update",
+              "teams_soft_delete",
+              "teams_hard_delete",
+              "members_manage",
+              "columns_manage",
+              "blocked_cards_read",
+              "blocked_cards_unblock",
+              "audit_read",
+              "settings_manage",
+              "grants_manage",
+              "taxonomy_read",
+              "taxonomy_manage",
+              "taxonomy_manage_grant"
+            ],
+            "title": "Capability"
+          },
+          "effect": {
+            "type": "string",
+            "enum": [
+              "allow",
+              "deny",
+              "reset"
+            ],
+            "title": "Effect"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "capability",
+          "effect"
+        ],
+        "title": "CapabilityBatchItem"
+      },
+      "CapabilityBatchRequest": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CapabilityBatchItem"
+            },
+            "type": "array",
+            "maxItems": 17,
+            "title": "Items"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "CapabilityBatchRequest"
+      },
+      "CapabilityOverride": {
+        "properties": {
+          "capability": {
+            "type": "string",
+            "enum": [
+              "management_read",
+              "management_modify",
+              "management_grant",
+              "teams_create",
+              "teams_update",
+              "teams_soft_delete",
+              "teams_hard_delete",
+              "members_manage",
+              "columns_manage",
+              "blocked_cards_read",
+              "blocked_cards_unblock",
+              "audit_read",
+              "settings_manage",
+              "grants_manage",
+              "taxonomy_read",
+              "taxonomy_manage",
+              "taxonomy_manage_grant"
+            ],
+            "title": "Capability"
+          },
+          "effect": {
+            "type": "string",
+            "enum": [
+              "allow",
+              "deny"
+            ],
+            "title": "Effect"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "capability",
+          "effect"
+        ],
+        "title": "CapabilityOverride"
       },
       "CardBlockInput": {
         "properties": {
@@ -9070,6 +10044,21 @@
             "type": "boolean",
             "title": "Grants Manage",
             "default": false
+          },
+          "taxonomy_read": {
+            "type": "boolean",
+            "title": "Taxonomy Read",
+            "default": false
+          },
+          "taxonomy_manage": {
+            "type": "boolean",
+            "title": "Taxonomy Manage",
+            "default": false
+          },
+          "taxonomy_manage_grant": {
+            "type": "boolean",
+            "title": "Taxonomy Manage Grant",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -9279,10 +10268,6 @@
       },
       "MessageCreate": {
         "properties": {
-          "workspace_id": {
-            "type": "string",
-            "title": "Workspace Id"
-          },
           "room_id": {
             "type": "string",
             "title": "Room Id"
@@ -9291,10 +10276,6 @@
             "type": "string",
             "pattern": "^(channel|conversation)$",
             "title": "Room Kind"
-          },
-          "author_id": {
-            "type": "string",
-            "title": "Author Id"
           },
           "body": {
             "type": "string",
@@ -9320,7 +10301,8 @@
                   "additionalProperties": true,
                   "type": "object"
                 },
-                "type": "array"
+                "type": "array",
+                "maxItems": 10
               },
               {
                 "type": "null"
@@ -9334,7 +10316,8 @@
                 "items": {
                   "type": "string"
                 },
-                "type": "array"
+                "type": "array",
+                "maxItems": 50
               },
               {
                 "type": "null"
@@ -9343,15 +10326,15 @@
             "title": "Mention Ids"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
-          "workspace_id",
           "room_id",
           "room_kind",
-          "author_id",
           "body"
         ],
-        "title": "MessageCreate"
+        "title": "MessageCreate",
+        "description": "DTO público: autor e workspace nunca vêm do cliente (CYB-WS-001)."
       },
       "MessageList": {
         "properties": {
@@ -9504,44 +10487,6 @@
         ],
         "title": "MessageUpdate"
       },
-      "NotificationCreate": {
-        "properties": {
-          "user_id": {
-            "type": "string",
-            "title": "User Id"
-          },
-          "kind": {
-            "type": "string",
-            "maxLength": 50,
-            "minLength": 1,
-            "title": "Kind"
-          },
-          "title": {
-            "type": "string",
-            "maxLength": 200,
-            "minLength": 1,
-            "title": "Title"
-          },
-          "body": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Body"
-          }
-        },
-        "type": "object",
-        "required": [
-          "user_id",
-          "kind",
-          "title"
-        ],
-        "title": "NotificationCreate"
-      },
       "NotificationList": {
         "properties": {
           "items": {
@@ -9573,6 +10518,92 @@
         ],
         "title": "NotificationList"
       },
+      "NotificationPublicCreate": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Kind"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "body": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "workspace_id": {
+            "type": "string",
+            "title": "Workspace Id"
+          },
+          "actor_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Id"
+          },
+          "message_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Id"
+          },
+          "room_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Room Id"
+          },
+          "room_kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(channel|conversation)$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Room Kind"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "title",
+          "workspace_id"
+        ],
+        "title": "NotificationPublicCreate",
+        "description": "Corpo aceito por `POST /notifications` (CYB-WS-004)."
+      },
       "NotificationResponse": {
         "properties": {
           "id": {
@@ -9601,6 +10632,61 @@
               }
             ],
             "title": "Body"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          },
+          "actor_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Id"
+          },
+          "message_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Id"
+          },
+          "room_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Room Id"
+          },
+          "room_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Room Kind"
           },
           "read_at": {
             "anyOf": [
@@ -9751,7 +10837,7 @@
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/PlanResponse"
+              "$ref": "#/components/schemas/app__modules__billing__schemas__dto__PlanResponse"
             },
             "type": "array",
             "title": "Items"
@@ -9774,6 +10860,122 @@
           "items"
         ],
         "title": "PlanCatalogResponse"
+      },
+      "PlanCreate": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 2,
+            "pattern": "^[a-z0-9_]+$",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 2,
+            "title": "Name"
+          },
+          "billing_cycle": {
+            "type": "string",
+            "pattern": "^(monthly|yearly|custom)$",
+            "title": "Billing Cycle",
+            "default": "monthly"
+          },
+          "base_price_cents": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Base Price Cents",
+            "default": 0
+          },
+          "price_per_seat_cents": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Price Per Seat Cents",
+            "default": 0
+          },
+          "included_seats": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Included Seats",
+            "default": 0
+          },
+          "limits": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Limits"
+          },
+          "is_public": {
+            "type": "boolean",
+            "title": "Is Public",
+            "default": true
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "default": true
+          },
+          "price_cents": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Cents",
+            "description": "Legado; default=base_price_cents"
+          },
+          "currency": {
+            "type": "string",
+            "maxLength": 3,
+            "minLength": 3,
+            "title": "Currency",
+            "default": "BRL"
+          },
+          "seat_limit": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seat Limit",
+            "description": "Legado; default=included_seats"
+          },
+          "overage_cents_per_seat": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overage Cents Per Seat",
+            "description": "Legado; default=price_per_seat_cents"
+          },
+          "trial_days": {
+            "type": "integer",
+            "maximum": 365.0,
+            "minimum": 0.0,
+            "title": "Trial Days",
+            "default": 14
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "PlanCreate"
       },
       "PlanCreateRequest": {
         "properties": {
@@ -9849,28 +11051,133 @@
         ],
         "title": "PlanCreateRequest"
       },
-      "PlanResponse": {
+      "PlanUpdate": {
         "properties": {
-          "code": {
-            "type": "string",
-            "title": "Code"
-          },
           "name": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Name"
           },
+          "billing_cycle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(monthly|yearly|custom)$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Billing Cycle"
+          },
+          "base_price_cents": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Price Cents"
+          },
+          "price_per_seat_cents": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Per Seat Cents"
+          },
+          "included_seats": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Included Seats"
+          },
+          "limits": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limits"
+          },
+          "is_public": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Public"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
           "price_cents": {
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Price Cents"
           },
           "currency": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 3,
+                "minLength": 3
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Currency"
           },
           "seat_limit": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "integer",
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -9878,37 +11185,46 @@
             ],
             "title": "Seat Limit"
           },
-          "overage": {
+          "overage_cents_per_seat": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "integer",
+                "minimum": 0.0
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Overage"
+            "title": "Overage Cents Per Seat"
           },
           "trial_days": {
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 365.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Trial Days"
           },
           "active": {
-            "type": "boolean",
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Active"
           }
         },
         "additionalProperties": false,
         "type": "object",
-        "required": [
-          "code",
-          "name",
-          "price_cents",
-          "currency",
-          "trial_days",
-          "active"
-        ],
-        "title": "PlanResponse"
+        "title": "PlanUpdate"
       },
       "PlanUpdateRequest": {
         "properties": {
@@ -10587,6 +11903,572 @@
         ],
         "title": "SubscriptionStatusUpdateRequest"
       },
+      "SuperuserCreate": {
+        "properties": {
+          "nome": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 2,
+            "title": "Nome"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "cpf": {
+            "type": "string",
+            "title": "Cpf",
+            "description": "CPF com ou sem máscara; armazenado só com dígitos"
+          },
+          "telefone": {
+            "type": "string",
+            "title": "Telefone",
+            "description": "Telefone com DDD (10 ou 11 dígitos)"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 8
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password",
+            "description": "Obrigatória apenas quando o e-email ainda não existe"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "nome",
+          "email",
+          "cpf",
+          "telefone"
+        ],
+        "title": "SuperuserCreate"
+      },
+      "SuperuserSummary": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "nome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "cpf_masked": {
+            "type": "string",
+            "title": "Cpf Masked"
+          },
+          "telefone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telefone"
+          },
+          "status_ativo": {
+            "type": "boolean",
+            "title": "Status Ativo"
+          },
+          "interno_adm": {
+            "type": "boolean",
+            "title": "Interno Adm"
+          },
+          "permission_version": {
+            "type": "integer",
+            "title": "Permission Version"
+          },
+          "criado_em": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Criado Em"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "cpf_masked",
+          "status_ativo",
+          "interno_adm",
+          "permission_version"
+        ],
+        "title": "SuperuserSummary"
+      },
+      "SystemSettingResponse": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "value": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Value"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "updated_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated By"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "key",
+          "value",
+          "updated_at"
+        ],
+        "title": "SystemSettingResponse"
+      },
+      "SystemSettingUpdate": {
+        "properties": {
+          "value": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Value"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "title": "SystemSettingUpdate"
+      },
+      "TargetAccessResponse": {
+        "properties": {
+          "workspace_id": {
+            "type": "string",
+            "title": "Workspace Id"
+          },
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "is_owner": {
+            "type": "boolean",
+            "title": "Is Owner"
+          },
+          "interno_adm": {
+            "type": "boolean",
+            "title": "Interno Adm"
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "none",
+              "read",
+              "modify",
+              "grant"
+            ],
+            "title": "Level"
+          },
+          "permission_version": {
+            "type": "integer",
+            "title": "Permission Version"
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/ManagementCapabilities"
+          },
+          "overrides": {
+            "items": {
+              "$ref": "#/components/schemas/CapabilityOverride"
+            },
+            "type": "array",
+            "title": "Overrides"
+          },
+          "editable": {
+            "type": "boolean",
+            "title": "Editable"
+          },
+          "hard_locked_capabilities": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "management_read",
+                "management_modify",
+                "management_grant",
+                "teams_create",
+                "teams_update",
+                "teams_soft_delete",
+                "teams_hard_delete",
+                "members_manage",
+                "columns_manage",
+                "blocked_cards_read",
+                "blocked_cards_unblock",
+                "audit_read",
+                "settings_manage",
+                "grants_manage",
+                "taxonomy_read",
+                "taxonomy_manage",
+                "taxonomy_manage_grant"
+              ]
+            },
+            "type": "array",
+            "title": "Hard Locked Capabilities"
+          },
+          "deny_only_capabilities": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "management_read",
+                "management_modify",
+                "management_grant",
+                "teams_create",
+                "teams_update",
+                "teams_soft_delete",
+                "teams_hard_delete",
+                "members_manage",
+                "columns_manage",
+                "blocked_cards_read",
+                "blocked_cards_unblock",
+                "audit_read",
+                "settings_manage",
+                "grants_manage",
+                "taxonomy_read",
+                "taxonomy_manage",
+                "taxonomy_manage_grant"
+              ]
+            },
+            "type": "array",
+            "title": "Deny Only Capabilities"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "workspace_id",
+          "user_id",
+          "is_owner",
+          "interno_adm",
+          "level",
+          "permission_version",
+          "capabilities",
+          "overrides",
+          "editable",
+          "hard_locked_capabilities",
+          "deny_only_capabilities"
+        ],
+        "title": "TargetAccessResponse"
+      },
+      "TaxonomyCreateRequest": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "category",
+              "version"
+            ],
+            "title": "Kind"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "name"
+        ],
+        "title": "TaxonomyCreateRequest"
+      },
+      "TaxonomyDeactivateRequest": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "TaxonomyDeactivateRequest"
+      },
+      "TaxonomyGrantCreateRequest": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "User Id"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "user_id"
+        ],
+        "title": "TaxonomyGrantCreateRequest"
+      },
+      "TaxonomyGrantResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "workspace_id": {
+            "type": "string",
+            "title": "Workspace Id"
+          },
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "granted_by_id": {
+            "type": "string",
+            "title": "Granted By Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "workspace_id",
+          "user_id",
+          "granted_by_id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "TaxonomyGrantResponse"
+      },
+      "TaxonomyGrantRevokeRequest": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "TaxonomyGrantRevokeRequest"
+      },
+      "TaxonomyPatchRequest": {
+        "properties": {
+          "color": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "color"
+        ],
+        "title": "TaxonomyPatchRequest"
+      },
+      "TaxonomyResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "workspace_id": {
+            "type": "string",
+            "title": "Workspace Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "category",
+              "version"
+            ],
+            "title": "Kind"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
+          },
+          "created_by_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By Id"
+          },
+          "criado_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Criado Em"
+          },
+          "atualizado_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Atualizado Em"
+          },
+          "desativado_em": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Desativado Em"
+          },
+          "desativado_by_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Desativado By Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "workspace_id",
+          "kind",
+          "name",
+          "criado_em",
+          "atualizado_em"
+        ],
+        "title": "TaxonomyResponse"
+      },
       "TeamContextResponse": {
         "properties": {
           "id": {
@@ -11076,6 +12958,7 @@
           "interno_adm": {
             "type": "boolean",
             "title": "Interno Adm",
+            "description": "Somente-leitura: envie sempre false; use /admin/superusers para promover.",
             "default": false
           }
         },
@@ -11913,6 +13796,169 @@
         "type": "object",
         "title": "WorkspaceUpdate",
         "description": "Campos editáveis; owner_id e slug não mudam após a criação."
+      },
+      "app__modules__admin__schemas__dto__PlanResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "billing_cycle": {
+            "type": "string",
+            "title": "Billing Cycle"
+          },
+          "base_price_cents": {
+            "type": "integer",
+            "title": "Base Price Cents"
+          },
+          "price_per_seat_cents": {
+            "type": "integer",
+            "title": "Price Per Seat Cents"
+          },
+          "included_seats": {
+            "type": "integer",
+            "title": "Included Seats"
+          },
+          "limits": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Limits"
+          },
+          "is_public": {
+            "type": "boolean",
+            "title": "Is Public"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "price_cents": {
+            "type": "integer",
+            "title": "Price Cents"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "seat_limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seat Limit"
+          },
+          "overage_cents_per_seat": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overage Cents Per Seat"
+          },
+          "trial_days": {
+            "type": "integer",
+            "title": "Trial Days"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "name",
+          "billing_cycle",
+          "base_price_cents",
+          "price_per_seat_cents",
+          "included_seats",
+          "limits",
+          "is_public",
+          "is_active",
+          "price_cents",
+          "currency",
+          "trial_days",
+          "active"
+        ],
+        "title": "PlanResponse"
+      },
+      "app__modules__billing__schemas__dto__PlanResponse": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "price_cents": {
+            "type": "integer",
+            "title": "Price Cents"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "seat_limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seat Limit"
+          },
+          "overage": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overage"
+          },
+          "trial_days": {
+            "type": "integer",
+            "title": "Trial Days"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "name",
+          "price_cents",
+          "currency",
+          "trial_days",
+          "active"
+        ],
+        "title": "PlanResponse"
       }
     },
     "securitySchemes": {

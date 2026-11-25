@@ -6,10 +6,12 @@ from app.modules.workspace_management.schemas.dto import (
     AdminTeamResponse,
     AuditEventResponse,
     BlockedCardResponse,
+    CapabilityBatchRequest,
     GrantCreateRequest,
     GrantRevokeRequest,
     ManagementAccessResponse,
     ManagementGrantResponse,
+    TargetAccessResponse,
     WorkspacePersonDetailResponse,
     WorkspacePersonResponse,
     WorkspacePersonTeamChangeRequest,
@@ -30,6 +32,35 @@ def get_management_access(
     workspace_id: str, service: Service, current_user: CurrentUser
 ) -> ManagementAccessResponse:
     return service.get_access_response(workspace_id, current_user)
+
+
+@router.get("/access/{target_user_id}", response_model=TargetAccessResponse)
+def get_target_management_access(
+    workspace_id: str,
+    target_user_id: str,
+    service: Service,
+    current_user: CurrentUser,
+) -> TargetAccessResponse:
+    return service.get_target_access(workspace_id, current_user, target_user_id)
+
+
+@router.put("/access/{target_user_id}", response_model=TargetAccessResponse)
+def update_target_management_access(
+    workspace_id: str,
+    target_user_id: str,
+    payload: CapabilityBatchRequest,
+    request: Request,
+    service: Service,
+    current_user: CurrentUser,
+) -> TargetAccessResponse:
+    return service.update_capabilities(
+        workspace_id,
+        current_user,
+        target_user_id,
+        items=payload.items,
+        reason=payload.reason,
+        request_id=_request_id(request),
+    )
 
 
 @router.get("/grants", response_model=list[ManagementGrantResponse])

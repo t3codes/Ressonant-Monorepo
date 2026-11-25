@@ -1,6 +1,8 @@
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import lru_cache
+
+from pydantic import SecretStr
 
 MIN_SECRET_LENGTH = 32
 
@@ -13,6 +15,7 @@ class ConfigurationError(RuntimeError):
 class Settings:
     environment: str
     database_url: str
+    redis_url: str | None
     auth_secret: str
     jwt_algorithm: str
     access_token_expire_minutes: int
@@ -27,6 +30,12 @@ class Settings:
     smtp_from_name: str
     frontend_base_url: str
     email_enabled: bool
+    # Bootstrap do primeiro admin: opcionais e fora de repr (secret/PII).
+    admin_name: str | None = field(default=None, repr=False)
+    admin_email: str | None = field(default=None, repr=False)
+    admin_password: SecretStr | None = field(default=None, repr=False)
+    admin_cpf: str | None = field(default=None, repr=False)
+    admin_telefone: str | None = field(default=None, repr=False)
 
 
 def _required(name: str) -> str:
@@ -43,6 +52,18 @@ def _bool(name: str, default: bool = False) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _optional(name: str) -> str | None:
+    value = os.getenv(name)
+    if value is None:
+        return None
+    return value.strip() or None
+
+
+def _secret_optional(name: str) -> SecretStr | None:
+    value = os.getenv(name)
+    return SecretStr(value) if value else None
+
+
 @lru_cache
 def get_settings() -> Settings:
     auth_secret = _required("AUTH_SECRET")
@@ -54,6 +75,7 @@ def get_settings() -> Settings:
     return Settings(
         environment=os.getenv("ENVIRONMENT", "development"),
         database_url=_required("DATABASE_URL"),
+        redis_url=os.getenv("REDIS_URL", "").strip() or None,
         auth_secret=auth_secret,
         jwt_algorithm="HS256",
         access_token_expire_minutes=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")),
@@ -68,4 +90,9 @@ def get_settings() -> Settings:
         smtp_from_name=os.getenv("SMTP_FROM_NAME", "Ressonant").strip(),
         frontend_base_url=os.getenv("FRONTEND_BASE_URL", "http://localhost:5173").rstrip("/"),
         email_enabled=_bool("EMAIL_ENABLED", default=bool(smtp_host)),
+        admin_name=_optional("ADMIN_NAME"),
+        admin_email=_optional("ADMIN_EMAIL"),
+        admin_password=_secret_optional("ADMIN_PASSWORD"),
+        admin_cpf=_optional("ADMIN_CPF"),
+        admin_telefone=_optional("ADMIN_TELEFONE"),
     )

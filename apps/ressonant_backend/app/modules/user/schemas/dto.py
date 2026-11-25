@@ -68,7 +68,12 @@ class UserCreate(UserRegister):
     """Criação por administrador."""
 
     status_ativo: bool = True
-    interno_adm: bool = False
+    # Contrato publicado mantido por compatibilidade; a rota rejeita `true`
+    # com 403 ADMIN_FLAG_NOT_ALLOWED. Promoção real: /admin/superusers.
+    interno_adm: bool = Field(
+        default=False,
+        description="Somente-leitura: envie sempre false; use /admin/superusers para promover.",
+    )
 
 
 class UserUpdate(BaseModel):

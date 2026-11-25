@@ -13,6 +13,7 @@ from app.modules.teams.schemas.dto import (
 )
 from app.modules.user.dataproviders.repository import UserRepository
 from app.modules.workspace.dataproviders.repository import WorkspaceRepository
+from app.modules.workspace_management.dataproviders.repository import WorkspaceManagementRepository
 from common.errors import ExceptionData, ForbiddenException, NotFoundException
 from sqlalchemy.exc import IntegrityError
 
@@ -68,6 +69,14 @@ class TeamService:
     def _ws_repo(self) -> WorkspaceRepository:
         return WorkspaceRepository(self._repo._db)
 
+    def _is_interno_admin(self, actor_id: str) -> bool:
+        """Rotas de leitura/edição não repassam interno_adm.
+
+        Consulta o usuário para aplicar o mesmo override de _can_manage_team.
+        """
+        actor = self._user_repo().get_by_id(actor_id)
+        return actor is not None and bool(actor.interno_adm)
+
     def _can_manage_team(self, team: Team, actor_id: str, actor_is_admin: bool) -> bool:
         if actor_is_admin or team.owner_id == actor_id:
             return True
@@ -81,6 +90,24 @@ class TeamService:
             return True
         ws_member = self._ws_repo().is_member(team.workspace_id, actor_id)
         return ws_member is not None and ws_member.role == "admin"
+
+    def _require_capability_allowed(
+        self, workspace_id: str, actor_id: str, capability: str
+    ) -> None:
+        """Veto negativo: apenas 'deny' bloqueia; atores inerentes são imunes."""
+        repo = WorkspaceManagementRepository(self._repo._db)
+        # Regra dura: a mesma de ManagementAccess.has_inherent_access.
+        if repo.actor_has_inherent_access(workspace_id, actor_id):
+            return
+        override = repo.get_active_capability_override(workspace_id, actor_id, capability)
+        if override is not None and override.effect == "deny":
+            raise ForbiddenException(
+                ExceptionData(
+                    message=f"Capability '{capability}' bloqueada neste workspace",
+                    error_code="CAPABILITY_DENIED",
+                ),
+                is_expected=True,
+            )
 
     def _resolve_target_user_id(self, payload: TeamMemberAdd) -> str:
         if payload.user_id:
@@ -98,6 +125,7 @@ class TeamService:
         ws_repo = self._ws_repo()
         if not ws_repo.is_member(payload.workspace_id, owner_id):
             raise _forbidden("Você não é membro deste workspace")
+        self._require_capability_allowed(payload.workspace_id, owner_id, "teams_create")
 
         if self._repo.exists_by_slug(payload.slug):
             raise _conflict("Já existe um team com este slug", "TEAM_ALREADY_EXISTS")
@@ -130,11 +158,15 @@ class TeamService:
             raise
         return team
 
-    def get(self, team_id: str, user_id: str) -> Team:
+    def get(self, team_id: str, user_id: str, *, require_manage: bool = False) -> Team:
         team = self._repo.get_by_id(team_id)
         if team is None or team.is_deleted:
             raise _not_found()
-        if not self._repo.is_member(team_id, user_id) and team.owner_id != user_id:
+        if self._repo.is_member(team_id, user_id) is not None and not require_manage:
+            return team
+        if not self._can_manage_team(team, user_id, self._is_interno_admin(user_id)):
+            if require_manage:
+                raise _forbidden("Somente o owner ou admin do team pode editar")
             raise _forbidden("Você não é membro deste team")
         return team
 
@@ -149,10 +181,10 @@ class TeamService:
         return self._repo.list_for_workspace(workspace_id, user_id, skip, limit, status_ativo)
 
     def update(self, team_id: str, payload: TeamUpdate, user_id: str) -> Team:
-        team = self.get(team_id, user_id)
-        member = self._repo.is_member(team_id, user_id)
-        if team.owner_id != user_id and (member is None or member.role != "admin"):
-            raise _forbidden("Somente o owner ou admin do team pode editar")
+        team = self.get(team_id, user_id, require_manage=True)
+        self._require_capability_allowed(team.workspace_id, user_id, "teams_update")
+        if payload.status_ativo is not None and team.owner_id != user_id:
+            raise _forbidden("Somente o owner pode ativar/desativar o team")
         if payload.name is not None:
             team.name = payload.name
         if payload.description is not None:
@@ -190,6 +222,7 @@ class TeamService:
             raise _not_found()
         if not self._can_manage_team(team, actor_id, actor_is_admin):
             raise _forbidden("Sem permissão para gerenciar membros da equipe")
+        self._require_capability_allowed(team.workspace_id, actor_id, "members_manage")
         target_id = self._resolve_target_user_id(payload)
         # alvo deve ser membro do workspace
         if self._ws_repo().is_member(team.workspace_id, target_id) is None:
@@ -229,6 +262,7 @@ class TeamService:
             raise _not_found()
         if not self._can_manage_team(team, actor_id, actor_is_admin):
             raise _forbidden("Sem permissão para gerenciar membros da equipe")
+        self._require_capability_allowed(team.workspace_id, actor_id, "members_manage")
         member = self._repo.get_member(team_id, target_user_id)
         if member is None:
             raise _not_found()
@@ -249,7 +283,7 @@ class TeamService:
         return member
 
     def list_members(self, team_id: str, user_id: str) -> list[TeamMember]:
-        """Lista membros do team (só se o usuário é membro)."""
+        """Lista membros do team (membro do time ou owner/admin do workspace)."""
         self.get(team_id, user_id)
         return self._repo.list_members(team_id)
 

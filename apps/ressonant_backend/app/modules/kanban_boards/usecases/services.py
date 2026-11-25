@@ -168,6 +168,20 @@ class BoardService:
         is_team_admin = member is not None and member.role == "admin"
         return is_team_owner or is_team_admin
 
+    def _require_columns_manage_allowed(self, workspace_id: str, user_id: str) -> None:
+        """Veto deny-only: reforça a autorização; atores inerentes são imunes."""
+        from app.modules.workspace_management.dataproviders.repository import (
+            WorkspaceManagementRepository,
+        )
+
+        repo = WorkspaceManagementRepository(self._repo._db)
+        # Regra dura: a mesma de ManagementAccess.has_inherent_access.
+        if repo.actor_has_inherent_access(workspace_id, user_id):
+            return
+        override = repo.get_active_capability_override(workspace_id, user_id, "columns_manage")
+        if override is not None and override.effect == "deny":
+            raise _forbidden("Capability columns_manage negada neste workspace")
+
     def _normalize_column_positions(self, board_id: str) -> list[BoardColumn]:
         cols = self._column_repo.list_by_board(board_id)
         for idx, col in enumerate(cols):
@@ -179,6 +193,7 @@ class BoardService:
     ) -> BoardColumn:
         """Cria coluna. Shift em posições >= position; renumera sequencialmente."""
         board = self.get(board_id, user_id)
+        self._require_columns_manage_allowed(board.workspace_id, user_id)
         if not self._can_manage_columns(board, user_id, actor_is_admin):
             raise _forbidden("Sem permissão para gerenciar colunas")
         cols = self._column_repo.list_by_board(board_id)
@@ -208,6 +223,7 @@ class BoardService:
         self, board_id: str, column_id: str, payload, user_id: str, actor_is_admin: bool = False
     ) -> BoardColumn:
         board = self.get(board_id, user_id)
+        self._require_columns_manage_allowed(board.workspace_id, user_id)
         if not self._can_manage_columns(board, user_id, actor_is_admin):
             raise _forbidden("Sem permissão para gerenciar colunas")
         column = self._column_repo.get_by_id(column_id)
@@ -230,6 +246,7 @@ class BoardService:
         self, board_id: str, column_id: str, user_id: str, actor_is_admin: bool = False
     ) -> None:
         board = self.get(board_id, user_id)
+        self._require_columns_manage_allowed(board.workspace_id, user_id)
         if not self._can_manage_columns(board, user_id, actor_is_admin):
             raise _forbidden("Sem permissão para gerenciar colunas")
         column = self._column_repo.get_by_id(column_id)
@@ -257,6 +274,7 @@ class BoardService:
         actor_is_admin: bool = False,
     ) -> list[BoardColumn]:
         board = self.get(board_id, user_id)
+        self._require_columns_manage_allowed(board.workspace_id, user_id)
         if not self._can_manage_columns(board, user_id, actor_is_admin):
             raise _forbidden("Sem permissão para gerenciar colunas")
         cols = self._column_repo.list_by_board(board_id)

@@ -11,7 +11,7 @@ from app.modules.chat.domain.models import Channel, Conversation, Message
 from app.modules.chat.schemas.dto import (
     ChannelCreate,
     ConversationCreate,
-    MessageCreate,
+    MessageInput,
     MessageUpdate,
 )
 from common.errors import ExceptionData, ForbiddenException, NotFoundException
@@ -133,7 +133,7 @@ class MessageService:
     def get_by_id(self, message_id: str) -> Message | None:
         return self._repo.get_by_id(message_id)
 
-    def create(self, payload: MessageCreate) -> Message:
+    def create(self, payload: MessageInput) -> Message:
         message = Message(
             workspace_id=payload.workspace_id,
             room_id=payload.room_id,

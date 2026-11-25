@@ -1,14 +1,19 @@
 from typing import Annotated
 
+from app.database.engine import get_db
 from app.modules.auth.deps import CurrentUser
 from app.modules.notifications.deps import get_notification_service
 from app.modules.notifications.schemas.dto import (
-    NotificationCreate,
     NotificationList,
+    NotificationPublicCreate,
     NotificationResponse,
+)
+from app.modules.notifications.usecases.create_notification_usecase import (
+    create_notification_for_user,
 )
 from app.modules.notifications.usecases.services import NotificationService
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
@@ -31,7 +36,7 @@ def mark_read(
     user: CurrentUser,
     service: Service,
 ) -> None:
-    service.mark_read(ids)
+    service.mark_read(ids, user.id)
     return None
 
 
@@ -46,7 +51,8 @@ def mark_all_read(
 
 @router.post("", response_model=NotificationResponse, status_code=201)
 def create_notification(
-    payload: NotificationCreate,
-    service: Service,
+    payload: NotificationPublicCreate,
+    user: CurrentUser,
+    db: Annotated[Session, Depends(get_db)],
 ) -> NotificationResponse:
-    return NotificationResponse.model_validate(service.create(payload))
+    return NotificationResponse.model_validate(create_notification_for_user(db, payload, user.id))

@@ -1,19 +1,38 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Literal
+import uuid
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from typing import Literal, cast
 
 from app.common.exceptions import ConflictException
+from app.modules.teams.domain.models import TeamMember
 from app.modules.user.domain.models import User
 from app.modules.workspace.domain.models import Workspace
 from app.modules.workspace_management.dataproviders.repository import WorkspaceManagementRepository
-from app.modules.workspace_management.domain.models import AuditEvent, WorkspaceManagementGrant
+from app.modules.workspace_management.domain.models import (
+    AuditEvent,
+    CardTaxonomyModel,
+    WorkspaceCapabilityGrant,
+    WorkspaceManagementGrant,
+    WorkspaceTaxonomyGrantModel,
+)
 from app.modules.workspace_management.schemas.dto import (
+    CAPABILITY_NAMES,
+    DENY_ONLY_CAPABILITIES,
+    HARD_LOCKED_CAPABILITIES,
+    CapabilityBatchItem,
+    CapabilityOverride,
     ManagementAccessResponse,
     ManagementCapabilities,
+    TargetAccessResponse,
 )
-from app.modules.teams.domain.models import TeamMember
-from common.errors import ExceptionData, ForbiddenException, NotFoundException
+from common.errors import (
+    BadRequestException,
+    ExceptionData,
+    ForbiddenException,
+    NotFoundException,
+)
 
 ManagementLevel = Literal["none", "read", "modify", "grant"]
 LEVEL_RANK = {"none": 0, "read": 1, "modify": 2, "grant": 3}
@@ -29,6 +48,17 @@ class ManagementAccess:
     permission_version: int
     # Papel organizacional vem do repositório, nunca de `interno_adm`.
     organization_role: str | None = None
+    is_member: bool = False
+    capability_overrides: dict[str, str] = field(default_factory=dict)
+
+    @property
+    def has_inherent_access(self) -> bool:
+        """Regras duras não podem ser sobrescritas por override granular."""
+        return (
+            self.is_owner
+            or self.is_interno_adm
+            or self.organization_role in {"owner", "billing_owner"}
+        )
 
     @property
     def can_read(self) -> bool:
@@ -106,14 +136,22 @@ class WorkspaceManagementService:
             "telefone",
             "email",
             "authorization",
+            "reason",
+            "revoke_reason",
+            "break_glass_reason",
         }
-        out = {}
-        for k, v in payload.items():
-            if k.lower() in sensitive:
-                out[k] = "[REDACTED]"
-            else:
-                out[k] = v
-        return out
+
+        def scrub(value: object) -> object:
+            if isinstance(value, dict):
+                return {
+                    key: "[REDACTED]" if str(key).lower() in sensitive else scrub(item)
+                    for key, item in value.items()
+                }
+            if isinstance(value, list):
+                return [scrub(item) for item in value]
+            return value
+
+        return cast(dict, scrub(payload))
 
     def _audit(
         self,
@@ -218,12 +256,23 @@ class WorkspaceManagementService:
             is_interno_adm=is_interno_adm,
             permission_version=int(getattr(workspace, "management_permission_version", 1) or 1),
             organization_role=organization_role,
+            is_member=member is not None,
+            capability_overrides=self._repo.list_active_capability_overrides(workspace_id, user.id),
         )
 
     def build_capabilities(self, access: ManagementAccess) -> ManagementCapabilities:
         r, m, g = access.can_read, access.can_modify, access.can_grant
         is_owner_or_internal = access.can_grant_grant_level
-        return ManagementCapabilities(
+        taxonomy_grant_authority = (
+            access.is_owner or access.organization_role == "owner" or access.is_interno_adm
+        )
+        taxonomy_manager = (
+            access.is_owner
+            or access.organization_role == "owner"
+            or access.is_interno_adm
+            or self._repo.get_active_taxonomy_grant(access.workspace.id, access.user.id) is not None
+        )
+        capabilities = ManagementCapabilities(
             management_read=r,
             management_modify=m,
             management_grant=g,
@@ -238,7 +287,23 @@ class WorkspaceManagementService:
             audit_read=r,
             settings_manage=is_owner_or_internal,
             grants_manage=g,
+            taxonomy_read=access.is_owner or access.is_member,
+            taxonomy_manage=taxonomy_manager,
+            taxonomy_manage_grant=taxonomy_grant_authority,
         )
+        # Regras duras (propriedade, separação de poderes, R9/R10) vêm primeiro e
+        # nunca são sobrescritas por uma exceção granular.
+        if access.has_inherent_access or not access.capability_overrides:
+            return capabilities
+        effective = capabilities.model_dump()
+        for capability, effect in access.capability_overrides.items():
+            if capability in HARD_LOCKED_CAPABILITIES or capability not in CAPABILITY_NAMES:
+                continue
+            if capability in DENY_ONLY_CAPABILITIES:
+                effective[capability] = effective[capability] and effect != "deny"
+            else:
+                effective[capability] = effect == "allow"
+        return ManagementCapabilities(**effective)
 
     def get_access_response(self, workspace_id: str, user: User) -> ManagementAccessResponse:
         access = self.resolve_access(workspace_id, user)
@@ -252,9 +317,164 @@ class WorkspaceManagementService:
             capabilities=self.build_capabilities(access),
         )
 
+    def _get_target_user(self, workspace: Workspace, target_user_id: str) -> User:
+        target = self._repo.get_user(target_user_id)
+        if target is None or (
+            workspace.owner_id != target_user_id
+            and self._repo.get_workspace_member(workspace.id, target_user_id) is None
+        ):
+            raise self._not_found(
+                "Usuário alvo não encontrado no workspace", "WORKSPACE_MEMBER_NOT_FOUND"
+            )
+        return target
+
+    def get_target_access(
+        self, workspace_id: str, actor: User, target_user_id: str
+    ) -> TargetAccessResponse:
+        access = self.require_read(workspace_id, actor)
+        can_view_overrides = self.build_capabilities(access).grants_manage
+        target = self._get_target_user(access.workspace, target_user_id)
+        target_access = self.resolve_access(workspace_id, target)
+        editable = (
+            can_view_overrides and target.id != actor.id and not target_access.has_inherent_access
+        )
+        overrides = (
+            [
+                CapabilityOverride(capability=capability, effect=effect)
+                for capability, effect in sorted(target_access.capability_overrides.items())
+            ]
+            if can_view_overrides
+            else []
+        )
+        return TargetAccessResponse(
+            workspace_id=access.workspace.id,
+            user_id=target.id,
+            is_owner=target_access.is_owner,
+            interno_adm=target_access.is_interno_adm,
+            level=target_access.level,
+            permission_version=target_access.permission_version,
+            capabilities=self.build_capabilities(target_access),
+            overrides=overrides,
+            editable=editable,
+            hard_locked_capabilities=(
+                list(HARD_LOCKED_CAPABILITIES) if editable else list(CAPABILITY_NAMES)
+            ),
+            deny_only_capabilities=list(DENY_ONLY_CAPABILITIES),
+        )
+
+    def update_capabilities(
+        self,
+        workspace_id: str,
+        actor: User,
+        target_user_id: str,
+        *,
+        items: list[CapabilityBatchItem],
+        reason: str | None = None,
+        request_id: str | None = None,
+    ) -> TargetAccessResponse:
+        access = self.require_read(workspace_id, actor)
+        if not self.build_capabilities(access).grants_manage:
+            raise self._forbidden(
+                "Você não tem permissão para alterar capabilities.",
+                required="management.grants_manage",
+            )
+        if target_user_id == actor.id:
+            raise self._forbidden(
+                "Um usuário não pode alterar suas próprias permissões.",
+                error_code="SELF_PERMISSION_CHANGE_FORBIDDEN",
+                required="management.grants_manage",
+            )
+        target = self._get_target_user(access.workspace, target_user_id)
+        target_access = self.resolve_access(workspace_id, target)
+        if target_access.has_inherent_access:
+            raise self._forbidden(
+                "As permissões deste usuário são inerentes ao seu papel.",
+                error_code="TARGET_ACCESS_INHERENT",
+                required="management.grants_manage",
+            )
+        # `reason` só valida o break-glass: nunca entra em log, auditoria ou resposta.
+        self._taxonomy_break_glass(access, reason=reason)
+        current = target_access.capability_overrides
+        before: dict[str, str] = {}
+        after: dict[str, str] = {}
+        planned: list[tuple[str, str, WorkspaceCapabilityGrant | None]] = []
+        for item in items:
+            if item.capability not in CAPABILITY_NAMES:
+                raise BadRequestException(
+                    ExceptionData(
+                        message="Capability inválida no lote", error_code="CAPABILITY_INVALID"
+                    ),
+                    is_expected=True,
+                )
+            if item.effect == "allow" and item.capability in DENY_ONLY_CAPABILITIES:
+                raise BadRequestException(
+                    ExceptionData(
+                        message="Esta capability só aceita deny ou reset.",
+                        error_code="CAPABILITY_DENY_ONLY",
+                    ),
+                    is_expected=True,
+                )
+            if item.capability in HARD_LOCKED_CAPABILITIES:
+                raise self._forbidden(
+                    "Esta capability é protegida por regra dura.",
+                    error_code="CAPABILITY_PROTECTED",
+                    required="management.grants_manage",
+                )
+            before[item.capability] = current.get(item.capability, "none")
+            after[item.capability] = item.effect
+            planned.append(
+                (
+                    item.capability,
+                    item.effect,
+                    self._repo.get_active_capability_override(
+                        workspace_id, target_user_id, item.capability
+                    ),
+                )
+            )
+        try:
+            for capability, effect, existing in planned:
+                if effect == "reset":
+                    if existing is not None:
+                        self._repo.revoke_capability_override(existing, revoked_by_id=actor.id)
+                elif existing is not None:
+                    existing.effect = effect
+                    existing.granted_by_id = actor.id
+                    existing.updated_at = datetime.now(UTC)
+                    self._repo.add_capability_override(existing)
+                else:
+                    self._repo.add_capability_override(
+                        WorkspaceCapabilityGrant(
+                            workspace_id=workspace_id,
+                            user_id=target_user_id,
+                            capability=capability,
+                            effect=effect,
+                            granted_by_id=actor.id,
+                        )
+                    )
+            version = self._repo.bump_permission_version_atomic(workspace_id)
+            self._audit(
+                workspace_id=workspace_id,
+                actor=actor,
+                action="capability_override.batch",
+                entity_type="workspace_capability_grant",
+                entity_id=target_user_id,
+                target_user_id=target_user_id,
+                before=before,
+                after=after,
+                metadata=None,
+                request_id=request_id,
+                actor_role=access.organization_role,
+                permission_version=version,
+            )
+            self._repo.commit()
+        except Exception:
+            self._repo.rollback()
+            raise
+        return self.get_target_access(workspace_id, actor, target_user_id)
+
     def require_read(self, workspace_id: str, user: User) -> ManagementAccess:
         access = self.resolve_access(workspace_id, user)
-        if not access.can_read:
+        if not self.build_capabilities(access).management_read:
             raise self._forbidden(
                 "Você não tem permissão de leitura na gestão deste workspace.",
                 required="management.read",
@@ -263,7 +483,7 @@ class WorkspaceManagementService:
 
     def require_modify(self, workspace_id: str, user: User) -> ManagementAccess:
         access = self.resolve_access(workspace_id, user)
-        if not access.can_modify:
+        if not self.build_capabilities(access).management_modify:
             raise self._forbidden(
                 "Você não tem permissão de modificação na gestão deste workspace.",
                 required="management.modify",
@@ -272,12 +492,19 @@ class WorkspaceManagementService:
 
     def require_grant(self, workspace_id: str, user: User) -> ManagementAccess:
         access = self.resolve_access(workspace_id, user)
-        if not access.can_grant:
+        if not self.build_capabilities(access).management_grant:
             raise self._forbidden(
                 "Você não tem permissão para gerenciar grants da gestão.",
                 required="management.grant",
             )
         return access
+
+    def _require_capability(self, access: ManagementAccess, capability: str, required: str) -> None:
+        """Checkpoint específico: a capability efetiva, não só o nível MG, decide."""
+        if not getattr(self.build_capabilities(access), capability):
+            raise self._forbidden(
+                "Você não tem permissão para esta ação de gestão.", required=required
+            )
 
     def list_grants(self, workspace_id: str, actor: User) -> list[WorkspaceManagementGrant]:
         self.require_read(workspace_id, actor)
@@ -294,6 +521,13 @@ class WorkspaceManagementService:
         request_id: str | None = None,
     ) -> WorkspaceManagementGrant:
         access = self.require_grant(workspace_id, actor)
+        self._require_capability(access, "grants_manage", "management.grants_manage")
+        if target_user_id == actor.id:
+            raise self._forbidden(
+                "Um usuário não pode alterar suas próprias permissões.",
+                error_code="SELF_PERMISSION_CHANGE_FORBIDDEN",
+                required="management.grants_manage",
+            )
         workspace = access.workspace
         if level not in ("read", "modify", "grant"):
             raise self._conflict("Nível de grant inválido", "MANAGEMENT_GRANT_INVALID_LEVEL")
@@ -379,6 +613,13 @@ class WorkspaceManagementService:
         request_id: str | None = None,
     ) -> None:
         access = self.require_grant(workspace_id, actor)
+        self._require_capability(access, "grants_manage", "management.grants_manage")
+        if target_user_id == actor.id:
+            raise self._forbidden(
+                "Um usuário não pode alterar suas próprias permissões.",
+                error_code="SELF_PERMISSION_CHANGE_FORBIDDEN",
+                required="management.grants_manage",
+            )
         workspace = access.workspace
         break_glass = self._ensure_break_glass(workspace, actor, reason, "management.grant.revoke")
         grant = self._repo.get_active_grant(workspace_id, target_user_id)
@@ -421,7 +662,9 @@ class WorkspaceManagementService:
         self.require_read(workspace_id, actor)
         person = self._repo.get_workspace_person(workspace_id, target_user_id)
         if person is None:
-            raise self._not_found("Pessoa não encontrada no workspace", "WORKSPACE_MEMBER_NOT_FOUND")
+            raise self._not_found(
+                "Pessoa não encontrada no workspace", "WORKSPACE_MEMBER_NOT_FOUND"
+            )
         return person
 
     def remove_person(
@@ -434,11 +677,20 @@ class WorkspaceManagementService:
         request_id: str | None = None,
     ) -> None:
         access = self.require_modify(workspace_id, actor)
+        self._require_capability(access, "members_manage", "management.members_manage")
+        if target_user_id == actor.id:
+            raise self._forbidden(
+                "Um usuário não pode remover a si mesmo do workspace.",
+                error_code="SELF_PERMISSION_CHANGE_FORBIDDEN",
+                required="management.members_manage",
+            )
         workspace = access.workspace
         break_glass = self._ensure_break_glass(workspace, actor, reason, "management.person.remove")
         member = self._repo.get_workspace_member(workspace_id, target_user_id)
         if member is None:
-            raise self._not_found("Pessoa não encontrada no workspace", "WORKSPACE_MEMBER_NOT_FOUND")
+            raise self._not_found(
+                "Pessoa não encontrada no workspace", "WORKSPACE_MEMBER_NOT_FOUND"
+            )
         if workspace.owner_id == target_user_id:
             raise self._conflict(
                 "O proprietário do workspace não pode ser removido pelo painel de gestão.",
@@ -451,7 +703,9 @@ class WorkspaceManagementService:
                 required="management.owner_remove",
             )
         try:
-            team_memberships = self._repo.list_workspace_team_memberships(workspace_id, target_user_id)
+            team_memberships = self._repo.list_workspace_team_memberships(
+                workspace_id, target_user_id
+            )
             removed_team_ids = [tm.team_id for tm in team_memberships]
             for tm in team_memberships:
                 self._repo.remove_team_member(tm)
@@ -488,13 +742,16 @@ class WorkspaceManagementService:
         request_id: str | None = None,
     ):
         access = self.require_modify(workspace_id, actor)
+        self._require_capability(access, "members_manage", "management.members_manage")
         workspace = access.workspace
         break_glass = self._ensure_break_glass(
             workspace, actor, reason, "management.person.team_change"
         )
         member = self._repo.get_workspace_member(workspace_id, target_user_id)
         if member is None:
-            raise self._not_found("Pessoa não encontrada no workspace", "WORKSPACE_MEMBER_NOT_FOUND")
+            raise self._not_found(
+                "Pessoa não encontrada no workspace", "WORKSPACE_MEMBER_NOT_FOUND"
+            )
         target_team = self._repo.get_team(target_team_id)
         if (
             target_team is None
@@ -551,7 +808,9 @@ class WorkspaceManagementService:
             raise
         person = self._repo.get_workspace_person(workspace_id, target_user_id)
         if person is None:
-            raise self._not_found("Pessoa não encontrada no workspace", "WORKSPACE_MEMBER_NOT_FOUND")
+            raise self._not_found(
+                "Pessoa não encontrada no workspace", "WORKSPACE_MEMBER_NOT_FOUND"
+            )
         return person
 
     def list_teams(self, workspace_id: str, actor: User, include_deleted: bool = False):
@@ -573,7 +832,8 @@ class WorkspaceManagementService:
         ]
 
     def list_audit(self, workspace_id: str, actor: User, skip: int = 0, limit: int = 50):
-        self.require_read(workspace_id, actor)
+        access = self.require_read(workspace_id, actor)
+        self._require_capability(access, "audit_read", "management.audit_read")
         events = self._repo.list_audit_events(workspace_id, skip=skip, limit=limit)
         return [
             {
@@ -600,7 +860,8 @@ class WorkspaceManagementService:
         ]
 
     def list_blocked_cards(self, workspace_id: str, actor: User):
-        self.require_read(workspace_id, actor)
+        access = self.require_read(workspace_id, actor)
+        self._require_capability(access, "blocked_cards_read", "management.blocked_cards_read")
         cards = self._repo.list_blocked_cards(workspace_id)
         return [
             {
@@ -615,3 +876,341 @@ class WorkspaceManagementService:
             }
             for c in cards
         ]
+
+    @staticmethod
+    def _valid_uuid(value: str) -> bool:
+        try:
+            uuid.UUID(value)
+            return True
+        except (ValueError, AttributeError, TypeError):
+            return False
+
+    @staticmethod
+    def _taxonomy_not_found() -> NotFoundException:
+        return NotFoundException(
+            ExceptionData(
+                message="Recurso de taxonomia não encontrado",
+                error_code="TAXONOMY_NOT_FOUND",
+            ),
+            is_expected=True,
+        )
+
+    def _is_taxonomy_member(self, workspace: Workspace, user_id: str) -> bool:
+        return workspace.owner_id == user_id or (
+            self._valid_uuid(user_id)
+            and self._repo.get_workspace_member(workspace.id, user_id) is not None
+        )
+
+    def require_taxonomy_read(self, workspace_id: str, user: User) -> ManagementAccess:
+        access = self.resolve_access(workspace_id, user)
+        if not self.build_capabilities(access).taxonomy_read:
+            raise self._forbidden(
+                "Você não tem permissão para ler a taxonomia deste workspace.",
+                error_code="TAXONOMY_ACCESS_DENIED",
+                required="taxonomy.read",
+            )
+        return access
+
+    def require_taxonomy_manage(self, workspace_id: str, user: User) -> ManagementAccess:
+        access = self.resolve_access(workspace_id, user)
+        if not self.build_capabilities(access).taxonomy_manage:
+            raise self._forbidden(
+                "Você não tem permissão para gerenciar a taxonomia deste workspace.",
+                error_code="TAXONOMY_ACCESS_DENIED",
+                required="taxonomy.manage",
+            )
+        return access
+
+    def require_taxonomy_manage_grant(self, workspace_id: str, user: User) -> ManagementAccess:
+        access = self.resolve_access(workspace_id, user)
+        if not self.build_capabilities(access).taxonomy_manage_grant:
+            raise self._forbidden(
+                "Você não tem permissão para conceder ou revogar grants de taxonomia.",
+                error_code="TAXONOMY_GRANT_DENIED",
+                required="taxonomy.manage.grant",
+            )
+        return access
+
+    def _taxonomy_break_glass(self, access: ManagementAccess, *, reason: str | None) -> bool:
+        """R10 sem texto livre: `reason` só valida, nunca entra em audit/log."""
+        if not access.user.interno_adm:
+            return False
+        if self._is_taxonomy_member(access.workspace, access.user.id):
+            return False
+        if not reason or not reason.strip():
+            raise self._forbidden(
+                "Ação de interno_adm fora do workspace exige justificativa (break-glass).",
+                error_code="BREAK_GLASS_REASON_REQUIRED",
+                required="management.break_glass_reason",
+            )
+        return True
+
+    def _audit_taxonomy(
+        self,
+        *,
+        access: ManagementAccess,
+        action: str,
+        entity_type: str,
+        entity_id: str,
+        after: dict[str, bool],
+        permission_version: int,
+        request_id: str | None = None,
+        target_user_id: str | None = None,
+        break_glass: bool = False,
+    ) -> None:
+        """Só IDs, booleanos, entity_type e permission_version — nunca texto livre."""
+        workspace_id = access.workspace.id
+        actor_type = "internal_admin" if access.user.interno_adm else "user"
+        truncated_request_id = (request_id or "")[:100] or None
+        event = AuditEvent(
+            workspace_id=workspace_id,
+            actor_user_id=access.user.id,
+            actor_type=actor_type,
+            actor_role=access.organization_role or actor_type,
+            permission_version=permission_version,
+            action=action,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            target_user_id=target_user_id,
+            request_id=truncated_request_id,
+            before=None,
+            after=after,
+            metadata_=None,
+            result="success",
+        )
+        self._repo.add_audit_event(event)
+        if break_glass:
+            self._repo.add_audit_event(
+                AuditEvent(
+                    workspace_id=workspace_id,
+                    actor_user_id=access.user.id,
+                    actor_type=actor_type,
+                    actor_role=access.organization_role or actor_type,
+                    permission_version=permission_version,
+                    action="break_glass",
+                    entity_type=entity_type,
+                    entity_id=entity_id,
+                    target_user_id=target_user_id,
+                    request_id=truncated_request_id,
+                    before=None,
+                    after={"break_glass": True},
+                    metadata_=None,
+                    result="success",
+                )
+            )
+
+    def list_taxonomy(
+        self,
+        workspace_id: str,
+        actor: User,
+        *,
+        kind: Literal["category", "version"],
+        include_inactive: bool = False,
+    ) -> list[CardTaxonomyModel]:
+        access = self.require_taxonomy_read(workspace_id, actor)
+        if include_inactive and not self.build_capabilities(access).taxonomy_manage:
+            raise self._forbidden(
+                "Somente gestores podem listar valores de taxonomia desativados.",
+                error_code="TAXONOMY_ACCESS_DENIED",
+                required="taxonomy.manage",
+            )
+        return self._repo.list_taxonomy(workspace_id, kind=kind, include_inactive=include_inactive)
+
+    def create_taxonomy(
+        self,
+        workspace_id: str,
+        actor: User,
+        *,
+        kind: Literal["category", "version"],
+        name: str,
+        color: str | None = None,
+        request_id: str | None = None,
+        break_glass_reason: str | None = None,
+    ) -> CardTaxonomyModel:
+        access = self.require_taxonomy_manage(workspace_id, actor)
+        break_glass = self._taxonomy_break_glass(access, reason=break_glass_reason)
+        item = CardTaxonomyModel(
+            workspace_id=workspace_id,
+            kind=kind,
+            name=name,
+            color=color,
+            created_by_id=actor.id,
+        )
+        try:
+            item = self._repo.add_taxonomy(item)
+            version = self._repo.bump_permission_version(workspace_id)
+            self._audit_taxonomy(
+                access=access,
+                action="taxonomy.created",
+                entity_type="card_taxonomy",
+                entity_id=item.id,
+                after={"created": True},
+                permission_version=version,
+                request_id=request_id,
+                break_glass=break_glass,
+            )
+            self._repo.commit()
+            return item
+        except Exception:
+            self._repo.rollback()
+            raise
+
+    def patch_taxonomy_color(
+        self,
+        workspace_id: str,
+        actor: User,
+        taxonomy_id: str,
+        *,
+        color: str | None,
+        request_id: str | None = None,
+        break_glass_reason: str | None = None,
+    ) -> CardTaxonomyModel:
+        access = self.require_taxonomy_manage(workspace_id, actor)
+        if not self._valid_uuid(taxonomy_id):
+            raise self._taxonomy_not_found()
+        item = self._repo.get_taxonomy(workspace_id, taxonomy_id)
+        if item is None or item.desativado_em is not None:
+            raise self._taxonomy_not_found()
+        break_glass = self._taxonomy_break_glass(access, reason=break_glass_reason)
+        try:
+            item.color = color
+            version = self._repo.bump_permission_version(workspace_id)
+            self._audit_taxonomy(
+                access=access,
+                action="taxonomy.color_changed",
+                entity_type="card_taxonomy",
+                entity_id=item.id,
+                after={"color_changed": True},
+                permission_version=version,
+                request_id=request_id,
+                break_glass=break_glass,
+            )
+            self._repo.commit()
+            return item
+        except Exception:
+            self._repo.rollback()
+            raise
+
+    def deactivate_taxonomy(
+        self,
+        workspace_id: str,
+        actor: User,
+        taxonomy_id: str,
+        *,
+        reason: str | None = None,
+        request_id: str | None = None,
+        break_glass_reason: str | None = None,
+    ) -> CardTaxonomyModel:
+        access = self.require_taxonomy_manage(workspace_id, actor)
+        if not self._valid_uuid(taxonomy_id):
+            raise self._taxonomy_not_found()
+        item = self._repo.get_taxonomy(workspace_id, taxonomy_id)
+        if item is None or item.desativado_em is not None:
+            raise self._taxonomy_not_found()
+        break_glass = self._taxonomy_break_glass(access, reason=break_glass_reason)
+        try:
+            self._repo.deactivate_taxonomy(item, deactivated_by_id=actor.id, reason=reason)
+            version = self._repo.bump_permission_version(workspace_id)
+            self._audit_taxonomy(
+                access=access,
+                action="taxonomy.deactivated",
+                entity_type="card_taxonomy",
+                entity_id=item.id,
+                after={"deactivated": True},
+                permission_version=version,
+                request_id=request_id,
+                break_glass=break_glass,
+            )
+            self._repo.commit()
+            return item
+        except Exception:
+            self._repo.rollback()
+            raise
+
+    def list_taxonomy_grants(
+        self, workspace_id: str, actor: User
+    ) -> list[WorkspaceTaxonomyGrantModel]:
+        self.require_taxonomy_manage(workspace_id, actor)
+        return self._repo.list_active_taxonomy_grants(workspace_id)
+
+    def grant_taxonomy(
+        self,
+        workspace_id: str,
+        actor: User,
+        *,
+        target_user_id: str,
+        reason: str | None = None,
+        request_id: str | None = None,
+    ) -> WorkspaceTaxonomyGrantModel:
+        access = self.require_taxonomy_manage_grant(workspace_id, actor)
+        if not self._valid_uuid(target_user_id):
+            raise self._taxonomy_not_found()
+        if not self._is_taxonomy_member(access.workspace, target_user_id):
+            raise self._taxonomy_not_found()
+        break_glass = self._taxonomy_break_glass(access, reason=reason)
+        if self._repo.get_active_taxonomy_grant(workspace_id, target_user_id) is not None:
+            raise self._conflict(
+                "Grant de taxonomia já está ativo", "TAXONOMY_GRANT_ALREADY_ACTIVE"
+            )
+        grant = WorkspaceTaxonomyGrantModel(
+            workspace_id=workspace_id,
+            user_id=target_user_id,
+            granted_by_id=actor.id,
+            reason=reason,
+        )
+        try:
+            grant = self._repo.add_taxonomy_grant(grant)
+            version = self._repo.bump_permission_version(workspace_id)
+            self._audit_taxonomy(
+                access=access,
+                action="taxonomy.grant.created",
+                entity_type="workspace_taxonomy_grant",
+                entity_id=grant.id,
+                after={"granted": True},
+                permission_version=version,
+                request_id=request_id,
+                target_user_id=target_user_id,
+                break_glass=break_glass,
+            )
+            self._repo.commit()
+            return grant
+        except Exception:
+            self._repo.rollback()
+            raise
+
+    def revoke_taxonomy_grant(
+        self,
+        workspace_id: str,
+        actor: User,
+        *,
+        target_user_id: str,
+        reason: str | None = None,
+        request_id: str | None = None,
+    ) -> None:
+        access = self.require_taxonomy_manage_grant(workspace_id, actor)
+        if not self._valid_uuid(target_user_id):
+            raise self._taxonomy_not_found()
+        if not self._is_taxonomy_member(access.workspace, target_user_id):
+            raise self._taxonomy_not_found()
+        grant = self._repo.get_active_taxonomy_grant(workspace_id, target_user_id)
+        if grant is None:
+            raise self._taxonomy_not_found()
+        break_glass = self._taxonomy_break_glass(access, reason=reason)
+        try:
+            self._repo.revoke_taxonomy_grant(grant, revoked_by_id=actor.id, revoke_reason=reason)
+            version = self._repo.bump_permission_version(workspace_id)
+            self._audit_taxonomy(
+                access=access,
+                action="taxonomy.grant.revoked",
+                entity_type="workspace_taxonomy_grant",
+                entity_id=grant.id,
+                after={"revoked": True},
+                permission_version=version,
+                request_id=request_id,
+                target_user_id=target_user_id,
+                break_glass=break_glass,
+            )
+            self._repo.commit()
+        except Exception:
+            self._repo.rollback()
+            raise

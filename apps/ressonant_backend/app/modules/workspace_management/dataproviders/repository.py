@@ -6,8 +6,14 @@ from app.modules.organization.domain.models import OrganizationMember
 from app.modules.teams.domain.models import Team, TeamMember
 from app.modules.user.domain.models import User
 from app.modules.workspace.domain.models import Workspace, WorkspaceMember
-from app.modules.workspace_management.domain.models import AuditEvent, WorkspaceManagementGrant
-from sqlalchemy import select
+from app.modules.workspace_management.domain.models import (
+    AuditEvent,
+    CardTaxonomyModel,
+    WorkspaceCapabilityGrant,
+    WorkspaceManagementGrant,
+    WorkspaceTaxonomyGrantModel,
+)
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 
@@ -27,6 +33,24 @@ class WorkspaceManagementRepository:
         if not self._is_uuid(workspace_id):
             return None
         return self._db.get(Workspace, workspace_id)
+
+    def get_user(self, user_id: str) -> User | None:
+        if not self._is_uuid(user_id):
+            return None
+        return self._db.get(User, user_id)
+
+    def actor_has_inherent_access(self, workspace_id: str, user_id: str) -> bool:
+        """Espelha ManagementAccess.has_inherent_access para os helpers de veto de domínio."""
+        workspace = self.get_workspace(workspace_id)
+        user = self.get_user(user_id)
+        if workspace is None or user is None:
+            return False
+        return bool(
+            workspace.owner_id == user_id
+            or user.interno_adm
+            or self.get_organization_role(workspace.organization_id or "", user_id)
+            in {"owner", "billing_owner"}
+        )
 
     def get_workspace_member(self, workspace_id: str, user_id: str) -> WorkspaceMember | None:
         if not self._is_uuid(workspace_id) or not self._is_uuid(user_id):
@@ -75,6 +99,49 @@ class WorkspaceManagementRepository:
             )
         )
 
+    def list_active_capability_overrides(self, workspace_id: str, user_id: str) -> dict[str, str]:
+        if not self._is_uuid(workspace_id) or not self._is_uuid(user_id):
+            return {}
+        rows = self._db.scalars(
+            select(WorkspaceCapabilityGrant)
+            .where(
+                WorkspaceCapabilityGrant.workspace_id == workspace_id,
+                WorkspaceCapabilityGrant.user_id == user_id,
+                WorkspaceCapabilityGrant.revoked_at.is_(None),
+            )
+            .order_by(WorkspaceCapabilityGrant.capability)
+        ).all()
+        return {row.capability: row.effect for row in rows}
+
+    def get_active_capability_override(
+        self, workspace_id: str, user_id: str, capability: str
+    ) -> WorkspaceCapabilityGrant | None:
+        if not self._is_uuid(workspace_id) or not self._is_uuid(user_id) or not capability:
+            return None
+        return self._db.scalar(
+            select(WorkspaceCapabilityGrant).where(
+                WorkspaceCapabilityGrant.workspace_id == workspace_id,
+                WorkspaceCapabilityGrant.user_id == user_id,
+                WorkspaceCapabilityGrant.capability == capability,
+                WorkspaceCapabilityGrant.revoked_at.is_(None),
+            )
+        )
+
+    def add_capability_override(self, grant: WorkspaceCapabilityGrant) -> WorkspaceCapabilityGrant:
+        self._db.add(grant)
+        self._db.flush()
+        return grant
+
+    def revoke_capability_override(
+        self, grant: WorkspaceCapabilityGrant, *, revoked_by_id: str
+    ) -> WorkspaceCapabilityGrant:
+        grant.revoked_at = datetime.now(UTC)
+        grant.revoked_by_id = revoked_by_id
+        grant.revoke_reason = None
+        grant.updated_at = datetime.now(UTC)
+        self._db.flush()
+        return grant
+
     def add_grant(self, grant: WorkspaceManagementGrant) -> WorkspaceManagementGrant:
         self._db.add(grant)
         self._db.flush()
@@ -98,6 +165,20 @@ class WorkspaceManagementRepository:
         self._db.flush()
         return ws.management_permission_version
 
+    def bump_permission_version_atomic(self, workspace_id: str) -> int:
+        """UPDATE ... RETURNING evita lost-update entre administradores concorrentes."""
+        if not self._is_uuid(workspace_id):
+            return 0
+        result = self._db.execute(
+            update(Workspace)
+            .where(Workspace.id == workspace_id)
+            .values(management_permission_version=Workspace.management_permission_version + 1)
+            .returning(Workspace.management_permission_version),
+            execution_options={"synchronize_session": "fetch"},
+        )
+        version = result.scalar_one_or_none()
+        return int(version or 0)
+
     # Audit: append-only
     def add_audit_event(self, event: AuditEvent) -> AuditEvent:
         self._db.add(event)
@@ -118,6 +199,89 @@ class WorkspaceManagementRepository:
                 .limit(limit)
             )
         )
+
+    def get_active_taxonomy_grant(
+        self, workspace_id: str, user_id: str
+    ) -> WorkspaceTaxonomyGrantModel | None:
+        if not self._is_uuid(workspace_id) or not self._is_uuid(user_id):
+            return None
+        return self._db.scalar(
+            select(WorkspaceTaxonomyGrantModel).where(
+                WorkspaceTaxonomyGrantModel.workspace_id == workspace_id,
+                WorkspaceTaxonomyGrantModel.user_id == user_id,
+                WorkspaceTaxonomyGrantModel.revoked_at.is_(None),
+            )
+        )
+
+    def list_active_taxonomy_grants(self, workspace_id: str) -> list[WorkspaceTaxonomyGrantModel]:
+        if not self._is_uuid(workspace_id):
+            return []
+        return list(
+            self._db.scalars(
+                select(WorkspaceTaxonomyGrantModel)
+                .where(
+                    WorkspaceTaxonomyGrantModel.workspace_id == workspace_id,
+                    WorkspaceTaxonomyGrantModel.revoked_at.is_(None),
+                )
+                .order_by(WorkspaceTaxonomyGrantModel.created_at)
+            )
+        )
+
+    def add_taxonomy_grant(self, grant: WorkspaceTaxonomyGrantModel) -> WorkspaceTaxonomyGrantModel:
+        self._db.add(grant)
+        self._db.flush()
+        return grant
+
+    def revoke_taxonomy_grant(
+        self,
+        grant: WorkspaceTaxonomyGrantModel,
+        *,
+        revoked_by_id: str,
+        revoke_reason: str | None,
+    ) -> WorkspaceTaxonomyGrantModel:
+        grant.revoked_at = datetime.now(UTC)
+        grant.revoked_by_id = revoked_by_id
+        grant.revoke_reason = revoke_reason
+        grant.updated_at = datetime.now(UTC)
+        self._db.flush()
+        return grant
+
+    def list_taxonomy(
+        self, workspace_id: str, *, kind: str, include_inactive: bool
+    ) -> list[CardTaxonomyModel]:
+        if not self._is_uuid(workspace_id):
+            return []
+        stmt = select(CardTaxonomyModel).where(
+            CardTaxonomyModel.workspace_id == workspace_id,
+            CardTaxonomyModel.kind == kind,
+        )
+        if not include_inactive:
+            stmt = stmt.where(CardTaxonomyModel.desativado_em.is_(None))
+        return list(self._db.scalars(stmt.order_by(CardTaxonomyModel.name)))
+
+    def get_taxonomy(self, workspace_id: str, taxonomy_id: str) -> CardTaxonomyModel | None:
+        if not self._is_uuid(workspace_id) or not self._is_uuid(taxonomy_id):
+            return None
+        return self._db.scalar(
+            select(CardTaxonomyModel).where(
+                CardTaxonomyModel.workspace_id == workspace_id,
+                CardTaxonomyModel.id == taxonomy_id,
+            )
+        )
+
+    def add_taxonomy(self, item: CardTaxonomyModel) -> CardTaxonomyModel:
+        self._db.add(item)
+        self._db.flush()
+        return item
+
+    def deactivate_taxonomy(
+        self, item: CardTaxonomyModel, *, deactivated_by_id: str, reason: str | None
+    ) -> CardTaxonomyModel:
+        item.desativado_em = datetime.now(UTC)
+        item.desativado_by_id = deactivated_by_id
+        item.deactivate_reason = reason
+        self._db.flush()
+        return item
 
     def commit(self) -> None:
         self._db.commit()

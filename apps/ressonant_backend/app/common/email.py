@@ -75,25 +75,36 @@ def send_invitation_email(
         if corporate_email
         else "Ao aceitar, você informará seus dados e criará sua conta no Ressonant."
     )
-    html = f"""\
-<html>
-  <body style="margin:0;padding:24px;background:#f4f7f8;font-family:Arial,sans-serif;color:#1f2937">
-    <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #dbe5e7;border-radius:16px;padding:24px">
-      <h1 style="margin:0 0 12px;font-size:24px;color:#0f172a">Convite para o Ressonant</h1>
-      <p style="margin:0 0 12px"><strong>{_escape(invited_by)}</strong> convidou você para acessar <strong>{_escape(location)}</strong>.</p>
-      <p style="margin:0 0 8px"><strong>Organização:</strong> {_escape(organization_name or "-")}</p>
-      <p style="margin:0 0 8px"><strong>Workspace:</strong> {_escape(workspace_name or "-")}</p>
-      <p style="margin:0 0 8px"><strong>Papel:</strong> {_escape(role_label)}</p>
-      <p style="margin:0 0 8px"><strong>Expira em:</strong> {_escape(expires_label)}</p>
-      {corporate_html}
-      <p style="margin:0 0 20px"><a href="{invite_url}" style="display:inline-block;padding:12px 18px;background:#46C2BF;color:#062a2a;text-decoration:none;border-radius:10px;font-weight:700">Aceitar convite</a></p>
-      <p style="margin:0 0 8px;color:#475569;font-size:14px">Se o botão não funcionar, copie e cole este link no navegador:</p>
-      <p style="margin:0 0 20px;font-size:14px;word-break:break-all"><a href="{invite_url}" style="color:#0f766e">{invite_url}</a></p>
-      <p style="margin:0;color:#6b7280;font-size:13px">{_escape(accept_note)}</p>
-    </div>
-  </body>
-</html>
-"""
+    html = (
+        "<html>"
+        '<body style="margin:0;padding:24px;background:#f4f7f8;'
+        'font-family:Arial,sans-serif;color:#1f2937">'
+        '<div style="max-width:560px;margin:0 auto;background:#ffffff;'
+        'border:1px solid #dbe5e7;border-radius:16px;padding:24px">'
+        '<h1 style="margin:0 0 12px;font-size:24px;color:#0f172a">'
+        "Convite para o Ressonant</h1>"
+        f'<p style="margin:0 0 12px"><strong>{_escape(invited_by)}</strong> '
+        f"convidou você para acessar <strong>{_escape(location)}</strong>.</p>"
+        f'<p style="margin:0 0 8px"><strong>Organização:</strong> '
+        f"{_escape(organization_name or '-')}</p>"
+        f'<p style="margin:0 0 8px"><strong>Workspace:</strong> '
+        f"{_escape(workspace_name or '-')}</p>"
+        f'<p style="margin:0 0 8px"><strong>Papel:</strong> {_escape(role_label)}</p>'
+        f'<p style="margin:0 0 8px"><strong>Expira em:</strong> '
+        f"{_escape(expires_label)}</p>"
+        f"{corporate_html}"
+        f'<p style="margin:0 0 20px"><a href="{invite_url}" '
+        'style="display:inline-block;padding:12px 18px;background:#46C2BF;'
+        'color:#062a2a;text-decoration:none;border-radius:10px;font-weight:700">'
+        "Aceitar convite</a></p>"
+        '<p style="margin:0 0 8px;color:#475569;font-size:14px">'
+        "Se o botão não funcionar, copie e cole este link no navegador:</p>"
+        f'<p style="margin:0 0 20px;font-size:14px;word-break:break-all">'
+        f'<a href="{invite_url}" style="color:#0f766e">{invite_url}</a></p>'
+        f'<p style="margin:0;color:#6b7280;font-size:13px">'
+        f"{_escape(accept_note)}</p>"
+        "</div></body></html>"
+    )
 
     msg = EmailMessage()
     msg["Subject"] = subject

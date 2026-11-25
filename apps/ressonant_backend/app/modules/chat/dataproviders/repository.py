@@ -112,6 +112,15 @@ class MessageRepository:
         )
         return list(items), total
 
+    def thread_participants(self, room_id: str, parent_id: str) -> set[str]:
+        """Autores distintos das respostas ativas de uma thread, para notificação."""
+        stmt = select(Message.author_id).where(
+            Message.room_id == room_id,
+            Message.parent_id == parent_id,
+            Message.status_ativo.is_(True),
+        )
+        return {author for (author,) in self._db.execute(stmt) if author}
+
     def list_by_workspace(
         self, workspace_id: str, skip: int = 0, limit: int = 50
     ) -> tuple[list[Message], int]:

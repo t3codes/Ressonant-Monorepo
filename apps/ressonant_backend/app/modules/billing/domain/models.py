@@ -3,8 +3,10 @@ from datetime import datetime
 
 import sqlalchemy as sa
 from app.database.engine import Base
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Uuid, func
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, String, Uuid, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.types import JSON
 
 PLAN_CODES = ("inicial", "equipe", "empresa")
 SUBSCRIPTION_STATUSES = ("trialing", "active", "past_due", "canceled")
@@ -19,6 +21,31 @@ class Plan(Base):
     )
     code: Mapped[str] = mapped_column(String(20), unique=True, nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
+    billing_cycle: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="monthly", server_default="monthly"
+    )  # monthly|yearly|custom
+    base_price_cents: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    price_per_seat_cents: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    included_seats: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    limits: Mapped[dict] = mapped_column(
+        JSON().with_variant(JSONB, "postgresql"),
+        nullable=False,
+        default=dict,
+        server_default=sa.text("'{}'"),
+    )
+    is_public: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=sa.true()
+    )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=sa.true()
+    )
+    # Colunas legadas continuam contrato: serviços de billing atuais ainda as leem.
     price_cents: Mapped[int] = mapped_column(Integer, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False)
     seat_limit: Mapped[int | None] = mapped_column(Integer, nullable=True)  # NULL = ilimitado
@@ -35,6 +62,12 @@ class Plan(Base):
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "billing_cycle IN ('monthly', 'yearly', 'custom')", name="ck_plans_billing_cycle"
+        ),
     )
 
 

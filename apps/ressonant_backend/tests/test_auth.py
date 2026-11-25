@@ -2,7 +2,11 @@ from datetime import UTC, datetime, timedelta
 
 import jwt
 from app.config.settings import get_settings
+from app.modules.auth.usecases.services import AuthService
+from app.modules.auth.usecases.tokens import PERMISSION_VERSION_CLAIM, decode_access_claims
+from app.modules.user.dataproviders.repository import UserRepository
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session, sessionmaker
 from tests.conftest import VALID_CPFS, login, make_user, register_payload
 
 
@@ -100,14 +104,57 @@ def test_expired_and_wrong_type_tokens_are_rejected(client: TestClient, session_
     settings = get_settings()
     now = datetime.now(UTC)
 
-    def token(**claims: object) -> dict[str, str]:
+    def token(*, include_version: bool = True, **claims: object) -> dict[str, str]:
         payload = {"sub": user.id, "type": "access", "exp": now + timedelta(minutes=5), **claims}
+        if include_version:
+            payload[PERMISSION_VERSION_CLAIM] = 1
         encoded = jwt.encode(payload, settings.auth_secret, algorithm="HS256")
         return {"Authorization": f"Bearer {encoded}"}
 
     assert client.get("/auth/me", headers=token()).status_code == 200
     assert client.get("/auth/me", headers=token(exp=now - timedelta(minutes=1))).status_code == 401
     assert client.get("/auth/me", headers=token(type="refresh")).status_code == 401
+    # ADR 0003: tokens emitidos antes da claim são rejeitados (fail closed).
+    assert client.get("/auth/me", headers=token(include_version=False)).status_code == 401
+
+
+def test_refresh_token_keeps_current_permission_version(
+    session_factory: sessionmaker[Session],
+) -> None:
+    user = make_user(session_factory, email="refresh@ressonant.dev", cpf=VALID_CPFS[1])
+
+    class _FakeRedis:
+        def exists(self, key: str) -> bool:
+            return False
+
+        def setex(self, key: str, ttl: int, value: str) -> None:
+            return None
+
+    with session_factory() as db:
+        repository = UserRepository(db)
+        stored = repository.get_by_id(user.id)
+        assert stored is not None
+        stored.permission_version = 3
+        db.commit()
+
+        service = AuthService(repository)
+        service._redis = _FakeRedis()
+        refresh = jwt.encode(
+            {
+                "sub": user.id,
+                "type": "refresh",
+                "exp": datetime.now(UTC) + timedelta(days=1),
+            },
+            get_settings().auth_secret,
+            algorithm="HS256",
+        )
+
+        result = service.refresh_token(refresh)
+
+    assert result is not None
+    claims = decode_access_claims(result["new_access_token"])
+    assert claims is not None
+    assert claims.permission_version == 3
 
 
 def test_deactivated_user_loses_access_with_existing_token(

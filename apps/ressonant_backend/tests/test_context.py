@@ -50,7 +50,11 @@ MANAGEMENT_FIELDS = (
     "audit_read",
     "settings_manage",
     "grants_manage",
+    "taxonomy_read",
+    "taxonomy_manage",
+    "taxonomy_manage_grant",
 )
+TAXONOMY_FIELDS = ("taxonomy_read", "taxonomy_manage", "taxonomy_manage_grant")
 
 
 @pytest.fixture
@@ -302,7 +306,12 @@ def test_members_see_real_workspace_links_and_no_fabricated_teams(
         assert workspace["capabilities"]["management_read"] is True
         assert workspace["capabilities"]["management_modify"] is True
     else:
-        assert not any(capabilities for capabilities in workspace["capabilities"].values())
+        assert not any(
+            value for key, value in workspace["capabilities"].items() if key not in TAXONOMY_FIELDS
+        )
+        assert workspace["capabilities"]["taxonomy_read"] is True
+        assert workspace["capabilities"]["taxonomy_manage"] is False
+        assert workspace["capabilities"]["taxonomy_manage_grant"] is False
     assert body["capabilities"]["management"] == workspace["capabilities"]
     assert body["capabilities"]["billing"] == {"view": True, "manage": False}
     assert body["capabilities"]["domain"] == {"cards_write": True}
@@ -424,7 +433,12 @@ def test_management_capabilities_are_union_and_permission_version_is_max(
     )
     assert read_only["capabilities"]["management_read"] is True
     assert read_only["capabilities"]["management_modify"] is False
-    assert not any(no_grant["capabilities"].values())
+    assert not any(
+        value for key, value in no_grant["capabilities"].items() if key not in TAXONOMY_FIELDS
+    )
+    assert no_grant["capabilities"]["taxonomy_read"] is True
+    assert no_grant["capabilities"]["taxonomy_manage"] is False
+    assert no_grant["capabilities"]["taxonomy_manage_grant"] is False
     assert body["capabilities"]["management"]["management_read"] is True
     assert body["capabilities"]["management"]["management_modify"] is False
     assert body["permission_version"] == 7

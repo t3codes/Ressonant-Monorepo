@@ -38,11 +38,18 @@ def test_regular_user_reads_and_updates_only_self(client: TestClient) -> None:
     assert client.put(f"/users/{bia['id']}", json=body, headers=headers).status_code == 403
 
 
-def test_admin_creates_admin_user(client: TestClient, admin_headers) -> None:
-    response = client.post("/users", json=register_payload(interno_adm=True), headers=admin_headers)
+def test_admin_cannot_grant_platform_admin_on_create(client: TestClient, admin_headers) -> None:
+    forbidden = client.post(
+        "/users", json=register_payload(interno_adm=True), headers=admin_headers
+    )
 
-    assert response.status_code == 201
-    assert response.json()["interno_adm"] is True
+    assert forbidden.status_code == 403
+    assert forbidden.json()["error_code"] == "ADMIN_FLAG_NOT_ALLOWED"
+
+    created = client.post("/users", json=register_payload(), headers=admin_headers)
+
+    assert created.status_code == 201, created.text
+    assert created.json()["interno_adm"] is False
 
 
 def test_admin_list_pagination_and_filter(client: TestClient, admin_headers) -> None:

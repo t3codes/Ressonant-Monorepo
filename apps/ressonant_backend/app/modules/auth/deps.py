@@ -3,7 +3,7 @@ from typing import Annotated
 from app.database.engine import get_db
 from app.modules.auth.usecases.registration import RegistrationService
 from app.modules.auth.usecases.services import AuthService
-from app.modules.auth.usecases.tokens import decode_access_token
+from app.modules.auth.usecases.tokens import decode_access_claims
 from app.modules.user.dataproviders.repository import UserRepository
 from app.modules.user.domain.models import User
 from common.errors import ExceptionData, ForbiddenException, UnauthorizedException
@@ -37,11 +37,15 @@ def get_current_user(
     service = get_auth_service(db)
     if service.is_token_blacklisted(token):
         raise unauthorized
-    user_id = decode_access_token(token)
-    if user_id is None:
+    claims = decode_access_claims(token)
+    if claims is None:
         raise unauthorized
-    user = UserRepository(db).get_by_id(user_id)
+    user = UserRepository(db).get_by_id(claims.user_id)
     if user is None or not user.status_ativo:
+        raise unauthorized
+    # Invalidação de sessão: token antigo deixa de valer quando a versão de
+    # permissões do usuário muda (ver AuditEvent de interno_adm/status).
+    if claims.permission_version != int(user.permission_version or 1):
         raise unauthorized
     return user
 
@@ -55,5 +59,19 @@ def require_admin(user: Annotated[User, Depends(get_current_user)]) -> User:
     return user
 
 
+def require_platform_admin(user: Annotated[User, Depends(get_current_user)]) -> User:
+    """Guarda das rotas /admin/*: somente superuser interno ativo."""
+    if not user.interno_adm or not user.status_ativo:
+        raise ForbiddenException(
+            ExceptionData(
+                message="Acesso restrito a administradores da plataforma",
+                error_code="PLATFORM_ADMIN_REQUIRED",
+            ),
+            is_expected=True,
+        )
+    return user
+
+
 CurrentUser = Annotated[User, Depends(get_current_user)]
 AdminUser = Annotated[User, Depends(require_admin)]
+PlatformAdmin = Annotated[User, Depends(require_platform_admin)]

@@ -68,19 +68,24 @@ class ConversationList(BaseModel):
     limit: int
 
 
-class MessageBase(BaseModel):
-    workspace_id: str
+class MessageCreate(BaseModel):
+    """DTO público: autor e workspace nunca vêm do cliente (CYB-WS-001)."""
+
+    model_config = ConfigDict(extra="forbid")
+
     room_id: str
     room_kind: Annotated[str, Field(pattern="^(channel|conversation)$")]
-    author_id: str
     body: Annotated[str, Field(min_length=1, max_length=4000)]
     parent_id: str | None = None
-    attachments: list[dict] | None = None
-    mention_ids: list[str] | None = None
+    attachments: Annotated[list[dict] | None, Field(max_length=10)] = None
+    mention_ids: Annotated[list[str] | None, Field(max_length=50)] = None
 
 
-class MessageCreate(MessageBase):
-    pass
+class MessageInput(MessageCreate):
+    """DTO interno: campos derivados pelo servidor a partir do usuário e da sala."""
+
+    workspace_id: str
+    author_id: str
 
 
 class MessageResponse(BaseModel):

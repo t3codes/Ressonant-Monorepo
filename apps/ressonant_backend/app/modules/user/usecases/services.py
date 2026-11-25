@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 from app.common.exceptions import ConflictException
 from app.common.security import hash_password
 from app.modules.user.dataproviders.repository import UserRepository
 from app.modules.user.domain.models import User
 from app.modules.user.schemas.dto import UserCreate, UserRegister, UserUpdate
+from app.modules.workspace_management.domain.models import AuditEvent
 from common.errors import ExceptionData, NotFoundException
 from sqlalchemy.exc import IntegrityError
 
@@ -16,6 +19,12 @@ def _not_found() -> NotFoundException:
 
 def _conflict(message: str, code: str) -> ConflictException:
     return ConflictException(ExceptionData(message=message, error_code=code), is_expected=True)
+
+
+def _last_admin_protected() -> ConflictException:
+    return _conflict(
+        "Não é possível remover o último administrador da plataforma", "LAST_ADMIN_PROTECTED"
+    )
 
 
 class UserService:
@@ -91,14 +100,88 @@ class UserService:
             raise _conflict("E-mail já cadastrado", "EMAIL_ALREADY_EXISTS") from None
         return user
 
-    def set_status(self, user_id: str, status_ativo: bool) -> User:
-        user = self.get(user_id)
+    def _load_for_admin_change(self, user_id: str) -> tuple[User, list[str]]:
+        """Trava os admins ativos antes de ler o alvo e decidir sobre a guarda."""
+        admin_ids = self._repo.lock_active_admin_ids()
+        user = self._repo.get_by_id(user_id)
+        if user is None:
+            raise _not_found()
+        self._repo.refresh(user)
+        return user, admin_ids
+
+    @staticmethod
+    def _is_last_active_admin(user: User, admin_ids: list[str]) -> bool:
+        return (
+            user.id in admin_ids
+            and len(admin_ids) == 1
+            and bool(user.status_ativo)
+            and bool(user.interno_adm)
+        )
+
+    def set_status(self, user_id: str, status_ativo: bool, actor_id: str | None = None) -> User:
+        user, admin_ids = self._load_for_admin_change(user_id)
+        before = {"status_ativo": bool(user.status_ativo), "interno_adm": bool(user.interno_adm)}
+        if not status_ativo and self._is_last_active_admin(user, admin_ids):
+            raise _last_admin_protected()
         user.status_ativo = status_ativo
-        self._repo.commit()
+        if before["interno_adm"]:
+            self._record_admin_change(user, before, actor_id, "status")
+        try:
+            self._repo.commit()
+        except Exception:
+            self._repo.rollback()
+            raise
         return user
 
-    def set_admin(self, user_id: str, interno_adm: bool) -> User:
-        user = self.get(user_id)
+    def set_admin(self, user_id: str, interno_adm: bool, actor_id: str | None = None) -> User:
+        user, admin_ids = self._load_for_admin_change(user_id)
+        before = {"status_ativo": bool(user.status_ativo), "interno_adm": bool(user.interno_adm)}
+        if not interno_adm and self._is_last_active_admin(user, admin_ids):
+            raise _last_admin_protected()
         user.interno_adm = interno_adm
-        self._repo.commit()
+        self._record_admin_change(user, before, actor_id, "admin")
+        try:
+            self._repo.commit()
+        except Exception:
+            self._repo.rollback()
+            raise
         return user
+
+    def _record_admin_change(
+        self, user: User, before: dict[str, bool], actor_id: str | None, kind: str
+    ) -> None:
+        """Bump da versão do usuário + auditoria system no mesmo commit da mutação."""
+        version = int(getattr(user, "permission_version", 1) or 1) + 1
+        user.permission_version = version
+        after = {
+            "status_ativo": bool(user.status_ativo),
+            "interno_adm": bool(user.interno_adm),
+            "permission_version": version,
+        }
+        action = f"user.{kind}."
+        if kind == "admin":
+            action += "granted" if after["interno_adm"] else "revoked"
+        else:
+            action += "activated" if after["status_ativo"] else "deactivated"
+        actor = self._repo.get_by_id(actor_id) if actor_id else None
+        actor_version = (
+            int(getattr(actor, "permission_version", 1) or 1) if actor is not None else None
+        )
+        self._repo.add_audit_event(
+            AuditEvent(
+                scope="system",
+                actor_user_id=actor_id,
+                actor_type="internal_admin" if actor_id else "system",
+                actor_role="internal_admin",
+                action=action,
+                entity_type="user",
+                entity_id=user.id,
+                target_user_id=user.id,
+                # ADR 0003 (v): a claim do evento é a versão do ator; a nova
+                # versão do alvo fica registrada em `after`.
+                permission_version=actor_version,
+                before=before,
+                after=after,
+                result="success",
+            )
+        )

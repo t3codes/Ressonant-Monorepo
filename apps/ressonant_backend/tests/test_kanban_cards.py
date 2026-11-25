@@ -2,7 +2,9 @@ from app.modules.kanban_cards.dataproviders.repository import CardRepository
 from app.modules.kanban_cards.domain.models import Card
 from app.modules.organization.domain.models import Organization, OrganizationMember
 from app.modules.teams.dataproviders.repository import TeamRepository
-from app.modules.teams.domain.models import Team
+from app.modules.teams.domain.models import Team, TeamMember
+from app.modules.workspace_management.domain.models import WorkspaceCapabilityGrant
+from app.user.models import User
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from tests.conftest import login
@@ -344,3 +346,204 @@ def test_create_card_team_without_key_prefix(client, session_factory):
 
     assert response.status_code == 409, response.text
     assert response.json()["error_code"] == "TEAM_KEY_PREFIX_MISSING"
+
+
+def _user_id_by_email(session_factory, email):
+    with session_factory() as db:
+        return db.scalar(select(User.id).where(User.email == email))
+
+
+def _set_capability(session_factory, workspace_id, user_id, capability, effect, granted_by_id):
+    with session_factory() as db:
+        db.add(
+            WorkspaceCapabilityGrant(
+                workspace_id=workspace_id,
+                user_id=user_id,
+                capability=capability,
+                effect=effect,
+                granted_by_id=granted_by_id,
+            )
+        )
+        db.commit()
+
+
+def _add_team_member(session_factory, team_id, user_id, role="member"):
+    with session_factory() as db:
+        db.add(TeamMember(team_id=team_id, user_id=user_id, role=role))
+        db.commit()
+
+
+def _create_blocked_card(client, session_factory):
+    board, headers = _create_board(client, session_factory)
+    card = client.post(
+        "/cards",
+        json={"title": "Card bloqueado", "board_id": board["id"], "team_id": board["team_id"]},
+        headers=headers,
+    ).json()
+    blocked = client.post(
+        f"/cards/{card['id']}/block",
+        json={"reason": "Bloqueio de teste", "expected_version": card["version"]},
+        headers=headers,
+    )
+    assert blocked.status_code == 200, blocked.text
+    return board, card, blocked.json(), headers
+
+
+def test_blocked_cards_unblock_deny_blocks_even_blocker(client, session_factory):
+    board, headers = _create_board(client, session_factory)
+    owner_id = _user_id_by_email(session_factory, "ana@ressonant.dev")
+    make_user(session_factory, email="bia@ressonant.dev", cpf="11144477735")
+    bia_id = _user_id_by_email(session_factory, "bia@ressonant.dev")
+    _add_team_member(session_factory, board["team_id"], bia_id)
+    card = client.post(
+        "/cards",
+        json={"title": "Card bloqueado", "board_id": board["id"], "team_id": board["team_id"]},
+        headers=headers,
+    ).json()
+    bia_headers = login(client, "bia@ressonant.dev")
+    blocked = client.post(
+        f"/cards/{card['id']}/block",
+        json={"reason": "Bloqueio de teste", "expected_version": card["version"]},
+        headers=bia_headers,
+    )
+    assert blocked.status_code == 200, blocked.text
+    _set_capability(
+        session_factory,
+        board["workspace_id"],
+        bia_id,
+        "blocked_cards_unblock",
+        "deny",
+        owner_id,
+    )
+
+    response = client.post(
+        f"/cards/{card['id']}/unblock",
+        json={
+            "justification": "Liberando após revisão",
+            "expected_version": blocked.json()["version"],
+        },
+        headers=bia_headers,
+    )
+    assert response.status_code == 403, response.text
+    assert response.json()["error_code"] == "FORBIDDEN"
+    with session_factory() as db:
+        assert db.get(Card, card["id"]).is_blocked is True
+
+
+def test_blocked_cards_unblock_deny_does_not_veto_inherent_actors(client, session_factory):
+    board, headers = _create_board(client, session_factory)
+    owner_id = _user_id_by_email(session_factory, "ana@ressonant.dev")
+
+    def _blocked_card(title: str, actor_headers: dict) -> tuple[dict, dict]:
+        created = client.post(
+            "/cards",
+            json={"title": title, "board_id": board["id"], "team_id": board["team_id"]},
+            headers=headers,
+        )
+        assert created.status_code == 201, created.text
+        card = created.json()
+        blocked = client.post(
+            f"/cards/{card['id']}/block",
+            json={"reason": "Bloqueio de teste", "expected_version": card["version"]},
+            headers=actor_headers,
+        )
+        assert blocked.status_code == 200, blocked.text
+        return card, blocked.json()
+
+    # Dono do workspace: segue podendo desbloquear mesmo com deny órfão no banco.
+    owner_card, owner_blocked = _blocked_card("Card do owner", headers)
+    _set_capability(
+        session_factory,
+        board["workspace_id"],
+        owner_id,
+        "blocked_cards_unblock",
+        "deny",
+        owner_id,
+    )
+    owner_response = client.post(
+        f"/cards/{owner_card['id']}/unblock",
+        json={
+            "justification": "Liberando após revisão",
+            "expected_version": owner_blocked["version"],
+        },
+        headers=headers,
+    )
+    assert owner_response.status_code == 200, owner_response.text
+    assert owner_response.json()["is_blocked"] is False
+
+    # interno_adm: continua com a política de justificativa do domínio, sem veto de capability.
+    make_user(session_factory, email="admin@ressonant.dev", cpf="16899535009", admin=True)
+    admin_id = _user_id_by_email(session_factory, "admin@ressonant.dev")
+    _add_team_member(session_factory, board["team_id"], admin_id)
+    admin_headers = login(client, "admin@ressonant.dev")
+    admin_card, admin_blocked = _blocked_card("Card do admin", admin_headers)
+    _set_capability(
+        session_factory,
+        board["workspace_id"],
+        admin_id,
+        "blocked_cards_unblock",
+        "deny",
+        owner_id,
+    )
+    admin_response = client.post(
+        f"/cards/{admin_card['id']}/unblock",
+        json={
+            "justification": "Liberando após revisão",
+            "expected_version": admin_blocked["version"],
+        },
+        headers=admin_headers,
+    )
+    assert admin_response.status_code == 200, admin_response.text
+    assert admin_response.json()["is_blocked"] is False
+
+
+def test_blocked_cards_unblock_allow_does_not_authorize_non_blocker(client, session_factory):
+    board, card, blocked, _ = _create_blocked_card(client, session_factory)
+    make_user(session_factory, email="bob@ressonant.dev", cpf="11144477735")
+    bob_id = _user_id_by_email(session_factory, "bob@ressonant.dev")
+    owner_id = _user_id_by_email(session_factory, "ana@ressonant.dev")
+    _add_team_member(session_factory, board["team_id"], bob_id)
+    _set_capability(
+        session_factory,
+        board["workspace_id"],
+        bob_id,
+        "blocked_cards_unblock",
+        "allow",
+        owner_id,
+    )
+
+    bob_headers = login(client, "bob@ressonant.dev")
+    response = client.post(
+        f"/cards/{card['id']}/unblock",
+        json={"justification": "Liberando", "expected_version": blocked["version"]},
+        headers=bob_headers,
+    )
+    assert response.status_code == 403, response.text
+    assert "Somente quem bloqueou" in response.json()["message"]
+
+
+def test_unblock_keeps_justification_requirement_for_privileged_unblocker(client, session_factory):
+    board, headers = _create_board(client, session_factory)
+    make_user(session_factory, email="bob@ressonant.dev", cpf="11144477735")
+    bob_id = _user_id_by_email(session_factory, "bob@ressonant.dev")
+    _add_team_member(session_factory, board["team_id"], bob_id)
+    card = client.post(
+        "/cards",
+        json={"title": "Card do bob", "board_id": board["id"], "team_id": board["team_id"]},
+        headers=headers,
+    ).json()
+    bob_headers = login(client, "bob@ressonant.dev")
+    blocked = client.post(
+        f"/cards/{card['id']}/block",
+        json={"reason": "Bloqueio pelo dev", "expected_version": card["version"]},
+        headers=bob_headers,
+    )
+    assert blocked.status_code == 200, blocked.text
+
+    response = client.post(
+        f"/cards/{card['id']}/unblock",
+        json={"expected_version": blocked.json()["version"]},
+        headers=headers,
+    )
+    assert response.status_code == 409, response.text
+    assert response.json()["error_code"] == "CARD_UNBLOCK_JUSTIFICATION_REQUIRED"

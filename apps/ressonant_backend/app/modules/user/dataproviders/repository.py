@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import uuid
 
 from app.modules.user.domain.models import User
+from app.modules.workspace_management.domain.models import AuditEvent
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -39,10 +42,30 @@ class UserRepository:
     def count(self) -> int:
         return self._db.scalar(select(func.count()).select_from(User)) or 0
 
-    def exists_admin(self) -> bool:
-        return (
-            self._db.scalar(select(User.id).where(User.interno_adm.is_(True)).limit(1)) is not None
+    def lock_active_admin_ids(self) -> list[str]:
+        """Trava todos os admins ativos em ordem determinística (CYB-003).
+
+        Uma única varredura `ORDER BY id ... FOR UPDATE` evita o deadlock de
+        duas revogações concorrentes que travariam alvos em ordens opostas. O
+        alvo, quando é admin ativo, está nessa lista; a contagem feita pelo
+        service acontece depois do lock e antes de qualquer mutação.
+        """
+        stmt = (
+            select(User.id)
+            .where(User.interno_adm.is_(True), User.status_ativo.is_(True))
+            .order_by(User.id.asc())
+            .with_for_update()
         )
+        return list(self._db.scalars(stmt))
+
+    def refresh(self, user: User) -> None:
+        """Recarrega a linha já travada, evitando valor obsoleto no identity map."""
+        self._db.refresh(user)
+
+    def add_audit_event(self, event: AuditEvent) -> AuditEvent:
+        self._db.add(event)
+        self._db.flush()
+        return event
 
     def commit(self) -> None:
         self._db.commit()

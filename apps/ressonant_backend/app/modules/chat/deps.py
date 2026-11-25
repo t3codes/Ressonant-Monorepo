@@ -6,6 +6,10 @@ from app.modules.chat.dataproviders.repository import (
     ConversationRepository,
     MessageRepository,
 )
+from app.modules.chat.usecases.chat_realtime_usecase import (
+    ChatRealtimeService,
+    build_chat_realtime_usecase,
+)
 from app.modules.chat.usecases.services import ChannelService, ConversationService, MessageService
 from fastapi import Depends
 from sqlalchemy.orm import Session
@@ -39,3 +43,9 @@ def get_message_service(
     repo: Annotated[MessageRepository, Depends(get_message_repository)],
 ) -> MessageService:
     return MessageService(repo)
+
+
+def get_chat_realtime_service(
+    db: Annotated[Session, Depends(get_db)],
+) -> ChatRealtimeService:
+    return build_chat_realtime_usecase(db)

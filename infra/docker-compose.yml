@@ -18,6 +18,36 @@ services:
       retries: 10
     networks: [data]
 
+  redis:
+    # Digest fixado: a tag móvel redis:7-alpine não é reproduzível (CYB-WS-009).
+    image: redis@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe
+    restart: unless-stopped
+    user: redis
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?defina REDIS_PASSWORD no .env (make setup)}
+    # ACL em arquivo temporário do container: o default fica DESLIGADO e o usuário da app
+    # só alcança chaves de blacklist (blk_*) e canais de tempo real (ressonant:realtime:*).
+    # shell-form: a senha vem do ambiente em runtime; nunca é gravada no compose.
+    command: >
+      sh -c '
+        printf "%s\n%s\n" "user default off" "user ressonant_app on >$$REDIS_PASSWORD ~blk_* &ressonant:realtime:* +@read +@write +@pubsub +ping +hello +client" > /tmp/acl.conf &&
+        exec redis-server --appendonly yes --aclfile /tmp/acl.conf
+      '
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - REDISCLI_AUTH=$${REDIS_PASSWORD} redis-cli --user ressonant_app ping | grep -q PONG
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [data]
+
   mailpit:
     image: axllent/mailpit:latest
     restart: unless-stopped
@@ -34,3 +64,5 @@ volumes:
   pg-data:
     # Nome legado preservado de propósito: este volume já guarda os dados do backend.
     name: ressonant_backend_pg-data
+  redis-data:
+    name: ressonant_backend_redis-data

@@ -386,7 +386,9 @@ def test_r10_break_glass_reason_and_audit(
     assert event is not None
     assert event.metadata_ is not None
     assert event.metadata_["break_glass"] is True
-    assert event.metadata_["reason"] == "suporte emergencial"
+    # C2: `reason` é validation-only; auditoria imutável nunca guarda texto livre.
+    assert "reason" not in event.metadata_ or event.metadata_["reason"] == "[REDACTED]"
+    assert "suporte emergencial" not in str(event.metadata_)
     assert event.actor_type == "internal_admin"
     assert _count_events(session_factory) == before + 1
 
