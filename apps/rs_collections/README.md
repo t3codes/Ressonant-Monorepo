@@ -4,6 +4,5 @@ Este diretório reúne artefatos de teste da API em Bruno, Postman e Insomnia. A
 
 - Postman: consulte [`postman/README.md`](postman/README.md).
 - Bruno: abra a collection em `collections/backend`.
-- Insomnia: arquivo exportado em `collections/backend/insomnia/`.
 
 As alterações desta pasta não modificam o código ou os contratos do backend.

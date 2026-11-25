@@ -58,4 +58,4 @@ Fonte das decisões: [Plano Mestre Unificado, §9](../../../docs/PLANO_MESTRE_UN
 
 ## Fora do escopo desta missão (O0)
 
-- Inventário do legado × catálogo (`07-legacy-inventory.md`), parecer de cybersecurity e desenvolvimento rota por rota pertencem às fases seguintes do [Plano Mestre Unificado](../../../docs/PLANO_MESTRE_UNIFICADO.md), não ao saneamento documental O0.
+- Inventário do legado × catálogo (`07-legacy-inventory.md`), parecer de cybersecurity e desenvolvimento rota por rota pertencem às fases seguintes do Plano Mestre Unificado (documento não versionado neste repositório), não ao saneamento documental O0.

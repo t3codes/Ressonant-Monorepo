@@ -1,5 +1,7 @@
 # Inventário do Legado × Catálogo de Contratos (Fase 1, Passo 2)
 
+> **Documento histórico — não usar como fonte de verdade.** Os números de paths, módulos e o estado do rate limit descritos aqui refletem uma versão antiga do backend. Consulte `apps/ressonant_backend/openapi.json` e `AGENTS.md` para o estado atual.
+
 - Fonte de verdade: arquivos lidos em disco (`apps/ressonant_backend`). Zero invenção.
 - Legado existe e está funcional: auth (register/login/me), users CRUD, health, PostgreSQL + Alembic, JWT HS256, Argon2id.
 - Legenda: Implementado · Parcial · Inexistente.

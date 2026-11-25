@@ -23,7 +23,7 @@ O Ressonant é o backend de uma plataforma de comunicação e colaboração em t
 | RAG conectado ao cofre Obsidian | **Planejado**; decisões de vector store, embeddings e sincronização **em aberto** |
 | Refresh token, rate limit de login | **Parcial**: rate limit de login em processo (`RateLimitInfo.consume`/`clear` em `auth/usecases/services.py`, aplicado em `auth/entrypoints/routes.py` com 429 e headers `RateLimit-*`); refresh com rotação one-shot existe como serviço em `auth/usecases/services.py`, depende de `REDIS_URL`/Redis e **não tem rota HTTP** (ausente em `openapi.json`) |
 | Deploy (CI/CD de deploy, Kubernetes/Helm) | **Não implementado** (workflows de deploy foram removidos) |
-| Collection Postman | **Implementado fora do monorepo** (`../ressonant-api-collections`, gerada do `openapi.json`) |
+| Collection Postman | **Implementado no monorepo** (`apps/rs_collections/`), gerada do `openapi.json` |
 
 Princípios: correção e segurança primeiro; simplicidade antes de abstração; performance medida, não presumida; nunca descrever como existente o que está planejado.
 
