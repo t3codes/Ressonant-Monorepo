@@ -220,7 +220,7 @@ export interface TokenResponse {
   - Mock: sem token; sessão = `user.id` em storage; "current user id" = valor de `SESSION_KEY`.
   - HTTP: Bearer token em `Authorization: Bearer <access_token>` (somente quando há token; `auth=true` por padrão); token em `localStorage` (remember) ou `sessionStorage`; `/auth/me` **sem** user id (servidor deriva o caller do token); `TOKEN_KEY = "ressonant:v1:token"`.
   - Erros HTTP mapeados (`createHttpAuthApi.ts`): 401→`AuthError` ("Credenciais inválidas ou sessão expirada." — ou `body.message`), 403→`PermissionError`, 409→`ConflictError` ("E-mail ou CPF já cadastrado."), demais 4xx→`ValidationError`, outros→`UnavailableError`.
-- Exemplo real do mock: não há JSON de sessão/credenciais. Credenciais são derivadas em memória (`src/mocks/index.ts`): `demoCredentials = users.map(u => ({ userId: u.id, email: u.email, password: DEMO_PASSWORD }))` com `DEMO_PASSWORD = "demo"` (`src/lib/demo.ts`) — todas as contas demo compartilham a mesma senha. Nenhuma senha é gravada em `localStorage` pelo mock ("Credentials stay in memory").
+- Exemplo real do mock: não há JSON de sessão/credenciais. Credenciais são derivadas em memória (`src/mocks/index.ts`): `demoCredentials = users.map(u => ({ userId: u.id, email: u.email, password: DEMO_PASSWORD }))` com `DEMO_PASSWORD = "<demo>"` (`src/lib/demo.ts`) — todas as contas demo compartilham a mesma senha. Nenhuma senha é gravada em `localStorage` pelo mock ("Credentials stay in memory").
 - Formatos: token opaco (`access_token`, `token_type`, `expires_in`); `RegisterInput.cpf`/`telefone` normalizados por `onlyDigits` (`/\D/g`); e-mail normalizado `trim().toLowerCase()` no validador HTTP (o service `auth.login` só faz `trim()`, sem lowercase); `idade` inteiro; `termosContrato` booleano estrito `=== true`.
 - Validações observadas (HTTP `validateRegistration`): e-mail regex + ≤254; senha 8–128; CPF 11 dígitos; telefone 10–11 dígitos; idade inteira 18–120; termos obrigatórios. Mock `auth.ts`: e-mail regex `/^\S+@\S+\.\S+$/`, senha não-vazia (sem força mínima no mock — divergência intencional de fluxos).
 - Lacunas:
@@ -248,7 +248,7 @@ export interface CredentialRepository {
 - Operações:
   - `credentials.getByEmail(email)` — payload: `email: string`; retorno: `Credential | null`; mock compara case-insensitive e mantém em memória (nunca persiste); única operação exposta — sem create/update/delete/troca de senha.
 - Autenticação: não se aplica (é o recurso de autenticação); consumido exclusivamente por `auth.login` mock.
-- Exemplo real do mock: **não existe arquivo** (`credentials.json` INEXISTENTE). Forma derivada em memória: `{ userId: "user_andreolli", email: "andreolli@ressonant.app", password: "demo" }` (senha única demo para todos, `DEMO_PASSWORD`).
+- Exemplo real do mock: **não existe arquivo** (`credentials.json` INEXISTENTE). Forma derivada em memória: `{ userId: "user_andreolli", email: "andreolli@ressonant.app", password: "<demo>" }` (senha única demo para todos, `DEMO_PASSWORD`).
 - Formatos: `userId` `user_*`; `email` `@ressonant.app`; `password` texto puro (mock).
 - Validações observadas: nenhuma validação de conteúdo no repositório mock (apenas `toLowerCase` na comparação).
 - Lacunas:
@@ -270,7 +270,7 @@ export interface CredentialRepository {
 3. **Fonte de verdade User↔Workspace duplicada e sem endpoint** — `user.workspaceIds[]` vs `workspace.memberIds[]`; `services/workspace.ts` filtra por `memberIds`; não há `POST /workspaces`, `GET /workspaces/:id/members` nem vínculo de papéis; o HTTP não expõe workspaces (`mapUser` deixa `workspaceIds: []`).
 4. **Sessão sem revogação** — logout é client-side (stateless); sem refresh token; `TOKEN_KEY` em storage sem criptografia; `/auth/me` deriva o caller do token (OK) mas não há evidência de expiração tratada além do 401.
 5. **`register` só existe no fluxo HTTP** — mock rejeita com `UnavailableError`; paridade de ambientes quebrada para cadastro público.
-6. **Credenciais demo compartilhadas** — `DEMO_PASSWORD = "demo"` para todos os usuários; aceitável só para demo; risco se vazar para produção.
+6. **Credenciais demo compartilhadas** — `DEMO_PASSWORD = "<demo>"` para todos os usuários; aceitável só para demo; risco se vazar para produção.
 7. **`listDemoAccounts` divergente** — mock: todos os usuários; HTTP: `GET /users?limit=5` admin-only, `[]` para não-admin (tela de login silenciosa).
 8. **`User` sem timestamps** — impossível ordenar/auditar cadastro pelo contrato mock; backend tem `criado_em`/`atualizado_em` que o frontend descarta no `mapUser`.
 9. **`Workspace` sem CRUD/arquivamento/papéis** — apenas leitura no contrato mock; `initials` manual, sem derivação.
